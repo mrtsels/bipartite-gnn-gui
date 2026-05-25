@@ -21,7 +21,7 @@ Submodules:
 from .encoder import BipartiteGraphSAGE
 from .heads import CoordinateRefinementHead, ViolationPredictionHead, ExistencePredictionHead
 from .model import BipartiteGNNCorrector
-from .losses import BipartiteGNNLoss, compute_coord_loss, compute_violation_loss
+from .losses import BipartiteGNNLoss, compute_coord_loss, compute_existence_loss, compute_violation_loss
 from .trainer import Trainer
 from .inference import correct_layout
 
@@ -33,6 +33,7 @@ __all__ = [
     "BipartiteGNNCorrector",
     "BipartiteGNNLoss",
     "compute_coord_loss",
+    "compute_existence_loss",
     "compute_violation_loss",
     "Trainer",
     "correct_layout",

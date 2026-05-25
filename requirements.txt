@@ -10,6 +10,8 @@ pillow>=10.0.0
 
 # Data & Numerics
 numpy>=1.24.0
+scipy>=1.11.0
+pydantic>=2.5.0
 
 # Experiment Tracking & Utilities
 matplotlib>=3.7.0
