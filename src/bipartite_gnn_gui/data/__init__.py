@@ -8,15 +8,29 @@ Provides loaders for:
 - PyTorch Dataset / DataLoader wrappers for training and evaluation.
 """
 
-from .vlm_output import VLMOutput, load_vlm_output, VLMOutputLoader
+from .vlm_output import (
+    ELEMENT_TYPES,
+    VLMOutput,
+    VLMOutputElement,
+    VlmParseError,
+    normalize_bbox,
+    normalize_element_type,
+    parse_minimax_output,
+    parse_qwen_output,
+)
 from .ground_truth import GroundTruth, load_ground_truth, match_elements
 from .preprocess import normalize_coordinates, extract_element_features
 from .dataset import GUIDataset, GUIDataModule
 
 __all__ = [
+    "ELEMENT_TYPES",
     "VLMOutput",
-    "load_vlm_output",
-    "VLMOutputLoader",
+    "VLMOutputElement",
+    "VlmParseError",
+    "normalize_bbox",
+    "normalize_element_type",
+    "parse_minimax_output",
+    "parse_qwen_output",
     "GroundTruth",
     "load_ground_truth",
     "match_elements",
