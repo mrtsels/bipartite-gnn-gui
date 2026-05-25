@@ -1,6 +1,3 @@
-## Test Commit
-This is a test push to verify git proxy works from Claude Code sandbox.
-
 # Bipartite-GNN-GUI
 
 **Heterogeneous Bipartite GNN for GUI Structure Error Correction**
