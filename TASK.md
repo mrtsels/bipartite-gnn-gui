@@ -2,7 +2,7 @@
 
 > Phase-based development plan for Heterogeneous Bipartite GNN for GUI Structure Error Correction.
 >
-> **105 subtasks across 4 phases, 26 test files.**
+> **110 subtasks across 4 phases, 24 test files.**
 > Each bullet is a single PR: implement → test → push → ship.
 
 ---
@@ -10,12 +10,12 @@
 ## Phase 1: Data Pipeline & Infrastructure
 
 **Goal:** Set up data loading, preprocessing, and project infrastructure.
-**30 subtasks, 8 test files.**
-**Dependency chain:** 1.5(Config) → 1.6(Logging) → 1.1(VLM) + 1.2(GT) + 1.7(Bbox) → 1.3(Preprocess) → 1.4(Dataset)
+**35 subtasks, 8 test files.**
+**Dependency chain:** 1.5(Config) + 1.8(Deps) → 1.6(Logging) → 1.1(VLM) + 1.2(GT) + 1.7(Bbox) → 1.3(Preprocess) → 1.4(Dataset)
 
 ---
 
-### 1.1 VLM 输出解析器 (`data/vlm_output.py`)
+### 1.1 VLM 输出解析器 (`src/bipartite_gnn_gui/data/vlm_output.py`)
 
 **Verify:** `import` succeeds, `parse_qwen_output(json_str)` returns `VLMOutput` with correct fields.
 **Depends on:** nothing.
@@ -42,7 +42,7 @@
 
 ---
 
-### 1.2 真实标注加载器 (`data/ground_truth.py`)
+### 1.2 真实标注加载器 (`src/bipartite_gnn_gui/data/ground_truth.py`)
 
 **Verify:** `load_gui360_annotation(path)` loads 100% of fields; `match_predictions_to_ground_truth` returns correct pair counts on synthetic data.
 **Depends on:** 1.7 (bbox IoU).
@@ -70,7 +70,7 @@
 
 ---
 
-### 1.3 数据预处理 (`data/preprocess.py`)
+### 1.3 数据预处理 (`src/bipartite_gnn_gui/data/preprocess.py`)
 
 **Verify:** A 1920×1080 screenshot → all bboxes in [0,1]; train/val/test split preserves total count.
 **Depends on:** 1.1, 1.2.
@@ -97,7 +97,7 @@
 
 ---
 
-### 1.4 数据集类 (`data/dataset.py`)
+### 1.4 数据集类 (`src/bipartite_gnn_gui/data/dataset.py`)
 
 **Verify:** `GUIDataset` yields dict of tensors; `DataLoader` with custom collate works.
 **Depends on:** 1.1, 1.2, 1.3.
@@ -118,7 +118,7 @@
 
 ---
 
-### 1.5 配置系统 (`utils/config.py`)
+### 1.5 配置系统 (`src/bipartite_gnn_gui/utils/config.py`)
 
 **Verify:** `load_config("example.yaml")` returns validated Config; invalid config raises.
 **Depends on:** nothing.
@@ -139,7 +139,7 @@
 
 ---
 
-### 1.6 日志与实验跟踪 (`utils/logging.py`)
+### 1.6 日志与实验跟踪 (`src/bipartite_gnn_gui/utils/logging.py`)
 
 **Verify:** Logger writes to both console and file; MetricsLogger records and flushes.
 **Depends on:** nothing.
@@ -148,8 +148,10 @@
   - 控制台 + 可选文件输出，统一格式
   - `test_utils_logging.py: test_setup_logger_console / test_setup_logger_file`
 
-- [ ] **1.6.2** 定义 `MetricsLogger` 抽象基类: `log_metric(name, value, step)`, `log_metrics(dict, step)`, `flush()`
-  - `test_utils_logging.py: test_metrics_logger_interface`
+- [ ] **1.6.2** 定义 `MetricsLogger` 抽象基类 + `NoopMetricsLogger` 静默降级实现
+  - `log_metric(name, value, step)`, `log_metrics(dict, step)`, `flush()`
+  - `NoopMetricsLogger`: 当可选依赖(wandb/tensorboard)未安装时静默降级
+  - `test_utils_logging.py: test_metrics_logger_interface / test_noop_logger_no_error`
 
 - [ ] **1.6.3** 实现 `WandbMetricsLogger(MetricsLogger)`
   - WandB 初始化、指标记录、配置记录
@@ -161,7 +163,7 @@
 
 ---
 
-### 1.7 BBox 工具函数 (`utils/bbox.py`)
+### 1.7 BBox 工具函数 (`src/bipartite_gnn_gui/utils/bbox.py`)
 
 **新增文件** — 基础 bbox 工具，被 1.2、1.3、2.2、4.1 依赖。
 
@@ -182,6 +184,33 @@
 
 ---
 
+### 1.8 依赖管理与项目配置（新增模块）
+
+**Verify:** `pip install -e ".[dev,test]"` installs all dependencies; optional imports fail gracefully.
+**Depends on:** nothing.
+
+- [ ] **1.8.1** 在 `pyproject.toml` 中添加 `scipy` 作为核心依赖（用于匈牙利匹配、Wilcoxon 检验）
+  - 验证: `import scipy.optimize` 和 `import scipy.stats` 工作
+  - `test_setup.py: test_scipy_import`
+
+- [ ] **1.8.2** 在 `pyproject.toml` 中添加 `pydantic` 作为核心依赖（用于 config 校验）
+  - 验证: `from pydantic import BaseModel` 工作
+  - `test_setup.py: test_pydantic_import`
+
+- [ ] **1.8.3** 在 `[project.optional-dependencies]` 中添加 `wandb` extra（实验跟踪）
+  - `MetricsLogger` 实现: 导入失败时降级到 `NoopMetricsLogger`，不打断训练
+  - `test_setup.py: test_wandb_optional_import` (skip if not installed)
+
+- [ ] **1.8.4** 在 `[project.optional-dependencies]` 中添加 `tensorboard` extra（实验跟踪）
+  - `MetricsLogger` 实现: 导入失败时降级到 `NoopMetricsLogger`
+  - `test_setup.py: test_tensorboard_optional_import` (skip if not installed)
+
+- [ ] **1.8.5** 更新 Phase 1 依赖文件 + smoke test 验证 `pip install -e .` 完整可安装
+  - 包括 `pyproject.toml` 中所有最小版本 pin
+  - `test_setup.py: test_package_install`
+
+---
+
 ## Phase 2: Bipartite Graph Construction
 
 **Goal:** Build heterogeneous bipartite graphs from VLM JSON output.
@@ -190,7 +219,7 @@
 
 ---
 
-### 2.1 图模式定义 (`graph/schema.py`)
+### 2.1 图模式定义 (`src/bipartite_gnn_gui/graph/schema.py`)
 
 **Verify:** All enum values present; `to_tensor()` returns correct shapes.
 **Depends on:** nothing.
@@ -216,7 +245,7 @@
 
 ---
 
-### 2.2 约束提取 (`graph/constraints.py`)
+### 2.2 约束提取 (`src/bipartite_gnn_gui/graph/constraints.py`)
 
 **Verify:** On a known 2-element layout, alignment constraints are correct; heuristic proposer returns at least 1 constraint.
 **Depends on:** 2.1.
@@ -247,7 +276,7 @@
 
 ---
 
-### 2.3 二分图构建器 (`graph/builder.py`)
+### 2.3 二分图构建器 (`src/bipartite_gnn_gui/graph/builder.py`)
 
 **Verify:** `build()` produces `HeteroData` with correct node/edge types and tensor shapes.
 **Depends on:** 2.1, 2.2.
@@ -273,7 +302,7 @@
 
 ---
 
-### 2.4 图可视化 (`graph/visualize.py`)
+### 2.4 图可视化 (`src/bipartite_gnn_gui/graph/visualize.py`)
 
 **Verify:** Function runs without error on synthetic data; outputs exist.
 **Depends on:** 2.3.
@@ -294,7 +323,7 @@
 
 ---
 
-### 2.5 图增强 (`graph/augment.py`)
+### 2.5 图增强 (`src/bipartite_gnn_gui/graph/augment.py`)
 
 **Verify:** Each transform changes data; `GraphAugmentationPipeline` composes all.
 **Depends on:** 2.3.
@@ -325,7 +354,7 @@
 
 ---
 
-### 3.1 异构编码器 (`model/encoder.py`)
+### 3.1 异构编码器 (`src/bipartite_gnn_gui/model/encoder.py`)
 
 **Verify:** Forward pass returns dict with correct key and tensor shape.
 **Depends on:** nothing (pure torch/nn.Module).
@@ -348,7 +377,7 @@
 
 ---
 
-### 3.2 预测头 (`model/heads.py`)
+### 3.2 预测头 (`src/bipartite_gnn_gui/model/heads.py`)
 
 **Verify:** Each head output shape matches expectation; output value ranges are correct.
 **Depends on:** nothing (but 3.2 results feed into 3.3).
@@ -370,7 +399,7 @@
 
 ---
 
-### 3.3 完整模型 (`model/model.py`)
+### 3.3 完整模型 (`src/bipartite_gnn_gui/model/model.py`)
 
 **Verify:** End-to-end forward returns 3 outputs with correct shapes; loss computation works.
 **Depends on:** 3.1, 3.2, 3.4.
@@ -393,7 +422,7 @@
 
 ---
 
-### 3.4 损失函数 (`model/losses.py`)
+### 3.4 损失函数 (`src/bipartite_gnn_gui/model/losses.py`)
 
 **Verify:** Each loss returns scalar Tensor; combined loss respects weight ratios.
 **Depends on:** nothing.
@@ -421,7 +450,7 @@
 
 ---
 
-### 3.5 训练器 (`model/trainer.py`)
+### 3.5 训练器 (`src/bipartite_gnn_gui/model/trainer.py`)
 
 **Verify:** Training loop decreases loss; checkpoint is loadable; early stopping triggers.
 **Depends on:** 3.3, 3.4, 1.5, 1.6.
@@ -453,7 +482,7 @@
 
 ---
 
-### 3.6 推理管线 (`model/inference.py`)
+### 3.6 推理管线 (`src/bipartite_gnn_gui/model/inference.py`)
 
 **Verify:** `correct_single` returns dict with corrected bboxes; batch preserves order.
 **Depends on:** 3.3, 2.3.
@@ -479,12 +508,12 @@
 ## Phase 4: Evaluation & Experiments
 
 **Goal:** Evaluate the model on benchmark datasets and baselines.
-**32 subtasks, 5 test files.**
+**27 subtasks, 5 test files.**
 **Dependency chain:** 4.1(Metrics) → 4.2(Evaluator) + 4.3(Baselines) + 4.5(Qualitative) → 4.4(Experiments) → 4.6(Report)
 
 ---
 
-### 4.1 评估指标 (`eval/metrics.py`)
+### 4.1 评估指标 (`src/bipartite_gnn_gui/eval/metrics.py`)
 
 **Verify:** Metrics return expected values on hand-crafted test cases.
 **Depends on:** nothing (pure tensor ops).
@@ -514,7 +543,7 @@
 
 ---
 
-### 4.2 评估器 (`eval/evaluator.py`)
+### 4.2 评估器 (`src/bipartite_gnn_gui/eval/evaluator.py`)
 
 **Verify:** `evaluate()` returns dict with same keys as registered metrics; per-category breakdown sums to total.
 **Depends on:** 4.1.
@@ -531,13 +560,13 @@
   - `test_eval_evaluator.py: test_per_category_breakdown_keys`
 
 - [ ] **4.2.4** 实现 `statistical_significance(baseline_scores, proposed_scores, n_bootstrap: int, metric: str) -> dict`
-  - 配对 bootstrap 置信区间 + p-value (或 Wilcoxon signed-rank)
+  - 配对 bootstrap 置信区间 + p-value (或 `scipy.stats.wilcoxon` signed-rank 检验)
   - 返回: `{"p_value": float, "ci_95": tuple[float, float], "significant": bool}`
   - `test_eval_evaluator.py: test_significance_test_returns_keys`
 
 ---
 
-### 4.3 基线模型 (`eval/baselines.py`)
+### 4.3 基线模型 (`src/bipartite_gnn_gui/eval/baselines.py`)
 
 **Verify:** Each baseline returns same format as model output (dict with "boxes", "types" keys).
 **Depends on:** 1.1, 1.2.
@@ -547,7 +576,7 @@
   - `test_eval_baselines.py: test_vlm_baseline_identity`
 
 - [ ] **4.3.2** 实现 `RuleBasedCorrection(vlm_json: dict) -> dict`
-  - 基线2: NMS 去重 + snap-to-grid + 基于边距的调整
+  - 基线2: 纯 PyTorch NMS 去重 + snap-to-grid + 基于边距的调整（无需 torchvision）
   - `test_eval_baselines.py: test_rule_based_returns_dict`
 
 - [ ] **4.3.3** 实现 `MLPOnlyBaseline(input_dim, hidden_dim)`
@@ -588,7 +617,7 @@
 
 ---
 
-### 4.5 定性分析 (`eval/qualitative.py`)
+### 4.5 定性分析 (`src/bipartite_gnn_gui/eval/qualitative.py`)
 
 **Verify:** Functions create output files without error.
 **Depends on:** 4.1, 2.4.
@@ -637,7 +666,7 @@
 
 | Milestone | Subtasks | Description |
 |-----------|----------|-------------|
-| **M1** | 1.1 → 1.7 | Phase 1 complete: data loaders working, config/logging ready, smoke test passes |
+| **M1** | 1.1 → 1.8 | Phase 1 complete: data loaders working, config/logging ready, dependencies declared, smoke test passes |
 | **M2** | 2.1 → 2.5 | Phase 2 complete: graph construction verified, visualization renders, augmentation works |
 | **M3** | 3.1 → 3.6 | Phase 3 complete: model converges on validation set, inference pipeline produces output |
 | **M4** | 4.1 → 4.6 | Phase 4 complete: all metrics, baselines, experiments, and report artifacts created |
