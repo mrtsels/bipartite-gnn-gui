@@ -1442,8 +1442,989 @@ elements → extract_all_constraints() → constraints
 
 ---
 
+## 3. 模型层类设计 (Model Layer Class Design)
+
+> **Phase 3.3** — Heterogeneous GNN encoder, prediction heads, full model assembly,
+> and loss functions.
+>
+> Source files:
+> - `src/bipartite_gnn_gui/model/encoder.py`
+> - `src/bipartite_gnn_gui/model/heads.py`
+> - `src/bipartite_gnn_gui/model/losses.py`
+> - `src/bipartite_gnn_gui/model/model.py`
+
+### 3.1 BipartiteGraphSAGE Encoder
+
+**File:** `src/bipartite_gnn_gui/model/encoder.py`
+**Status:** ⚠️ Stub — uses MLP stand-in (planned: SAGEConv)
+
+#### Current Implementation
+
+```python
+class BipartiteGraphSAGE(nn.Module):
+    """Small feed-forward stand-in for the planned GraphSAGE encoder."""
+
+    def __init__(
+        self,
+        input_dim: int = 5,           # Feature dimension (matches data["element"].x)
+        hidden_dim: int = 128,        # Hidden/output dimension for all layers
+        output_dim: int | None = None, # Output dimension (default: hidden_dim)
+        num_layers: int = 2,          # Number of sequential layers
+    ) -> None:
+        """Build two independent feed-forward encoders.
+
+        Creates element_encoder and constraint_encoder as separate
+        nn.Sequential stacks. Each stack is: Linear → ReLU → ... → Linear.
+        The final layer has no activation.
+        """
+
+    def forward(self, data: Any) -> dict[str, torch.Tensor]:
+        """Encode element and constraint node features.
+
+        Input:
+          data: HeteroData (or dict) with:
+            data["element"].x     → (N_elem, input_dim)  float32
+            data["constraint"].x  → (N_con, input_dim)   float32
+
+        Output:
+          {
+            "element":    Tensor of shape (N_elem, output_dim),
+            "constraint": Tensor of shape (N_con, output_dim),
+          }
+
+        Notes:
+          - If a node type is missing (e.g., no constraint nodes),
+            the corresponding key is omitted from the output dict.
+          - Accesses node features via data.x_dict (PyG API) or
+            data[node_type].x (fallback for dict-based HeteroData).
+        """
+```
+
+**Forward pass tensor shapes:**
+
+```
+Input:
+  data["element"].x      → (N_elem, 5)    [bbox[0..3], confidence]
+  data["constraint"].x   → (N_con, D)     [params values, variable D]
+
+Encode (two independent Seqential stacks):
+  element_encoder(N_elem, 5)    → (N_elem, 128)
+  constraint_encoder(N_con, D)  → (N_con, 128)
+
+Output:
+  {"element": (N_elem, 128), "constraint": (N_con, 128)}
+```
+
+**Encoder architecture detail:**
+
+```
+element_encoder = Sequential(
+    Linear(5, 128),       ← layer 0
+    ReLU(),               ← activation (not applied after final layer)
+    Linear(128, 128),     ← layer 1 (final, no activation)
+)
+
+constraint_encoder = Sequential(
+    Linear(D, 128),       ← layer 0
+    ReLU(),
+    Linear(128, 128),     ← layer 1 (final)
+)
+```
+
+The two encoders are **independent** — no message passing or cross-attention
+between element and constraint nodes occurs. The encoder treats each node in
+isolation, which means the current implementation does **not** leverage the
+bipartite graph structure (edge_index is never read).
+
+#### Planned Upgrade — True GraphSAGE with to_hetero()
+
+The design intent (from Phase 3.3.1) specifies a heterogeneous GraphSAGE encoder
+that performs actual message passing:
+
+```
+Planned architecture:
+
+  HeteroLinear(element_dim, hidden_dim)   ← initial projection
+  HeteroLinear(constraint_dim, hidden_dim)
+
+  SAGEConv × 2 layers, wrapped with to_hetero():
+    First layer:  element → aggregate neighbor constraints → element + ReLU
+                  constraint → aggregate neighbor elements → constraint + ReLU
+    Second layer: same as above
+
+  Information flow:
+    element nodes ←→ constraint nodes (bidirectional message passing)
+
+  Output:  {"element": (N_elem, hidden_dim),
+            "constraint": (N_con, hidden_dim)}
+```
+
+The planned encoder will also include `reset_parameters()` for weight
+initialisation — a method absent from the current stub.
+
+**Key gaps between current stub and planned implementation:**
+
+| Feature | Current Stub | Planned (Phase 4.4.1) |
+|---------|-------------|----------------------|
+| Message passing | None (isolated MLPs) | Two-layer SAGEConv + `to_hetero()` |
+| Edge use | `edge_index` ignored | Aggregates from neighbour nodes |
+| `reset_parameters()` | Not implemented | Xavier/Glorot initialisation |
+| Activation | ReLU (except final layer) | ReLU + Dropout after each conv |
+| `torch_geometric` dependency | Not required | Required (`SAGEConv`, `HeteroLinear`, `to_hetero`) |
+
+> **⚠️ Stub note:** The current `BipartiteGraphSAGE` processes element and
+> constraint features through **independent MLP stacks** without graph
+> convolution. It serves as a functional placeholder enabling end-to-end
+> pipeline testing with simpler architectures. Phase 4.4.1 will replace the
+> MLP stacks with true `SAGEConv` layers wrapped by `to_hetero()`.
+
+---
+
+### 3.2 Prediction Heads
+
+**File:** `src/bipartite_gnn_gui/model/heads.py`
+**Status:** ✅ Fully implemented
+
+#### Shared Base Class
+
+```python
+class _MLPHead(nn.Module):
+    """Two-layer MLP with ReLU activation."""
+
+    def __init__(self, input_dim: int, output_dim: int) -> None:
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, input_dim),   # Hidden layer (same dim as input)
+            nn.ReLU(),
+            nn.Linear(input_dim, output_dim),  # Output layer
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.network(x)
+```
+
+**Architecture:** `Linear(in, in) → ReLU → Linear(in, out)`
+
+#### 3.2.1 CoordinateRefinementHead
+
+```python
+class CoordinateRefinementHead(_MLPHead):
+    """Predict per-element coordinate refinement deltas.
+
+    Takes encoded element features and produces a 4-d delta vector
+    for each element node.
+
+    Signature:
+        __init__(self, input_dim: int = 128)
+        forward(self, x: Tensor) -> Tensor
+    """
+
+    def __init__(self, input_dim: int = 128) -> None:
+        super().__init__(input_dim=input_dim, output_dim=4)
+        # MLP: Linear(128, 128) → ReLU → Linear(128, 4)
+```
+
+**Tensor shapes:**
+```
+Input:  x            (N_elem, 128)  ← encoded element features from encoder
+       network:
+         Linear(128, 128) → (N_elem, 128)
+         ReLU()
+         Linear(128, 4)   → (N_elem, 4)
+Output: (N_elem, 4)  [Δcx, Δcy, Δw, Δh] — raw deltas (no activation)
+```
+
+**Interpretation:**
+- Output is applied to element bboxes via `bbox + delta` (see `apply_delta` in `utils/bbox.py`).
+- The coordinate convention is xywh (centre x, centre y, width, height).
+- No sigmoid or tanh activation — raw deltas can be positive or negative.
+
+#### 3.2.2 ViolationPredictionHead
+
+```python
+class ViolationPredictionHead(_MLPHead):
+    """Predict per-constraint violation scores.
+
+    Takes encoded constraint features and produces a violation score
+    for each constraint node.
+
+    Signature:
+        __init__(self, input_dim: int = 128)
+        forward(self, x: Tensor) -> Tensor
+    """
+
+    def __init__(self, input_dim: int = 128) -> None:
+        super().__init__(input_dim=input_dim, output_dim=1)
+        # MLP: Linear(128, 128) → ReLU → Linear(128, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(super().forward(x))
+```
+
+**Tensor shapes:**
+```
+Input:  x             (N_con, 128)  ← encoded constraint features from encoder
+       super().forward(x) → (N_con, 1)    raw logit
+       sigmoid()          → (N_con, 1)    ∈ [0, 1]
+Output: (N_con, 1)  violation confidence score
+```
+
+**Interpretation:** Score ∈ [0, 1] indicating how likely the constraint is
+violated in the current VLM prediction. High score → constraint is probably
+broken and needs correction.
+
+#### 3.2.3 ExistencePredictionHead
+
+```python
+class ExistencePredictionHead(_MLPHead):
+    """Predict per-element existence probabilities.
+
+    Takes encoded element features and produces an existence probability
+    for each element node.
+
+    Signature:
+        __init__(self, input_dim: int = 128)
+        forward(self, x: Tensor) -> Tensor
+    """
+
+    def __init__(self, input_dim: int = 128) -> None:
+        super().__init__(input_dim=input_dim, output_dim=1)
+        # MLP: Linear(128, 128) → ReLU → Linear(128, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(super().forward(x))
+```
+
+**Tensor shapes:**
+```
+Input:  x             (N_elem, 128)  ← encoded element features from encoder
+       super().forward(x) → (N_elem, 1)    raw logit
+       sigmoid()          → (N_elem, 1)    ∈ [0, 1]
+Output: (N_elem, 1)  existence probability
+```
+
+**Interpretation:** Score ∈ [0, 1] indicating how likely the element is a
+genuine GUI component (not a false positive). Used to suppress spurious
+VLM detections during inference.
+
+#### Head Summary
+
+| Head | Input Shape | Hidden | Output Shape | Activation | Use |
+|------|------------|--------|-------------|------------|-----|
+| `CoordinateRefinementHead` | `(N_elem, 128)` | `Linear(128,128) → ReLU → Linear(128,4)` | `(N_elem, 4)` | None (raw) | Refine element positions |
+| `ViolationPredictionHead` | `(N_con, 128)` | `Linear(128,128) → ReLU → Linear(128,1)` | `(N_con, 1)` | Sigmoid | Detect broken constraints |
+| `ExistencePredictionHead` | `(N_elem, 128)` | `Linear(128,128) → ReLU → Linear(128,1)` | `(N_elem, 1)` | Sigmoid | Suppress false positives |
+
+---
+
+### 3.3 BipartiteGNNCorrector — Full Model
+
+**File:** `src/bipartite_gnn_gui/model/model.py`
+**Status:** ✅ Fully implemented
+
+```python
+class BipartiteGNNCorrector(nn.Module):
+    """End-to-end GUI layout correction model.
+
+    Assembles:
+      - BipartiteGraphSAGE encoder (stub → two MLP stacks)
+      - CoordinateRefinementHead  (MLP → 4-d deltas)
+      - ViolationPredictionHead   (MLP → 1-d score, sigmoid)
+      - ExistencePredictionHead   (MLP → 1-d prob, sigmoid)
+
+    The model does NOT own a loss function; that is external
+    (BipartiteGNNLoss in losses.py).
+    """
+
+    def __init__(
+        self,
+        input_dim: int = 5,       # Element node feature dimension
+        hidden_dim: int = 128,    # Hidden dimension (shared across encoder and heads)
+    ) -> None:
+        self.encoder = BipartiteGraphSAGE(
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+        )
+        self.coordinate_head = CoordinateRefinementHead(input_dim=hidden_dim)
+        self.violation_head = ViolationPredictionHead(input_dim=hidden_dim)
+        self.existence_head = ExistencePredictionHead(input_dim=hidden_dim)
+
+    def forward(self, data: Any) -> dict[str, torch.Tensor]:
+        """Run complete inference.
+
+        Args:
+            data: HeteroData (or dict) with element.x and constraint.x.
+
+        Returns:
+            dict with keys:
+              - "coord":     Tensor shape (N_elem, 4) — raw coordinate deltas
+              - "violation": Tensor shape (N_con, 1) — violation scores [0,1]
+              - "existence": Tensor shape (N_elem, 1) — existence probs [0,1]
+
+            If no element nodes are present, "coord" and "existence"
+            keys are omitted. If no constraint nodes are present,
+            "violation" key is omitted.
+        """
+```
+
+**Forward pass data flow:**
+
+```
+HeteroData input:
+  data["element"].x      (N_elem, 5)
+  data["constraint"].x   (N_con, D)
+           │
+           ▼
+  ┌─────────────────────────────┐
+  │  BipartiteGraphSAGE.forward │
+  │  (two independent MLP stacks)│
+  │                             │
+  │  encoded["element"]         │
+  │    = element_encoder(x)     │  (N_elem, 128)
+  │  encoded["constraint"]       │
+  │    = constraint_encoder(x)  │  (N_con, 128)
+  └──────────┬──────────────────┘
+             │
+     ┌───────┴────────┐
+     │                │
+     ▼                ▼
+  ┌──────────────┐  ┌─────────────────┐
+  │ coord_head   │  │ violation_head  │
+  │   (N,128)→4  │  │   (M,128)→1     │
+  └──────┬───────┘  └────────┬────────┘
+         │                   │
+         ▼                   ▼
+  (N_elem, 4)           (N_con, 1)
+  "coord"               "violation"
+                             │
+     ┌───────────────────────┘
+     │
+     ▼
+  ┌──────────────────┐
+  │ existence_head   │
+  │   (N,128)→1      │
+  └────────┬─────────┘
+           │
+           ▼
+      (N_elem, 1)
+      "existence"
+```
+
+**Design decision — heads dispatch by node type:**
+- `coordinate_head` and `existence_head` consume element node encodings only.
+- `violation_head` consumes constraint node encodings only.
+- This is enforced by the `forward` method checking `"element" in encoded` and
+  `"constraint" in encoded`.
+
+**Design decision — no `compute_loss` on model:**
+The `BipartiteGNNCorrector` is a pure `nn.Module` that only defines `forward`.
+Loss computation is external (`BipartiteGNNLoss`), unlike some frameworks where
+`compute_loss` is a model method. This separation keeps the model focused on
+inference and allows flexible loss configurations without inheriting from the model.
+
+---
+
+### 3.4 BipartiteGNNLoss — Weighted Multi-Task Loss
+
+**File:** `src/bipartite_gnn_gui/model/losses.py`
+**Status:** ✅ Fully implemented
+
+#### Component Loss Functions
+
+```python
+def compute_coord_loss(prediction: Tensor, target: Tensor) -> Tensor:
+    """Mean Squared Error on coordinate refinement deltas.
+
+    Args:
+        prediction: (N_elem, 4) — predicted deltas [Δcx, Δcy, Δw, Δh].
+        target:     (N_elem, 4) — ground-truth deltas.
+
+    Returns:
+        Scalar MSE loss.
+    """
+    return F.mse_loss(prediction, target)
+
+
+def compute_violation_loss(prediction: Tensor, target: Tensor) -> Tensor:
+    """Binary Cross Entropy on violation scores.
+
+    Args:
+        prediction: (N_con, 1) — predicted violation scores ∈ [0, 1].
+        target:     (N_con, 1) — binary labels (0 = valid, 1 = violated).
+
+    Returns:
+        Scalar BCE loss.
+    """
+    return F.binary_cross_entropy(prediction, target)
+
+
+def compute_existence_loss(prediction: Tensor, target: Tensor) -> Tensor:
+    """Binary Cross Entropy on existence probabilities.
+
+    Args:
+        prediction: (N_elem, 1) — predicted existence probs ∈ [0, 1].
+        target:     (N_elem, 1) — binary labels (0 = spurious, 1 = real).
+
+    Returns:
+        Scalar BCE loss.
+    """
+    return F.binary_cross_entropy(prediction, target)
+```
+
+> **⚠️ Planned upgrade — SmoothL1 for coord loss:**
+> The task specification calls for `SmoothL1` (Huber) loss on coordinate
+> refinement, which is more robust to outlier deltas than MSE. The current
+> implementation uses MSE. Phase 4.4.3 may switch to `F.smooth_l1_loss`.
+
+#### Weighted Combination
+
+```python
+@dataclass
+class BipartiteGNNLoss:
+    """Weighted multi-task loss for GUI layout correction.
+
+    L_total = w_coord · L_coord + w_violation · L_violation + w_existence · L_existence
+    """
+
+    coord_weight: float = 1.0
+    violation_weight: float = 1.0
+    existence_weight: float = 1.0
+
+    def __call__(
+        self,
+        prediction: dict[str, Tensor],
+        target: dict[str, Tensor],
+    ) -> Tensor:
+        """Compute weighted sum of component losses.
+
+        Args:
+            prediction: Dict from BipartiteGNNCorrector.forward():
+                {"coord": (N_elem, 4), "violation": (N_con, 1), "existence": (N_elem, 1)}
+            target: Ground-truth dict with matching keys:
+                {"coord": (N_elem, 4), "violation": (N_con, 1), "existence": (N_elem, 1)}
+
+        Returns:
+            Scalar tensor — total weighted loss.
+
+        Notes:
+            - Each loss component is skipped (contributes 0) if its key
+              is missing from either prediction or target dict.
+            - This enables training on datasets where some labels are
+              unavailable (e.g., no violation labels available → skip
+              violation loss).
+        """
+```
+
+**Loss computation logic:**
+
+```
+total = 0.0
+
+if "coord" in prediction and "coord" in target:
+    total += coord_weight * MSE(pred["coord"], target["coord"])
+
+if "violation" in prediction and "violation" in target:
+    total += violation_weight * BCE(pred["violation"], target["violation"])
+
+if "existence" in prediction and "existence" in target:
+    total += existence_weight * BCE(pred["existence"], target["existence"])
+
+return total
+```
+
+**Typical weight configurations:**
+
+| Use Case | `coord_weight` | `violation_weight` | `existence_weight` | Rationale |
+|----------|---------------|-------------------|-------------------|-----------|
+| Balanced | 1.0 | 1.0 | 1.0 | All tasks equally important |
+| Coord-focused | 10.0 | 1.0 | 1.0 | Prioritise spatial accuracy |
+| FP suppression | 1.0 | 1.0 | 5.0 | Prioritise removing spurious detections |
+
+---
+
+### 3.5 Model Layer Data Flow Summary
+
+```
+graph layer                               model layer
+───────────                               ───────────
+
+HeteroData                                BipartiteGNNCorrector.forward(data)
+  │                                                 │
+  ├─ element.x (N_elem, 5) ──────────►  encoder.element_encoder  ──► (N_elem, 128)
+  │                                                 │
+  │                                   ┌─────────────┼─────────────┐
+  │                                   │             │             │
+  │                                   ▼             │             ▼
+  │                          coord_head (→4)        │    existence_head (→1)
+  │                          (N_elem, 4)            │    (N_elem, 1)
+  │                                                 │
+  ├─ constraint.x (N_con, D) ────────►  encoder.constraint_encoder ──► (N_con, 128)
+  │                                                 │
+  │                                                 ▼
+  │                                        violation_head (→1)
+  │                                        (N_con, 1)
+  │
+  ▼
+  ┌────────────────────────────────────────────────────────────┐
+  │  BipartiteGNNLoss(prediction, target)                      │
+  │                                                            │
+  │  L_total = 1.0·MSE(coord) + 1.0·BCE(violation)            │
+  │          + 1.0·BCE(existence)                              │
+  │                                                            │
+  │  → scalar tensor                                           │
+  └────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 4. 训练与推理规划 (Training & Inference Plan)
+
+> **Phase 3.4** — Trainer lifecycle, optimizer/scheduler strategy, early stopping,
+> checkpointing, and inference pipeline design.
+>
+> Source files:
+> - `src/bipartite_gnn_gui/model/trainer.py`
+> - `src/bipartite_gnn_gui/model/inference.py`
+
+### 4.1 Trainer
+
+**File:** `src/bipartite_gnn_gui/model/trainer.py`
+**Status:** ⚠️ Stub — minimal placeholder (no-op fit)
+
+#### Current Implementation
+
+```python
+@dataclass
+class Trainer:
+    """Minimal trainer placeholder."""
+
+    model: Any            # The model to train (e.g., BipartiteGNNCorrector)
+    loss_fn: Any | None = None  # Loss function (e.g., BipartiteGNNLoss)
+
+    def fit(self, *_: Any, **__: Any) -> None:
+        """No-op fit method for now."""
+        return None
+```
+
+The current `Trainer` is a **bare-bones dataclass** with no training logic.
+It stores a model reference and a loss function but performs no optimisation.
+
+#### Planned Full Implementation (Design Intent)
+
+The Phase 4.4.5 implementation will expand the `Trainer` to include the full
+training lifecycle:
+
+**Planned class structure:**
+
+```python
+class Trainer:
+    """Full training orchestrator.
+
+    Planned constructor args:
+        model: BipartiteGNNCorrector
+        loss_fn: BipartiteGNNLoss
+        optimizer: torch.optim.AdamW       (or auto-constructed from config)
+        scheduler: CosineAnnealingLR + LinearWarmup
+        device: torch.device
+        config: TrainingConfig             (from config system)
+        metrics_logger: MetricsLogger       (for experiment tracking)
+        early_stopping_patience: int = 10
+    """
+```
+
+**Planned lifecycle:**
+
+```
+Trainer.__init__()
+  │
+  ├─ .fit(train_loader, val_loader)
+  │    │
+  │    ├─ for epoch in 1..max_epochs:
+  │    │    │
+  │    │    ├─ train_epoch(train_loader)
+  │    │    │    ├─ model.train()
+  │    │    │    ├─ for batch in train_loader:
+  │    │    │    │    ├─ data → device
+  │    │    │    │    ├─ with autocast (if AMP):
+  │    │    │    │    │    prediction = model(data)
+  │    │    │    │    │    loss = loss_fn(prediction, target)
+  │    │    │    │    ├─ scaler.scale(loss).backward()
+  │    │    │    │    ├─ grad_clip (if enabled)
+  │    │    │    │    ├─ scaler.step(optimizer)
+  │    │    │    │    ├─ scaler.update()
+  │    │    │    │    └─ scheduler.step()
+  │    │    │    └─ return avg_train_loss
+  │    │    │
+  │    │    ├─ validate(val_loader)
+  │    │    │    ├─ model.eval()
+  │    │    │    ├─ with torch.no_grad():
+  │    │    │    │    for batch in val_loader:
+  │    │    │    │        prediction = model(data)
+  │    │    │    │        loss = loss_fn(prediction, target)
+  │    │    │    └─ return avg_val_loss
+  │    │    │
+  │    │    ├─ metrics_logger.log_metrics(...)
+  │    │    │
+  │    │    ├─ if val_loss is best:
+  │    │    │    └─ checkpoint.save(model, optimizer, epoch, val_loss)
+  │    │    │
+  │    │    └─ if early_stopping triggered:
+  │    │         └─ break
+  │    │
+  │    └─ return best_val_loss
+```
+
+**Planned optimizer & scheduler details:**
+
+| Component | Choice | Rationale |
+|-----------|--------|-----------|
+| Optimizer | **AdamW** | Decoupled weight decay (better than Adam + L2). Weight decay applied only to non-bias parameters. |
+| Scheduler | **Cosine annealing with linear warmup** | Warmup prevents early instability; cosine decay smoothly reduces LR to near-zero by epoch end. |
+| Warmup | Linear from 0 → `lr` over `warmup_steps` batches | Prevents large gradients in first few steps. |
+| Grad clip | Max L2 norm = `grad_clip` (default 1.0) | Prevents exploding gradients in deep GNNs. |
+
+**Planned AMP (Automatic Mixed Precision):**
+
+Uses `torch.cuda.amp.autocast` + `GradScaler`:
+
+```python
+scaler = torch.cuda.amp.GradScaler(enabled=config.amp)
+
+# In training step:
+with torch.cuda.amp.autocast(enabled=config.amp):
+    prediction = model(data)
+    loss = loss_fn(prediction, target)
+
+scaler.scale(loss).backward()
+scaler.unscale_(optimizer)          # for grad clipping
+torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+scaler.step(optimizer)
+scaler.update()
+```
+
+Falls back gracefully to FP32 on CPU or when `amp=False`.
+
+**Planned early stopping:**
+
+```
+patience: int = 10           # Number of epochs without improvement
+min_delta: float = 1e-4      # Minimum change to count as improvement
+
+best_val_loss = +inf
+patience_counter = 0
+
+After each validation:
+    if val_loss < best_val_loss - min_delta:
+        best_val_loss = val_loss
+        patience_counter = 0
+        save_checkpoint(...)
+    else:
+        patience_counter += 1
+        if patience_counter >= patience:
+            stop training, restore best checkpoint
+```
+
+**Planned checkpoint format:**
+
+```python
+checkpoint = {
+    "epoch": epoch,
+    "model_state_dict": model.state_dict(),
+    "optimizer_state_dict": optimizer.state_dict(),
+    "scheduler_state_dict": scheduler.state_dict(),
+    "val_loss": val_loss,
+    "config": config.to_dict(),
+}
+torch.save(checkpoint, f"{checkpoint_dir}/model_epoch_{epoch:03d}.pt")
+# Also save "best_model.pt" for the best checkpoint.
+```
+
+> **⚠️ Stub note:** The current `Trainer` is a no-op dataclass. All training
+> logic — `train_epoch`, `validate`, checkpointing, optimizer/scheduler setup,
+> AMP, early stopping, metrics logging — will be implemented in Phase 4.4.5.
+
+#### Key Gaps Between Current Stub and Planned Implementation
+
+| Feature | Current | Planned (Phase 4.4.5) |
+|---------|---------|----------------------|
+| `fit()` logic | No-op | Full epoch loop |
+| `train_epoch()` | N/A | Forward → loss → backward → step |
+| `validate()` | N/A | `torch.no_grad()` eval loop |
+| Optimizer | N/A | AdamW |
+| Scheduler | N/A | Cosine annealing + linear warmup |
+| Early stopping | N/A | Patience-based with best model restore |
+| Checkpoint | N/A | Save/load model + optimizer + scheduler |
+| AMP | N/A | `torch.cuda.amp.autocast` + `GradScaler` |
+| Metrics logging | N/A | Per-epoch to `MetricsLogger` |
+| Device strategy | N/A | `model.to(device)` + data transfer |
+
+---
+
+### 4.2 InferencePipeline
+
+**File:** `src/bipartite_gnn_gui/model/inference.py`
+**Status:** ⚠️ Stub — minimal forward pass
+
+#### Current Implementation
+
+```python
+def correct_layout(model: Any, data: Any) -> Any:
+    """Run inference and return the model outputs.
+
+    Args:
+        model: A BipartiteGNNCorrector (or compatible).
+        data:  A HeteroData graph (or dict).
+
+    Returns:
+        The model's forward output dict:
+        {"coord": ..., "violation": ..., "existence": ...}
+    """
+    return model(data)
+```
+
+The current implementation is a **trivial wrapper** around `model.forward()`.
+It does not parse VLM JSON, build graphs, apply deltas to bboxes, clamp coordinates,
+or produce corrected JSON output.
+
+#### Planned Full Implementation (Design Intent)
+
+The Phase 4.4.6 implementation will expand this into a full `InferencePipeline`
+class supporting the complete correction workflow.
+
+**Planned class structure:**
+
+```python
+class InferencePipeline:
+    """End-to-end inference pipeline for GUI layout correction.
+
+    Planned constructor args:
+        model: BipartiteGNNCorrector
+        graph_builder: BipartiteGraphBuilder
+        device: torch.device
+        amp: bool = False             # Enable mixed precision for inference
+    """
+
+    def correct_single(
+        self,
+        vlm_output: dict | VLMOutput,
+        image_size: tuple[int, int] | None = None,
+    ) -> dict:
+        """Correct a single VLM output.
+
+        Full pipeline:
+          1. Parse VLM JSON → VLMOutput (if raw dict given).
+          2. Extract ElementNode list from VLM output elements.
+          3. Build HeteroData graph:
+             elements → extract_all_constraints() → builder.build()
+          4. Run model inference (model.forward).
+          5. Apply coordinate deltas to original bboxes.
+          6. Clamp corrected bboxes to valid range [0, 1].
+          7. Filter low-confidence elements by existence score.
+          8. Serialise to corrected JSON dict.
+
+        Args:
+            vlm_output: Raw VLM JSON dict or pre-parsed VLMOutput.
+            image_size: Optional (width, height) for pixel → normalised conversion.
+
+        Returns:
+            Corrected JSON dict with refined elements.
+        """
+```
+
+**Planned inference data flow:**
+
+```
+VLM JSON (raw dict)
+  │
+  ▼
+┌─────────────────────────────┐
+│ Step 1: Parse               │
+│   load_vlm_output(json)     │
+│   → VLMOutput               │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Step 2: Build Graph         │
+│   ElementNode[] from        │
+│   VLMOutput.elements        │
+│                             │
+│   extract_all_constraints() │
+│   → ConstraintNode[]        │
+│                             │
+│   builder.build(elems,      │
+│     constraints)            │
+│   → HeteroData              │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Step 3: Model Inference     │
+│   model.eval()              │
+│   with torch.no_grad():     │
+│     output = model(data)    │
+│                             │
+│   output ≈ {                │
+│     "coord": (N, 4),        │
+│     "violation": (M, 1),    │
+│     "existence": (N, 1),    │
+│   }                         │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Step 4: Apply Deltas        │
+│   For each element i:       │
+│     corrected_bbox[i] =     │
+│       original_bbox[i] +    │
+│       output["coord"][i]    │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Step 5: Clamp & Filter      │
+│   Clamp bbox to [0, 1]      │
+│                             │
+│   If existence[i] < 0.5:    │
+│     Drop element i          │
+│   (suppress spurious        │
+│    VLM predictions)         │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│ Step 6: Serialise           │
+│   Corrected JSON dict       │
+│   with refined elements     │
+└─────────────────────────────┘
+```
+
+**Planned internal pipeline steps detail:**
+
+```
+correct_single(vlm_output, image_size=None) → corrected_json
+
+Internal pipeline:
+  1. _parse_input(raw) → VLMOutput
+     - If already VLMOutput, use as-is.
+     - If dict/str, call load_vlm_output().
+
+  2. _build_graph(vlm_output) → HeteroData
+     - Convert each VLMOutputElement to ElementNode.
+     - Call extract_all_constraints(elements).
+     - Call builder.build(elements, constraints).
+     - Move HeteroData to self.device.
+
+  3. _model_forward(data) → output_dict
+     - model.eval()
+     - with torch.no_grad():
+         with autocast(enabled=self.amp):
+           return model(data)
+
+  4. _apply_deltas(elements, output_dict) → corrected_elements
+     - For each element i:
+         corrected_bbox = elements[i].bbox + output_dict["coord"][i]
+     - If image_size provided, apply inverse normalisation.
+
+  5. _clamp_and_filter(corrected_elements, output_dict) → final_elements
+     - Clamp all bbox values to [0.0, 1.0] (or [0, W]/[0, H] if pixel).
+     - Drop elements where output_dict["existence"][i] < 0.5.
+     - Flag degenerate bboxes (x2 ≤ x1 or y2 ≤ y1).
+
+  6. _serialise(final_elements) → dict
+     - Convert to JSON-compatible format.
+     - Include metadata (model version, timestamp, image_size).
+```
+
+**Planned device strategy:**
+
+```python
+def _to_device(self, data: HeteroData) -> HeteroData:
+    """Move HeteroData tensors to the target device."""
+    for store in data.node_stores + data.edge_stores:
+        for key, value in store.items():
+            if isinstance(value, torch.Tensor):
+                store[key] = value.to(self.device)
+    return data
+```
+
+**Planned batch inference:**
+
+```python
+def correct_batch(
+    self,
+    vlm_outputs: list[dict | VLMOutput],
+) -> list[dict]:
+    """Correct multiple VLM outputs in batch.
+
+    Builds a mini-batch HeteroData via PyG's batch concatenation.
+
+    Args:
+        vlm_outputs: List of VLM output dicts.
+
+    Returns:
+        List of corrected JSON dicts, one per input.
+    """
+```
+
+> **⚠️ Stub note:** The current `correct_layout` is a one-liner that wraps
+> `model(data)`. The full `InferencePipeline` with VLM parsing, graph
+> construction, delta application, clamping, and filtering will be
+> implemented in Phase 4.4.6.
+
+#### Key Gaps Between Current Stub and Planned Implementation
+
+| Feature | Current | Planned (Phase 4.4.6) |
+|---------|---------|----------------------|
+| VLM JSON parsing | Not done | `load_vlm_output()` inside pipeline |
+| Graph construction | Not done | Builder + constraint extraction |
+| Delta application | Not done | `apply_delta()` + `bbox_to_tensor` |
+| Bbox clamping | Not done | Clamp to [0, 1] or image bounds |
+| Existence filtering | Not done | Drop elements with score < 0.5 |
+| Device strategy | Not done | Manual tensor transfer |
+| AMP support | Not done | `torch.cuda.amp.autocast` |
+| Batch inference | Not done | PyG mini-batch via `Collater` |
+| `correct_single` | Not implemented | Full parse → graph → model → apply → serialise |
+| `correct_batch` | Not implemented | Batch graph construction + model forward |
+| Serialisation | Not done | Corrected JSON dict output |
+
+---
+
+## Implementation Status Summary
+
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| `BipartiteGraphSAGE` | `model/encoder.py` | ⚠️ Stub | Two independent MLP stacks (no SAGEConv) |
+| `CoordinateRefinementHead` | `model/heads.py` | ✅ Implemented | MLP → 4-d deltas |
+| `ViolationPredictionHead` | `model/heads.py` | ✅ Implemented | MLP → 1-d sigmoid score |
+| `ExistencePredictionHead` | `model/heads.py` | ✅ Implemented | MLP → 1-d sigmoid prob |
+| `BipartiteGNNCorrector` | `model/model.py` | ✅ Implemented | Encoder + 3 heads assembled |
+| `BipartiteGNNLoss` | `model/losses.py` | ✅ Implemented | Weighted MSE + BCE + BCE |
+| `compute_coord_loss` | `model/losses.py` | ✅ Implemented | MSE (planned: SmoothL1) |
+| `compute_violation_loss` | `model/losses.py` | ✅ Implemented | BCE |
+| `compute_existence_loss` | `model/losses.py` | ✅ Implemented | BCE |
+| `Trainer` | `model/trainer.py` | ⚠️ Stub | No-op dataclass, no training logic |
+| `correct_layout` | `model/inference.py` | ⚠️ Stub | One-liner model(data) wrapper |
+| `InferencePipeline` | `model/inference.py` | ⚠️ Not implemented | Planned for Phase 4.4.6 |
+
+**Legend:** ✅ = Implemented and functional | ⚠️ Stub = Minimal placeholder | ⚠️ Not implemented = Planned but not started
+
+---
+
+## Key Design Decisions (Model Layer)
+
+| Decision | Rationale |
+|----------|-----------|
+| **Independent MLP stacks in encoder (stub)** | Enables end-to-end pipeline testing before GNN convolution is implemented. Two separate `nn.Sequential` stacks process element and constraint nodes independently. |
+| **No message passing in current encoder** | The `BipartiteGraphSAGE` encoder reads `x_dict` but never accesses `edge_index`. This is a deliberate simplification for the stub phase. |
+| **Heads dispatched by node type** | `coord_head` and `existence_head` operate on element encodings; `violation_head` on constraint encodings. This semantic assignment reflects the node type's role in the bipartite graph. |
+| **Loss function external to model** | `BipartiteGNNLoss` is a standalone callable, not a method on `BipartiteGNNCorrector`. This decouples the model from loss configuration and allows flexible weighting without model subclassing. |
+| **Dict-based loss input** | Uses `prediction: dict[str, Tensor]` and `target: dict[str, Tensor]` instead of positional tuple arguments. This allows graceful skipping of missing loss components (e.g., when no violation labels are available). |
+| **MSE for coordinate loss (not SmoothL1)** | MSE is simpler and the default in the current stub. SmoothL1 (planned) is more robust to outliers but requires additional tuning of the beta parameter. |
+| **No `reset_parameters()` on encoder** | The current MLP-based encoder relies on PyTorch's default Linear initialisation. A `reset_parameters()` method will be added when SAGEConv is introduced (Phase 4.4.1). |
+
 ## 修订历史 (Revision History)
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | 1.0 | 2026-05-25 | 初始版本：数据层与图构建层的详细类设计，与 `src/` 实际代码对齐，标注 stub 状态。 |
+| 1.1 | 2026-05-25 | 新增 Phase 3.3–3.4：模型层 (encoder/heads/model/losses) 类设计、训练器与推理管线规划，与 `src/` 实际代码对齐，标注 stub 状态。 |
