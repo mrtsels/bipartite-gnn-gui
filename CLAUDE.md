@@ -62,6 +62,18 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+### 5. Ship Incrementally
+
+**Each completed step gets its own PR.**
+
+After finishing any logically complete unit of work (a new module, a bug fix, a feature, a phase):
+1. Create a branch: `git checkout -b <feature-branch>`
+2. Commit your changes with a proper commit message (per the Commit Message Style section)
+3. Push the branch
+4. Open a PR on GitHub
+
+Do not accumulate multiple units of work in a single branch. Each PR should be small, focused, and independently reviewable.
+
 ---
 
 ## Project
