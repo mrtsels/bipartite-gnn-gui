@@ -2428,3 +2428,603 @@ def correct_batch(
 |------|------|------|
 | 1.0 | 2026-05-25 | 初始版本：数据层与图构建层的详细类设计，与 `src/` 实际代码对齐，标注 stub 状态。 |
 | 1.1 | 2026-05-25 | 新增 Phase 3.3–3.4：模型层 (encoder/heads/model/losses) 类设计、训练器与推理管线规划，与 `src/` 实际代码对齐，标注 stub 状态。 |
+| 1.2 | 2026-05-25 | 新增 Phase 3.5：评估层 (metrics/evaluator/baselines/qualitative) 类设计，与 `src/` 实际代码对齐，标注 stub 状态。 |
+
+---
+
+## 5. 评估层设计 (Evaluation Layer Design)
+
+> **Phase 3.5** — Metric definitions, evaluator orchestration, baseline comparison,
+> and qualitative analysis.
+>
+> Source files:
+> - `src/bipartite_gnn_gui/eval/metrics.py`
+> - `src/bipartite_gnn_gui/eval/evaluator.py`
+> - `src/bipartite_gnn_gui/eval/baselines.py`
+> - `src/bipartite_gnn_gui/eval/qualitative.py`
+
+### 5.1 Metrics (`metrics.py`)
+
+**File:** `src/bipartite_gnn_gui/eval/metrics.py`
+**Status:** ✅ Implemented (core metrics; `AlignmentError` is stub)
+
+#### 5.1.1 Metric Class Design
+
+All metrics are implemented as `@dataclass` callable objects rather than bare
+functions. Each metric class has a `__call__(self, prediction: Tensor, target: Tensor) -> Tensor`
+signature that accepts torch tensors and returns a scalar tensor.
+
+```python
+from dataclasses import dataclass
+from torch import Tensor
+
+@dataclass
+class PositionError:
+    """Euclidean position error."""
+
+    def __call__(self, prediction: Tensor, target: Tensor) -> Tensor:
+        return torch.norm(prediction[..., :2] - target[..., :2], dim=-1).mean()
+```
+
+**Design decision — dataclass callables instead of functions:**
+Using `@dataclass` callables allows metrics to carry configurable parameters
+(e.g., `iou_threshold`) as instance attributes without requiring closures
+or partial application. This makes the metric objects self-documenting and
+easily serialisable.
+
+#### 5.1.2 Individual Metrics
+
+```python
+@dataclass
+class PositionError:
+    """Euclidean distance between predicted and target element centers.
+
+    Formula:
+        (1/N) · Σᵢ ‖pred[...,:2]ᵢ − target[...,:2]ᵢ‖₂
+
+    Input shape:
+        prediction: (N, 4) or (..., 4) — [cx, cy, w, h] format
+        target:     (N, 4) or (..., 4)
+
+    Output:  Scalar tensor — mean L₂ distance on center coordinates.
+    """
+
+    def __call__(self, prediction: Tensor, target: Tensor) -> Tensor:
+        return torch.norm(prediction[..., :2] - target[..., :2], dim=-1).mean()
+
+
+@dataclass
+class SizeError:
+    """Euclidean distance between predicted and target element dimensions.
+
+    Formula:
+        (1/N) · Σᵢ ‖pred[...,2:4]ᵢ − target[...,2:4]ᵢ‖₂
+
+    Input shape:
+        prediction: (N, 4) or (..., 4) — [cx, cy, w, h] format
+        target:     (N, 4) or (..., 4)
+
+    Output:  Scalar tensor — mean L₂ distance on size dimensions.
+    """
+
+    def __call__(self, prediction: Tensor, target: Tensor) -> Tensor:
+        return torch.norm(prediction[..., 2:4] - target[..., 2:4], dim=-1).mean()
+
+
+@dataclass
+class AlignmentError:
+    """⚠️ Stub — mean absolute error between prediction and target tensors.
+
+    The requirements doc specifies a per-alignment-group max deviation
+    aggregation. The current implementation computes a naive MAE across
+    all coordinate dimensions, ignoring alignment group structure entirely.
+
+    Planned (design intent):
+        - Group elements by alignment type (left/right/top/bottom/center).
+        - For each group, compute max deviation from the group's axis.
+        - Aggregate as mean of per-group max deviations.
+
+    Input shape:
+        prediction: (N, 4) or any shape
+        target:     matching shape
+
+    Output:  Scalar tensor — mean absolute difference.
+    """
+
+    def __call__(self, prediction: Tensor, target: Tensor) -> Tensor:
+        return torch.abs(prediction - target).mean()
+
+
+@dataclass
+class ElementRecall:
+    """Fraction of target (ground-truth) elements matched to a prediction.
+
+    Computes pairwise IoU between prediction and target boxes, then
+    checks whether each target box has at least one prediction with
+    IoU ≥ threshold. This is a **max-pooled** per-target check —
+    a target is considered matched if ANY prediction overlaps it
+    sufficiently.
+
+    Formula:
+        recall = |{t ∈ targets : max_p IoU(p, t) ≥ τ}| / |targets|
+
+    Args:
+        iou_threshold: float = 0.5 — minimum IoU to count as a match.
+    """
+
+    iou_threshold: float = 0.5
+
+    def __call__(self, prediction_boxes: Tensor, target_boxes: Tensor) -> Tensor:
+        if prediction_boxes.numel() == 0 or target_boxes.numel() == 0:
+            device = prediction_boxes.device if prediction_boxes.numel() else target_boxes.device
+            return torch.tensor(0.0, device=device)
+        iou = compute_iou(prediction_boxes, target_boxes)
+        return (iou.max(dim=-1).values >= self.iou_threshold).float().mean()
+
+
+@dataclass
+class ElementPrecision:
+    """Fraction of predicted elements matched to a target.
+
+    Computes pairwise IoU and checks whether each predicted box has
+    at least one target with IoU ≥ threshold. This is a **max-pooled**
+    per-prediction check — a prediction is considered matched if ANY
+    target box overlaps it sufficiently.
+
+    Formula:
+        precision = |{p ∈ predictions : max_t IoU(p, t) ≥ τ}| / |predictions|
+
+    Args:
+        iou_threshold: float = 0.5 — minimum IoU to count as a match.
+    """
+
+    iou_threshold: float = 0.5
+
+    def __call__(self, prediction_boxes: Tensor, target_boxes: Tensor) -> Tensor:
+        if prediction_boxes.numel() == 0 or target_boxes.numel() == 0:
+            device = prediction_boxes.device if prediction_boxes.numel() else target_boxes.device
+            return torch.tensor(0.0, device=device)
+        iou = compute_iou(prediction_boxes, target_boxes)
+        return (iou.max(dim=-2).values >= self.iou_threshold).float().mean()
+```
+
+**Key difference — max-pooled matching vs. Hungarian assignment:**
+
+The current `ElementRecall` and `ElementPrecision` use independent per-box
+max-pooling rather than one-to-one bipartite matching. This means:
+
+| Approach | Recall (max over dim -1) | Precision (max over dim -2) |
+|----------|-------------------------|----------------------------|
+| **Current** | Each GT box independently checked against ALL predictions | Each pred box independently checked against ALL GTs |
+| **Hungarian (requirements)** | One prediction can match at most one GT (one-to-one assignment) | Same |
+
+The current approach is simpler and gradient-friendly (useful for loss functions),
+but overestimates both recall and precision when multiple predictions cluster around
+the same GT element. For pure evaluation purposes, Hungarian matching (one-to-one)
+is more faithful — see the planned upgrade note below.
+
+> **⚠️ Planned upgrade — Hungarian matching:** The requirements doc (`metrics.md` §4–5)
+> specifies greedy bipartite matching with one-to-one assignment. The current max-pooled
+> approach will be supplemented with a Hungarian-based matching layer (via
+> `scipy.optimize.linear_sum_assignment`) for evaluation-mode metrics. The max-pooled
+> versions will remain available for training-time loss computation where gradient flow
+> is required.
+
+#### 5.1.3 Metric Aggregation
+
+```python
+def compute_all_metrics(prediction_boxes: Tensor, target_boxes: Tensor) -> dict[str, float]:
+    """Compute the standard metrics bundle.
+
+    Instantiates each metric class with defaults and calls it on the inputs.
+    This is the de-facto ALL_METRICS registry — a single function that computes
+    all five metrics and returns them as a plain dict.
+
+    Args:
+        prediction_boxes: (N_pred, 4) tensor of predicted bboxes [cx, cy, w, h].
+        target_boxes:     (N_gt, 4) tensor of ground-truth bboxes [cx, cy, w, h].
+
+    Returns:
+        dict with keys: "recall", "precision", "position_error",
+        "size_error", "alignment_error". All values are Python floats.
+    """
+    return {
+        "recall":          float(ElementRecall()(prediction_boxes, target_boxes).item()),
+        "precision":       float(ElementPrecision()(prediction_boxes, target_boxes).item()),
+        "position_error":  float(PositionError()(prediction_boxes, target_boxes).item()),
+        "size_error":      float(SizeError()(prediction_boxes, target_boxes).item()),
+        "alignment_error": float(AlignmentError()(prediction_boxes, target_boxes).item()),
+    }
+```
+
+**Design decision — `compute_all_metrics()` as registry:**
+
+The requirements doc specifies a module-level `ALL_METRICS: dict[str, Callable]`
+dictionary. The actual code uses `compute_all_metrics()` instead, which
+internally instantiates and calls all five metric classes. This is functionally
+equivalent but trades configurability (no runtime metric selection) for
+simplicity (one function, guaranteed ordering, consistent defaults).
+
+#### 5.1.4 IoU Utility
+
+```python
+def compute_iou(box1: Tensor, box2: Tensor) -> Tensor:
+    """Compute IoU between two bbox tensors.
+
+    Thin wrapper around bipartite_gnn_gui.utils.bbox.compute_iou.
+    Supports broadcasting: (N, 4) vs (M, 4) → (N, M) IoU matrix.
+    Auto-detects xywh vs xyxy format.
+    """
+```
+
+#### Metric Summary
+
+| Metric | Class | Input Dims | Output | Status |
+|--------|-------|-----------|--------|--------|
+| `PositionError` | `@dataclass` callable | `(N,4)` vs `(N,4)` | Scalar float (L₂) | ✅ |
+| `SizeError` | `@dataclass` callable | `(N,4)` vs `(N,4)` | Scalar float (L₂) | ✅ |
+| `AlignmentError` | `@dataclass` callable | any vs any | Scalar float (MAE) | ⚠️ Stub |
+| `ElementRecall` | `@dataclass` callable | `(N,4)` vs `(M,4)` | Scalar float ∈ [0,1] | ✅ |
+| `ElementPrecision` | `@dataclass` callable | `(N,4)` vs `(M,4)` | Scalar float ∈ [0,1] | ✅ |
+| `compute_all_metrics` | Function | `(N,4)` vs `(M,4)` | `dict[str, float]` | ✅ |
+
+**Edge case handling (implemented):**
+- **Empty tensors (no predictions or no targets):** `ElementRecall` and `ElementPrecision`
+  return `0.0` when either input has zero elements. This avoids division-by-zero in
+  the mean computation.
+- **Device consistency:** When one input is empty, the output tensor is placed on the
+  device of the non-empty input.
+
+---
+
+### 5.2 Evaluator (`evaluator.py`)
+
+**File:** `src/bipartite_gnn_gui/eval/evaluator.py`
+**Status:** ✅ Implemented (minimal wrapper; no per-category breakdown or bootstrap)
+
+#### 5.2.1 Current Implementation
+
+```python
+@dataclass
+class EvaluationResult:
+    """Simple wrapper for evaluation output."""
+
+    metrics: dict[str, float]
+
+
+class Evaluator:
+    """Evaluate predictions against targets."""
+
+    def evaluate(self, prediction_boxes, target_boxes) -> EvaluationResult:
+        """Run all metrics and return a wrapped result.
+
+        Args:
+            prediction_boxes: Tensor of predicted bboxes.
+            target_boxes:     Tensor of ground-truth bboxes.
+
+        Returns:
+            EvaluationResult wrapping the output of compute_all_metrics().
+        """
+        return EvaluationResult(metrics=compute_all_metrics(prediction_boxes, target_boxes))
+```
+
+The `Evaluator` is a thin orchestration class. Its sole method `evaluate()` delegates
+entirely to `compute_all_metrics()` and wraps the result dict in an `EvaluationResult`
+dataclass for future extensibility.
+
+#### 5.2.2 Current Limitations
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `evaluate(preds, gt) -> dict of all metrics` | ✅ | Via delegation to `compute_all_metrics()` |
+| `per_category_breakdown` | ❌ Not implemented | Element-type-level metric breakdown not computed |
+| Bootstrap / statistical significance | ❌ Not implemented | No resampling, no confidence intervals |
+| Multi-sample aggregation | ❌ Not implemented | `evaluate()` handles one sample pair at a time; caller must aggregate across dataset |
+
+> **⚠️ Planned upgrade — full evaluator (design intent):**
+>
+> The requirements doc (`metrics.md` §7) and TASK.md (Phase 3.5.1) specify:
+>
+> ```python
+> class Evaluator:
+>     """Full evaluation orchestrator (planned)."""
+>
+>     def evaluate(
+>         self,
+>         preds: list[VLMOutput],
+>         gt: list[GroundTruth],
+>     ) -> dict[str, float]:
+>         """Compute all metrics across a full dataset."""
+>
+>     def per_category_breakdown(
+>         self,
+>         preds: list[VLMOutput],
+>         gt: list[GroundTruth],
+>     ) -> dict[str, dict[str, float]]:
+>         """Metrics broken down by element type (button, text, image, ...)."""
+>
+>     def bootstrap(
+>         self,
+>         preds: list[VLMOutput],
+>         gt: list[GroundTruth],
+>         n_iter: int = 1000,
+>     ) -> dict[str, dict[str, float]]:
+>         """Bootstrap resampling for confidence intervals.
+>
+>         Returns: {metric_name: {"mean": ..., "std": ..., "ci_lower": ..., "ci_upper": ...}}
+>         """
+> ```
+>
+> The current `Evaluator` provides only the single-pair `evaluate()` method.
+> Multi-sample aggregation, per-category breakdown, and bootstrap confidence
+> intervals will be added in Phase 4.5.2.
+
+---
+
+### 5.3 Baselines (`baselines.py`)
+
+**File:** `src/bipartite_gnn_gui/eval/baselines.py`
+**Status:** ⚠️ Stub — all three baselines are identity (pass-through)
+
+#### 5.3.1 Current Implementation
+
+```python
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class BaselineNoCorrection:
+    """Return inputs unchanged — VLM output as-is."""
+
+    def __call__(self, data: Any) -> Any:
+        return data
+
+
+@dataclass
+class BaselineRuleBased(BaselineNoCorrection):
+    """⚠️ Stub — placeholder rule-based baseline.
+
+    Currently inherits from BaselineNoCorrection and performs no
+    correction. The planned implementation will apply heuristic
+    fixes such as Non-Maximum Suppression (NMS) and alignment
+    snapping using bbox-based rules.
+    """
+
+
+@dataclass
+class BaselineMLPOnly(BaselineNoCorrection):
+    """⚠️ Stub — placeholder MLP-only baseline.
+
+    Currently inherits from BaselineNoCorrection and performs no
+    correction. The planned implementation will use a plain MLP
+    (no graph structure) to refine element positions, serving as
+    a control to isolate the contribution of the GNN component.
+    """
+```
+
+#### 5.3.2 Baseline Comparison Matrix
+
+| Baseline | Class | Current Behavior | Planned Behavior |
+|----------|-------|-----------------|-----------------|
+| **VLM Raw Output** | `BaselineNoCorrection` | Identity pass-through | N/A (final) |
+| **Rule-Based Correction** | `BaselineRuleBased` | Identity pass-through (same as above) | NMS + heuristic snapping |
+| **MLP-Only** | `BaselineMLPOnly` | Identity pass-through (same as above) | MLP refinement without graph |
+
+**Design decision — inheritance from `BaselineNoCorrection`:**
+`BaselineRuleBased` and `BaselineMLPOnly` inherit from `BaselineNoCorrection`
+rather than from a shared abstract base. This is a pragmatic choice for the
+stub phase — all three currently share identical behavior (identity), and
+inheritance avoids code duplication. When the planned implementations diverge,
+each subclass will override `__call__` with its own logic.
+
+**Naming discrepancy with requirements:**
+
+| TASK.md / Requirements Name | Actual Code Name |
+|----------------------------|------------------|
+| `VLMOutputBaseline` | `BaselineNoCorrection` |
+| `RuleBasedCorrection` | `BaselineRuleBased` |
+| `MLPOnlyBaseline` | `BaselineMLPOnly` |
+
+The code uses a `Baseline` prefix convention; the requirements use `Correction`
+and `Baseline` suffixes. This is a cosmetic difference — the classes are
+functionally equivalent in intent (the stubs are all identity).
+
+> **⚠️ Stub note:** All three baselines currently perform zero correction.
+> They exist as placeholders to establish the interface and enable pipeline
+> integration testing (Phase 5.5). Full implementations — rule-based NMS
+> correction and MLP-only refinement — will be added in Phase 4.5.3.
+
+---
+
+### 5.4 Qualitative Analysis (`qualitative.py`)
+
+**File:** `src/bipartite_gnn_gui/eval/qualitative.py`
+**Status:** ⚠️ Stub — all three functions are no-op (return `None`)
+
+#### 5.4.1 Current Implementation
+
+```python
+from typing import Any
+
+
+def side_by_side_plot(*_: Any, **__: Any) -> Any:
+    """⚠️ Stub — placeholder for side-by-side comparison plot.
+
+    Planned: Render two screenshots side-by-side with bounding box
+    overlays showing VLM predictions (before) vs GNN-corrected (after).
+    """
+    return None
+
+
+def plot_error_heatmap(*_: Any, **__: Any) -> Any:
+    """⚠️ Stub — placeholder for spatial error heatmap.
+
+    Planned: Render a 2D heatmap overlaid on the screenshot showing
+    per-pixel localization error magnitude, highlighting regions where
+    the model struggles most.
+    """
+    return None
+
+
+def plot_category_breakdown(*_: Any, **__: Any) -> Any:
+    """⚠️ Stub — placeholder for per-category performance chart.
+
+    Planned: Render a grouped bar chart showing metrics (recall, precision,
+    position error) broken down by element type (button, text, image, ...).
+    """
+    return None
+```
+
+#### 5.4.2 Planned Qualitative Analysis Suite (Design Intent)
+
+The requirements doc and TASK.md (Phase 3.5.3) specify a richer set of qualitative
+analysis functions. The current stubs map to the planned functions as follows:
+
+| Requirements / TASK.md | Actual Code | Status |
+|------------------------|-------------|--------|
+| `side_by_side_comparison` | `side_by_side_plot` | ⚠️ Stub (returns `None`) |
+| `case_study_report` | Not implemented | ❌ Not started |
+| `failure_analysis` | `plot_error_heatmap` (partial) | ⚠️ Stub (returns `None`) |
+| (additional) | `plot_category_breakdown` | ⚠️ Stub (returns `None`) |
+
+**Planned function interfaces (design intent):**
+
+```
+side_by_side_comparison(
+    image: PIL.Image | str,          # Original screenshot
+    vlm_elements: list[ElementNode],  # VLM predicted elements
+    corrected_elements: list[ElementNode],  # GNN-corrected elements
+    gt_elements: list[ElementNode],   # Ground truth (optional)
+    save_path: str | None = None,
+) -> matplotlib.Figure
+
+case_study_report(
+    sample_paths: list[str],          # List of screenshot paths
+    model: BipartiteGNNCorrector,
+    output_dir: str,
+) -> str                              # Path to generated HTML report
+
+failure_analysis(
+    evaluator: Evaluator,
+    preds: list[VLMOutput],
+    gt: list[GroundTruth],
+    top_k: int = 20,                   # Number of worst cases to show
+) -> list[dict]                        # Ranked failure cases with metadata
+```
+
+> **⚠️ Stub note:** All three qualitative analysis functions are no-ops.
+> The function names in the actual code (`side_by_side_plot`, `plot_error_heatmap`,
+> `plot_category_breakdown`) differ from the requirements names but cover the
+> same conceptual space. Full implementations using matplotlib for plotting
+> will be added in Phase 4.5.4.
+
+---
+
+### 5.5 Evaluation Layer Data Flow Summary
+
+```
+┌──────────────────────────────┐
+│  Model output / Baseline     │
+│  (BipartiteGNNCorrector      │
+│   or Baseline*.__call__())   │
+│                              │
+│  → predicted boxes:          │
+│    Tensor (N_pred, 4)        │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐     ┌──────────────────────────────┐
+│  Ground Truth                │     │  compute_all_metrics()        │
+│  → target boxes:             │────▶│                              │
+│    Tensor (N_gt, 4)          │     │  ElementRecall()              │
+│                              │     │    → per-GT max IoU ≥ τ       │
+└──────────────────────────────┘     │  ElementPrecision()           │
+                                     │    → per-pred max IoU ≥ τ     │
+                                     │  PositionError()              │
+                                     │    → L₂ norm of center diffs  │
+                                     │  SizeError()                  │
+                                     │    → L₂ norm of size diffs    │
+                                     │  AlignmentError()             │
+                                     │    → MAE (stub)               │
+                                     │                              │
+                                     │  → dict[str, float]           │
+                                     └──────────────┬───────────────┘
+                                                    │
+                                                    ▼
+                                     ┌──────────────────────────────┐
+                                     │  Evaluator.evaluate()        │
+                                     │  → EvaluationResult(metrics) │
+                                     └──────────────────────────────┘
+```
+
+**Companion analysis (pluggable but currently stubs):**
+
+```
+                                     ┌──────────────────────────────┐
+                                     │  Qualitative Analysis        │
+                                     │                              │
+                                     │  side_by_side_plot()   ⚠️    │
+                                     │  plot_error_heatmap()  ⚠️    │
+                                     │  plot_category_breakdown() ⚠️│
+                                     │                              │
+                                     │  All return None currently   │
+                                     └──────────────────────────────┘
+```
+
+**Baseline comparison flow:**
+
+```
+┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐
+│ BaselineNoCorrection    │   │ BaselineRuleBased       │   │ BaselineMLPOnly         │
+│   (VLM raw output)      │   │   (identity stub)        │   │   (identity stub)        │
+└───────────┬─────────────┘   └───────────┬─────────────┘   └───────────┬─────────────┘
+            │                             │                             │
+            └─────────────────┬───────────┴─────────────────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │  Evaluator.evaluate │
+                    │  → dict[str, float] │
+                    │    per baseline     │
+                    └─────────────────────┘
+```
+
+---
+
+### 5.6 Implementation Status Summary (Evaluation Layer)
+
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| `PositionError` | `eval/metrics.py` | ✅ Implemented | Dataclass callable, L₂ on centers |
+| `SizeError` | `eval/metrics.py` | ✅ Implemented | Dataclass callable, L₂ on dimensions |
+| `AlignmentError` | `eval/metrics.py` | ⚠️ Stub | Naive MAE (not group-based) |
+| `ElementRecall` | `eval/metrics.py` | ✅ Implemented | Dataclass callable, max-pooled matching |
+| `ElementPrecision` | `eval/metrics.py` | ✅ Implemented | Dataclass callable, max-pooled matching |
+| `compute_iou` | `eval/metrics.py` | ✅ Implemented | Wraps `utils/bbox.compute_iou` |
+| `compute_all_metrics` | `eval/metrics.py` | ✅ Implemented | De-facto registry, returns `dict[str, float]` |
+| `EvaluationResult` | `eval/evaluator.py` | ✅ Implemented | Dataclass wrapper for metrics dict |
+| `Evaluator.evaluate()` | `eval/evaluator.py` | ✅ Implemented | Thin wrapper around `compute_all_metrics` |
+| `Evaluator.per_category_breakdown` | `eval/evaluator.py` | ❌ Not implemented | Planned for Phase 4.5.2 |
+| `Evaluator.bootstrap()` | `eval/evaluator.py` | ❌ Not implemented | Planned for Phase 4.5.2 |
+| `BaselineNoCorrection` | `eval/baselines.py` | ⚠️ Stub | Identity pass-through |
+| `BaselineRuleBased` | `eval/baselines.py` | ⚠️ Stub | Inherits identity from above |
+| `BaselineMLPOnly` | `eval/baselines.py` | ⚠️ Stub | Inherits identity from above |
+| `side_by_side_plot` | `eval/qualitative.py` | ⚠️ Stub | Returns `None` |
+| `plot_error_heatmap` | `eval/qualitative.py` | ⚠️ Stub | Returns `None` |
+| `plot_category_breakdown` | `eval/qualitative.py` | ⚠️ Stub | Returns `None` |
+
+**Legend:** ✅ = Implemented and functional | ⚠️ Stub = Minimal placeholder | ❌ = Not implemented
+
+---
+
+### 5.7 Key Design Decisions (Evaluation Layer)
+
+| Decision | Rationale |
+|----------|-----------|
+| **Dataclass callables for metrics** | Allows per-instance configuration (e.g., `iou_threshold`) without closures. Makes metrics self-documenting and trivially serialisable. |
+| **Max-pooled matching (not Hungarian)** | Simplifies implementation and preserves gradient flow for training-time use. Hungarian matching is planned for pure evaluation mode where gradient flow is not needed. |
+| **`compute_all_metrics()` as registry** | Replaces the requirements-specified `ALL_METRICS` dict with a single function. Simpler to maintain and guarantees consistent metric ordering. Trade-off: no runtime metric selection. |
+| **`EvaluationResult` dataclass** | Wraps the metrics dict in a typed container for future extensibility (e.g., adding metadata, timestamps, per-sample breakdowns without changing the return type). |
+| **Baseline inheritance from `BaselineNoCorrection`** | Pragmatic for the stub phase — all three share identity behavior. Subclasses will diverge when implementations are added in Phase 4.5.3. |
+| **No `case_study_report` or `failure_analysis` yet** | The actual code provides plotting stubs (`side_by_side_plot`, `plot_error_heatmap`, `plot_category_breakdown`) but none of the higher-level report-generation functions from the requirements. These are planned for Phase 4.5.4. |
