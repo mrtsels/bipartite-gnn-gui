@@ -1,0 +1,31 @@
+# Default configuration for Bipartite-GNN-GUI
+# Copy this file and modify as needed for your experiments.
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  dataset_names:
+    - gui360
+    - screenspot
+  val_split: 0.1
+  test_split: 0.1
+
+model:
+  hidden_dim: 128
+  n_layers: 2
+  dropout: 0.1
+  encoder_type: bipartite_graphsage
+  head_dims:
+    coord: 4
+    violation: 1
+    existence: 1
+
+training:
+  lr: 0.001
+  epochs: 10
+  batch_size: 8
+  seed: 42
+  weight_decay: 0.0
+  warmup_steps: 0
+  grad_clip: 1.0
+  amp: false
