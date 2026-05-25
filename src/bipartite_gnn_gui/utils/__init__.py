@@ -17,6 +17,10 @@ from .helpers import (
     xywh_to_xyxy,
     xyxy_to_xywh,
     compute_iou_pair,
+    compute_iou,
+    apply_delta,
+    compute_center_distance,
+    clamp_coords,
 )
 
 __all__ = [
@@ -31,4 +35,8 @@ __all__ = [
     "xywh_to_xyxy",
     "xyxy_to_xywh",
     "compute_iou_pair",
+    "compute_iou",
+    "apply_delta",
+    "compute_center_distance",
+    "clamp_coords",
 ]

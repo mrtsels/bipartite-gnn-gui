@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from ..utils.bbox import bbox_to_tensor, compute_iou
+from ..utils.bbox import bbox_to_tensor, compute_iou, xywh_to_xyxy
 
 
 @dataclass
@@ -62,14 +62,16 @@ def match_elements(predicted: Sequence[Mapping[str, Any] | GTElement], ground_tr
 
     for pred_index, predicted_element in enumerate(predicted):
         pred_bbox = predicted_element.bbox if isinstance(predicted_element, GTElement) else list(predicted_element.get("bbox", [0.0, 0.0, 0.0, 0.0]))
-        pred_tensor = bbox_to_tensor(pred_bbox).unsqueeze(0)
+        pred_tensor = xywh_to_xyxy(bbox_to_tensor(pred_bbox).unsqueeze(0))
 
         best_match = None
         best_score = 0.0
         for gt_index in list(gt_remaining):
             gt_element = ground_truth[gt_index]
             gt_bbox = gt_element.bbox if isinstance(gt_element, GTElement) else list(gt_element.get("bbox", [0.0, 0.0, 0.0, 0.0]))
-            score = float(compute_iou(pred_tensor, bbox_to_tensor(gt_bbox).unsqueeze(0)).item())
+            # bboxes stored in centre-based xywh; convert to xyxy for IoU
+            gt_tensor = xywh_to_xyxy(bbox_to_tensor(gt_bbox).unsqueeze(0))
+            score = float(compute_iou(pred_tensor, gt_tensor).item())
             if score > best_score:
                 best_score = score
                 best_match = gt_index
