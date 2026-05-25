@@ -1390,58 +1390,6 @@ elements → extract_all_constraints() → constraints
 
 ---
 
-## 3. Implementation Status Summary
-
-| Component | File | Status | Notes |
-|-----------|------|--------|-------|
-| `VLMOutputElement` / `VLMOutput` | `data/vlm_output.py` | ✅ Implemented | Format-agnostic loader |
-| `load_vlm_output` / `VLMOutputLoader` | `data/vlm_output.py` | ✅ Implemented | Accepts path or dict |
-| `GTElement` / `GroundTruth` | `data/ground_truth.py` | ✅ Implemented | Lighter than VLM equivalent |
-| `load_ground_truth` | `data/ground_truth.py` | ✅ Implemented | Accepts path or dict |
-| `match_elements` | `data/ground_truth.py` | ✅ Implemented | Greedy (planned: Hungarian) |
-| `normalize_coordinates` | `data/preprocess.py` | ✅ Implemented | Standalone function, xywh → [0,1] |
-| `extract_element_features` | `data/preprocess.py` | ✅ Implemented | 5-d tensor (bbox[:4] + conf) |
-| `GUIDataset` | `data/dataset.py` | ✅ Implemented | Passthrough — no graph in `__getitem__` |
-| `collate_variable_elements` | `data/dataset.py` | ✅ Implemented | Identity collation |
-| `create_dataloader` | `data/dataset.py` | ✅ Implemented | Uses identity collate_fn |
-| `GUIDataModule` | `data/dataset.py` | ✅ Implemented | Train/val/test loader factory |
-| `bbox_to_tensor` / `tensor_to_bbox` | `utils/bbox.py` | ✅ Implemented | |
-| `xywh_to_xyxy` / `xyxy_to_xywh` | `utils/bbox.py` | ✅ Implemented | |
-| `compute_iou` | `utils/bbox.py` | ✅ Implemented | Auto-detects xywh vs xyxy |
-| `apply_delta` | `utils/bbox.py` | ✅ Implemented | xywh delta application |
-| `ConstraintType` (10 values) | `graph/schema.py` | ✅ Implemented | `str, Enum` |
-| `EdgeType` (2 values) | `graph/schema.py` | ✅ Implemented | `str, Enum` |
-| `ElementNode` (5 fields) | `graph/schema.py` | ✅ Implemented | |
-| `ConstraintNode` (4 fields) | `graph/schema.py` | ✅ Implemented | |
-| `extract_alignment_constraints` | `graph/constraints.py` | ⚠️ Stub | Single ALIGN_LEFT if N≥2 |
-| `extract_containment_constraints` | `graph/constraints.py` | ⚠️ Stub | Returns `[]` |
-| `extract_spacing_constraints` | `graph/constraints.py` | ⚠️ Stub | Returns `[]` |
-| `extract_grid_constraints` | `graph/constraints.py` | ⚠️ Stub | Returns `[]` |
-| `extract_all_constraints` | `graph/constraints.py` | ⚠️ Stub | Dispatches to above |
-| `BipartiteGraphBuilder.build()` | `graph/builder.py` | ✅ Implemented | Element (N,5) + Constraint (N,D) |
-| `HeteroData` fallback | `graph/builder.py` | ✅ Implemented | Dict-based when PyG absent |
-| `plot_bipartite_graph` | `graph/visualize.py` | ⚠️ Stub | Text-only title |
-| `GraphAugmenter.augment()` | `graph/augment.py` | ⚠️ Stub | Pass-through, params unused |
-
-**Legend:** ✅ = Implemented and functional | ⚠️ Stub = Minimal placeholder, returns empty/identity
-
----
-
-## 4. Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| **Stateless `BipartiteGraphBuilder`** | No constructor, no mode flags, no internal state. Each `build()` call is self-contained. This simplifies testing (no setup/teardown) and makes the builder trivially parallelizable. |
-| **Separate constraint extraction from graph building** | The builder accepts pre-extracted `ConstraintNode` lists. This allows the extraction strategy to vary (train vs. inference, different tolerance values) without changing the builder. |
-| **Passthrough `GUIDataset` (no graph in `__getitem__`)** | Keeps dataset module free of PyG dependency. Graph construction happens in the training loop, giving the caller full control over augmentation and constraint strategies. |
-| **Identity `collate_variable_elements`** | GUI screens have variable element counts (1–100+), making tensor stacking impossible. The identity collation returns a plain list; the training loop handles each sample individually. |
-| **Greedy matching (`match_elements`)** | A pragmatic choice for early development. The Hungarian algorithm (via `scipy`) is planned for Phase 4.2.2. |
-| **Raw bbox in element features (no type embedding)** | The 5-d feature vector ([bbox[0..3], confidence]) is the minimal viable representation. Type one-hot embedding and spatial feature decomposition are planned enhancements. |
-| **Variable constraint feature dimension** | Constraint `params` is a free-form dict, so the feature dimension varies per constraint type. A fixed-dim encoding (one-hot type + tolerance + weight → 12-d) is planned. |
-| **No edge features (`edge_attr`)** | The current graph stores only edge indices. Edge features (spatial distance, dx, dy, IoU) are a planned enhancement for richer message passing. |
-
----
-
 ## 3. 模型层类设计 (Model Layer Class Design)
 
 > **Phase 3.3** — Heterogeneous GNN encoder, prediction heads, full model assembly,
@@ -2921,7 +2869,136 @@ failure_analysis(
 
 ---
 
-### 5.5 Evaluation Layer Data Flow Summary
+### 5.5 报告生成 (Report Generation)
+
+> **Phase 3.5.4** — Report generation utilities for producing publication-ready
+> tables, figures, and serialised results.
+>
+> **Planned file:** `experiments/report.py`
+
+Report generation covers the final stage of the evaluation pipeline: converting
+computed metrics into human-readable and machine-parseable output formats.
+
+```python
+def generate_latex_table(
+    metrics: dict[str, float],
+    format: str = "booktabs",         # "booktabs" | "simple" | "longtable"
+    caption: str = "Evaluation Results",
+    label: str = "tab:eval_results",
+) -> str:
+    """Generate a LaTeX table string from metrics dictionary.
+
+    Example output (booktabs):
+        \\begin{table}[ht]
+        \\centering
+        \\caption{Evaluation Results}
+        \\label{tab:eval_results}
+        \\begin{tabular}{lr}
+        \\toprule
+        Metric & Value \\\\
+        \\midrule
+        PositionError & 0.0321 \\\\
+        SizeError & 0.0187 \\\\
+        ...
+        \\bottomrule
+        \\end{tabular}
+        \\end{table}
+
+    The ``format`` parameter controls the table style:
+      - ``"booktabs"``: Professional style with \\toprule, \\midrule, \\bottomrule
+      - ``"simple"``: Plain \\hline separators
+      - ``"longtable"``: Multi-page table using longtable package
+    """
+```
+
+```python
+def generate_comparison_fig(
+    results: dict[str, dict[str, float]],  # {model_name: {metric_name: value}}
+    save_path: str | Path | None = None,    # If provided, save to file
+    figsize: tuple[int, int] = (10, 6),
+    sort_by: str | None = None,             # Metric to sort bars by
+) -> "plt.Figure | None":
+    """Generate side-by-side grouped bar charts comparing multiple models.
+
+    Each model is a group of bars; each bar within a group represents one metric.
+    Different models are distinguished by colour; metrics are labelled on the x-axis.
+
+    If ``save_path`` is provided, the figure is saved (png/pdf supported).
+    Returns the matplotlib Figure object for further customisation.
+
+    Example:
+        results = {
+            "VLM (raw)": {"PosErr": 0.12, "Recall": 0.65},
+            "GNN-corrected": {"PosErr": 0.03, "Recall": 0.89},
+        }
+        fig = generate_comparison_fig(results, save_path="comparison.pdf")
+    """
+```
+
+```python
+def export_results_json(
+    metrics: dict[str, Any],
+    path: str | Path,
+    indent: int = 2,
+) -> None:
+    """Serialize metrics to a JSON file.
+
+    Handles nested dicts (e.g., per-category breakdowns) and non-serialisable
+    types (numpy floats, Tensors) by converting to native Python types.
+    """
+
+def export_results_csv(
+    metrics: dict[str, float],
+    path: str | Path,
+    dialect: str = "excel",
+) -> None:
+    """Serialize flat metrics to a CSV file.
+
+    Row format: metric_name,value
+    Uses Python's ``csv`` module with the specified dialect.
+    """
+```
+
+```python
+def generate_summary_report(
+    metrics: dict[str, Any],
+    path: str | Path,
+    title: str = "Evaluation Summary Report",
+    include_baselines: bool = True,
+) -> None:
+    """Generate a human-readable Markdown report.
+
+    Report structure:
+        1. Title and timestamp
+        2. Overall metrics table
+        3. Baseline comparison (if include_baselines is True)
+        4. Per-category breakdown (if available)
+        5. Statistical significance notes
+
+    The report is written to ``path`` as a ``.md`` file suitable for
+    direct inclusion in documentation or conversion to PDF/HTML.
+    """
+
+# Convenience re-export:
+__all__ = [
+    "generate_latex_table",
+    "generate_comparison_fig",
+    "export_results_json",
+    "export_results_csv",
+    "generate_summary_report",
+]
+```
+
+> **⚠️ Implementation status:** None of the report generation functions
+> are currently implemented. The source file `experiments/report.py` does
+> not yet exist. This section documents the planned interface for Phase 4.5.5
+> per TASK.md Phase 3.5.4. Full implementation using matplotlib for figures,
+> Python's csv module for CSV export, and manual string formatting for LaTeX
+> will be added in Phase 4.5.5.
+
+---
+
+### 5.6 Evaluation Layer Data Flow Summary
 
 ```
 ┌──────────────────────────────┐
@@ -2992,7 +3069,7 @@ failure_analysis(
 
 ---
 
-### 5.6 Implementation Status Summary (Evaluation Layer)
+### 5.7 Implementation Status Summary (Evaluation Layer)
 
 | Component | File | Status | Notes |
 |-----------|------|--------|-------|
@@ -3018,7 +3095,7 @@ failure_analysis(
 
 ---
 
-### 5.7 Key Design Decisions (Evaluation Layer)
+### 5.8 Key Design Decisions (Evaluation Layer)
 
 | Decision | Rationale |
 |----------|-----------|
@@ -3028,3 +3105,55 @@ failure_analysis(
 | **`EvaluationResult` dataclass** | Wraps the metrics dict in a typed container for future extensibility (e.g., adding metadata, timestamps, per-sample breakdowns without changing the return type). |
 | **Baseline inheritance from `BaselineNoCorrection`** | Pragmatic for the stub phase — all three share identity behavior. Subclasses will diverge when implementations are added in Phase 4.5.3. |
 | **No `case_study_report` or `failure_analysis` yet** | The actual code provides plotting stubs (`side_by_side_plot`, `plot_error_heatmap`, `plot_category_breakdown`) but none of the higher-level report-generation functions from the requirements. These are planned for Phase 4.5.4. |
+
+---
+
+## 6. Implementation Status Summary
+
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| `VLMOutputElement` / `VLMOutput` | `data/vlm_output.py` | ✅ Implemented | Format-agnostic loader |
+| `load_vlm_output` / `VLMOutputLoader` | `data/vlm_output.py` | ✅ Implemented | Accepts path or dict |
+| `GTElement` / `GroundTruth` | `data/ground_truth.py` | ✅ Implemented | Lighter than VLM equivalent |
+| `load_ground_truth` | `data/ground_truth.py` | ✅ Implemented | Accepts path or dict |
+| `match_elements` | `data/ground_truth.py` | ✅ Implemented | Greedy (planned: Hungarian) |
+| `normalize_coordinates` | `data/preprocess.py` | ✅ Implemented | Standalone function, xywh → [0,1] |
+| `extract_element_features` | `data/preprocess.py` | ✅ Implemented | 5-d tensor (bbox[:4] + conf) |
+| `GUIDataset` | `data/dataset.py` | ✅ Implemented | Passthrough — no graph in `__getitem__` |
+| `collate_variable_elements` | `data/dataset.py` | ✅ Implemented | Identity collation |
+| `create_dataloader` | `data/dataset.py` | ✅ Implemented | Uses identity collate_fn |
+| `GUIDataModule` | `data/dataset.py` | ✅ Implemented | Train/val/test loader factory |
+| `bbox_to_tensor` / `tensor_to_bbox` | `utils/bbox.py` | ✅ Implemented | |
+| `xywh_to_xyxy` / `xyxy_to_xywh` | `utils/bbox.py` | ✅ Implemented | |
+| `compute_iou` | `utils/bbox.py` | ✅ Implemented | Auto-detects xywh vs xyxy |
+| `apply_delta` | `utils/bbox.py` | ✅ Implemented | xywh delta application |
+| `ConstraintType` (10 values) | `graph/schema.py` | ✅ Implemented | `str, Enum` |
+| `EdgeType` (2 values) | `graph/schema.py` | ✅ Implemented | `str, Enum` |
+| `ElementNode` (5 fields) | `graph/schema.py` | ✅ Implemented | |
+| `ConstraintNode` (4 fields) | `graph/schema.py` | ✅ Implemented | |
+| `extract_alignment_constraints` | `graph/constraints.py` | ⚠️ Stub | Single ALIGN_LEFT if N≥2 |
+| `extract_containment_constraints` | `graph/constraints.py` | ⚠️ Stub | Returns `[]` |
+| `extract_spacing_constraints` | `graph/constraints.py` | ⚠️ Stub | Returns `[]` |
+| `extract_grid_constraints` | `graph/constraints.py` | ⚠️ Stub | Returns `[]` |
+| `extract_all_constraints` | `graph/constraints.py` | ⚠️ Stub | Dispatches to above |
+| `BipartiteGraphBuilder.build()` | `graph/builder.py` | ✅ Implemented | Element (N,5) + Constraint (N,D) |
+| `HeteroData` fallback | `graph/builder.py` | ✅ Implemented | Dict-based when PyG absent |
+| `plot_bipartite_graph` | `graph/visualize.py` | ⚠️ Stub | Text-only title |
+| `GraphAugmenter.augment()` | `graph/augment.py` | ⚠️ Stub | Pass-through, params unused |
+
+**Legend:** ✅ = Implemented and functional | ⚠️ Stub = Minimal placeholder, returns empty/identity
+
+---
+
+## 7. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Stateless `BipartiteGraphBuilder`** | No constructor, no mode flags, no internal state. Each `build()` call is self-contained. This simplifies testing (no setup/teardown) and makes the builder trivially parallelizable. |
+| **Separate constraint extraction from graph building** | The builder accepts pre-extracted `ConstraintNode` lists. This allows the extraction strategy to vary (train vs. inference, different tolerance values) without changing the builder. |
+| **Passthrough `GUIDataset` (no graph in `__getitem__`)** | Keeps dataset module free of PyG dependency. Graph construction happens in the training loop, giving the caller full control over augmentation and constraint strategies. |
+| **Identity `collate_variable_elements`** | GUI screens have variable element counts (1–100+), making tensor stacking impossible. The identity collation returns a plain list; the training loop handles each sample individually. |
+| **Greedy matching (`match_elements`)** | A pragmatic choice for early development. The Hungarian algorithm (via `scipy`) is planned for Phase 4.2.2. |
+| **Raw bbox in element features (no type embedding)** | The 5-d feature vector ([bbox[0..3], confidence]) is the minimal viable representation. Type one-hot embedding and spatial feature decomposition are planned enhancements. |
+| **Variable constraint feature dimension** | Constraint `params` is a free-form dict, so the feature dimension varies per constraint type. A fixed-dim encoding (one-hot type + tolerance + weight → 12-d) is planned. |
+| **No edge features (`edge_attr`)** | The current graph stores only edge indices. Edge features (spatial distance, dx, dy, IoU) are a planned enhancement for richer message passing. |
