@@ -10,13 +10,13 @@ try:
 except ImportError:  # pragma: no cover - optional dependency fallback
     from bipartite_gnn_gui._compat import Tensor, torch
 
-from ..utils.bbox import compute_iou as _compute_iou
+from ..utils.bbox import compute_iou as _compute_iou, xywh_to_xyxy
 
 
 def compute_iou(box1: Tensor, box2: Tensor) -> Tensor:
-    """Compute IoU between two bbox tensors."""
+    """Compute IoU between two bbox tensors (xywh centre-based → auto-convert to xyxy)."""
 
-    return _compute_iou(box1, box2)
+    return _compute_iou(xywh_to_xyxy(box1), xywh_to_xyxy(box2))
 
 
 @dataclass

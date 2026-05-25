@@ -14,7 +14,16 @@ try:
 except ImportError:  # pragma: no cover - optional dependency fallback
     from bipartite_gnn_gui._compat import Tensor, torch
 
-from .bbox import apply_delta, bbox_to_tensor, compute_iou, tensor_to_bbox, xywh_to_xyxy, xyxy_to_xywh
+from .bbox import (
+    apply_delta,
+    bbox_to_tensor,
+    clamp_coords,
+    compute_center_distance,
+    compute_iou,
+    tensor_to_bbox,
+    xywh_to_xyxy,
+    xyxy_to_xywh,
+)
 
 
 def set_seed(seed: int = 42) -> None:
@@ -53,4 +62,6 @@ __all__ = [
     "compute_iou_pair",
     "compute_iou",
     "apply_delta",
+    "compute_center_distance",
+    "clamp_coords",
 ]
