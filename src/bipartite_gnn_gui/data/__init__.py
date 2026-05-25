@@ -18,7 +18,15 @@ from .vlm_output import (
     parse_minimax_output,
     parse_qwen_output,
 )
-from .ground_truth import GroundTruth, load_ground_truth, match_elements
+from .ground_truth import (
+    GTElement,
+    GroundTruth,
+    GroundTruthParseError,
+    load_ground_truth,
+    load_gui360_annotation,
+    load_screenspot_annotation,
+    match_predictions_to_ground_truth,
+)
 from .preprocess import normalize_coordinates, extract_element_features
 from .dataset import GUIDataset, GUIDataModule
 
@@ -31,9 +39,13 @@ __all__ = [
     "normalize_element_type",
     "parse_minimax_output",
     "parse_qwen_output",
+    "GTElement",
     "GroundTruth",
+    "GroundTruthParseError",
     "load_ground_truth",
-    "match_elements",
+    "load_gui360_annotation",
+    "load_screenspot_annotation",
+    "match_predictions_to_ground_truth",
     "normalize_coordinates",
     "extract_element_features",
     "GUIDataset",
