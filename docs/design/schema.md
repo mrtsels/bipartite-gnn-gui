@@ -1,332 +1,375 @@
 # 图模式设计 (Graph Schema Design)
 
 > Phase 2.4-2.5 — Heterogeneous Bipartite Graph Schema & Constraint Extraction Strategy
-> Version: 1.0 | 2026-05-25
+> Version: 2.0 | 2026-05-25
 
 ---
 
-## 1. HeteroData 表结构
+## 1. Schema Dataclasses
 
-本项目使用 PyTorch Geometric 的 `HeteroData` 来表示异构图 $G = (V_e \cup V_c, E)$。
+The graph module defines three schema objects in `src/bipartite_gnn_gui/graph/schema.py`.
 
-### 1.1 Element Node ($V_e$)
+### 1.1 ConstraintType
 
-**Node type key:** `"element"`
+```python
+class ConstraintType(str, Enum):
+    """Supported spatial constraints (string-valued enum)."""
 
-| 字段 | 维度 | 说明 |
-|------|------|------|
-| `type_onehot` | 18 | 元素类型 one-hot 编码（见 §4 分类体系） |
-| `cx` | 1 | 归一化中心 x 坐标 [0,1] |
-| `cy` | 1 | 归一化中心 y 坐标 [0,1] |
-| `w` | 1 | 归一化宽度 [0,1] |
-| `h` | 1 | 归一化高度 [0,1] |
-| `confidence` | 1 | VLM 置信度得分 [0,1] |
+    ALIGN_LEFT     = "align_left"
+    ALIGN_RIGHT    = "align_right"
+    ALIGN_TOP      = "align_top"
+    ALIGN_BOTTOM   = "align_bottom"
+    CENTER_X       = "center_x"
+    CENTER_Y       = "center_y"
+    SAME_SIZE      = "same_size"
+    SPACING        = "spacing"
+    CONTAINMENT    = "containment"
+    GRID           = "grid"
+```
 
-**总特征维度:** $D_e = 18 + 4 + 1 = 23$
+10 constraint types, each a string enum. The string values are used directly for
+serialisation/logging and are the canonical identifiers throughout the codebase.
 
-### 1.2 Constraint Node ($V_c$)
+### 1.2 EdgeType
 
-**Node type key:** `"constraint"`
+```python
+class EdgeType(str, Enum):
+    """Edge categories for the bipartite graph."""
 
-| 字段 | 维度 | 说明 |
-|------|------|------|
-| `type_onehot` | 10 | 约束类型 one-hot 编码（见 §2） |
-| `tolerance` | 1 | 匹配容忍度（训练: 0.02, 推理: 0.05） |
-| `weight` | 1 | 约束重要性权重（默认: 1.0） |
+    ELEMENT_TO_CONSTRAINT = "element_to_constraint"
+    CONSTRAINT_TO_ELEMENT = "constraint_to_element"
+```
 
-**总特征维度:** $D_c = 10 + 1 + 1 = 12$
+Two edge categories, one for each direction of the bipartite graph. These enum
+values are not directly used in the `HeteroData` key tuples (which use the shorter
+"to" convention — see §2.3), but serve as semantic labels.
 
-### 1.3 Edge Features ($E$)
+### 1.3 ElementNode
 
-**Edge types:**
-- `("element", "satisfies", "constraint")` — 正向边
-- `("constraint", "satisfied_by", "element")` — 反向边（消息传递用）
+```python
+@dataclass
+class ElementNode:
+    """Node describing a GUI element."""
 
-| 字段 | 维度 | 说明 |
-|------|------|------|
-| `spatial_distance` | 1 | 元素到约束的归一化空间距离 |
-| `dx` | 1 | 元素中心与约束参考点的 x 偏移 |
-| `dy` | 1 | 元素中心与约束参考点的 y 偏移 |
-| `iou` | 1 | 元素与约束相关元素的 IoU（若适用） |
+    bbox: list[float]               # Bounding box (normalised xyxy or xywh, see note)
+    label: str = "unknown"          # Element type label string
+    confidence: float = 1.0         # Detection confidence ∈ [0, 1]
+    element_id: str | None = None   # Optional unique identifier
+    features: dict[str, float] = field(default_factory=dict)  # Extra key-value features
+```
 
-**总特征维度:** $D_e = 4$
+> **Note:** The `bbox` field stores 4 floats. The coordinate convention
+> (xyxy vs xywh, normalised vs absolute) is determined by the upstream data
+> pipeline. The builder (§2) uses `bbox` as-is without re-interpreting its
+> semantics.
 
-### 1.4 PyG HeteroData 键结构
+### 1.4 ConstraintNode
+
+```python
+@dataclass
+class ConstraintNode:
+    """Node describing a spatial constraint."""
+
+    constraint_type: ConstraintType          # One of the 10 constraint types
+    source_indices: list[int] = field(default_factory=list)   # Indices of source elements
+    target_indices: list[int] = field(default_factory=list)   # Indices of target elements
+    params: dict[str, float] = field(default_factory=dict)    # Extra parameters (e.g. tolerance)
+```
+
+- `source_indices` / `target_indices` are 0-based indices into the element list
+  passed to the builder. Both lists are in scope for edge creation.
+- `params` carries constraint-specific metadata (e.g. `{"tolerance": 0.02}` for
+  alignment constraints).
+
+---
+
+## 2. Graph Construction
+
+The builder lives in `src/bipartite_gnn_gui/graph/builder.py`.
+
+### 2.1 BipartiteGraphBuilder
+
+```python
+class BipartiteGraphBuilder:
+    """Build a bipartite graph from elements and constraints."""
+
+    def build(
+        self,
+        elements: Sequence[ElementNode],
+        constraints: Sequence[ConstraintNode],
+    ) -> HeteroData:
+        """Create a graph object with node and edge stores.
+
+        Args:
+            elements:   List of ElementNode objects (N_elem).
+            constraints: List of ConstraintNode objects (N_con).
+
+        Returns:
+            HeteroData with the keys described in §2.2–2.4.
+        """
+```
+
+> **Notes:**
+> - There is no `mode` parameter — the builder is stateless and does not
+>   distinguish train vs. inference. Any such distinction belongs to the caller.
+> - The builder does **not** extract constraints internally. Constraint extraction
+>   is a separate step (§3) whose output feeds into `build()`.
+> - There are **no** private `_build_*` helper methods; all logic lives in the
+>   single `build()` method.
+
+### 2.2 Element Node Store (`data["element"]`)
+
+```python
+data["element"].x  # shape (N_elem, 5), dtype float32
+```
+
+Each row is `[x1, y1, x2, y2, confidence]` — the raw bbox (4 floats) concatenated
+with the confidence score.
+
+| Column | Index | Source Field        | Description                     |
+|--------|-------|---------------------|---------------------------------|
+| x1     | 0     | `element.bbox[0]`   | First bbox coordinate           |
+| y1     | 1     | `element.bbox[1]`   | Second bbox coordinate          |
+| x2     | 2     | `element.bbox[2]`   | Third bbox coordinate           |
+| y2     | 3     | `element.bbox[3]`   | Fourth bbox coordinate          |
+| conf   | 4     | `element.confidence`| Detection confidence            |
+
+> **When `elements` is empty**, the store contains `torch.zeros((0, 5))`.
+
+> **Planned enhancement:** Future versions will replace the raw bbox with explicit
+> spatial features (cx, cy, w, h) and a type one-hot vector, raising the feature
+> dimension to ≥ 23. See §7 for the design roadmap.
+
+### 2.3 Constraint Node Store (`data["constraint"]`)
+
+```python
+data["constraint"].x  # shape (N_con, D), dtype float32
+```
+
+Each row is `list(constraint.params.values())` — a flat vector of the constraint's
+parameter values. If `params` is empty, the row is `[0.0]`.
+
+The feature dimension `D` is variable across constraints and depends on the params
+dict size. In the current stub implementation (see §3), alignment constraints
+emit `params={"tolerance": 0.02}`, so `D = 1`.
+
+> **When `constraints` is empty**, the store contains `torch.zeros((0, 1))`.
+
+> **Planned enhancement:** A fixed-dimension constraint feature vector with
+> one-hot type encoding (10-d) + tolerance + weight = 12-d. See §7.
+
+### 2.4 Edge Stores
+
+Two directed edge types connect the bipartite nodes:
+
+```python
+# Forward: element → constraint
+data["element", "to", "constraint"].edge_index   # shape (2, E), dtype long
+# Reverse: constraint → element  (flipped forward index)
+data["constraint", "to", "element"].edge_index   # shape (2, E), dtype long
+```
+
+**Edge construction logic:**
+
+For each constraint at index `c`:
+- For each element index in `constraint.source_indices ∪ constraint.target_indices`:
+  - Add edge `(element_index, c)` to the forward store.
+
+The reverse index is a simple `torch.flip` of the forward index along dim 0.
+
+> **When either elements or constraints is empty**, the edge index is
+> `torch.zeros((2, 0))` for both directions.
+
+> **There is no `edge_attr`** set on either edge store. Edge features (spatial
+> distance, dx, dy, IoU — previously spec'd as 4-d) are not computed by the
+> current builder. They remain a planned enhancement (§7).
+
+### 2.5 Fallback HeteroData
+
+When PyTorch Geometric is not installed, the module provides a minimal fallback:
+
+```python
+class HeteroData(dict):
+    """Minimal fallback when PyG is unavailable."""
+    def __getattr__(self, item): ...
+    def __setattr__(self, key, value): ...
+```
+
+This enables constructing graph-like objects in lightweight environments without
+importing PyG. All PyG-specific features (message passing, to_hetero, etc.) are
+unavailable in fallback mode.
+
+---
+
+## 3. Constraint Extraction
+
+Implemented in `src/bipartite_gnn_gui/graph/constraints.py`.
+
+### 3.1 Public Interface
+
+```python
+def extract_all_constraints(
+    elements: Sequence[ElementNode],
+) -> list[ConstraintNode]:
+    """Extract all heuristic constraints.
+
+    Returns a list of ConstraintNode objects discovered from the element list.
+    Dispatches to per-type sub-extractors.
+    """
+```
+
+| Sub-extractor                      | Signature                                                          | Status        |
+|------------------------------------|--------------------------------------------------------------------|---------------|
+| `extract_alignment_constraints`    | `(elements, tolerance=0.02) -> list[ConstraintNode]`               | **Stub** — returns one ALIGN_LEFT on elements [0,1] when N≥2 |
+| `extract_containment_constraints`  | `(elements) -> list[ConstraintNode]`                               | **Stub** — always returns `[]` |
+| `extract_spacing_constraints`      | `(elements, tolerance=0.02) -> list[ConstraintNode]`               | **Stub** — always returns `[]` |
+| `extract_grid_constraints`         | `(elements) -> list[ConstraintNode]`                               | **Stub** — always returns `[]` |
+
+> **Note:** The current implementation is a **minimal stub**. Only
+> `extract_alignment_constraints` produces output (a single ALIGN_LEFT on the
+> first two elements). All other extractors return empty lists. There is no
+> `extract_same_size_constraints` function in the actual code (SAME_SIZE is
+> defined in the enum but has no extractor yet).
+
+### 3.2 Constraint Semantics (Design Intent)
+
+| Type         | Semantic                                                       | Typical Scenario          |
+|--------------|----------------------------------------------------------------|---------------------------|
+| ALIGN_LEFT   | \|x1_i - x1_j\| < tolerance                                    | Button groups, list items |
+| ALIGN_RIGHT  | \|x2_i - x2_j\| < tolerance                                    | Right-aligned panels      |
+| ALIGN_TOP    | \|y1_i - y1_j\| < tolerance                                    | Same-row elements, navbars|
+| ALIGN_BOTTOM | \|y2_i - y2_j\| < tolerance                                    | Bottom navs, footers      |
+| CENTER_X     | \|cx_i - cx_j\| < tolerance                                    | Center-aligned modals     |
+| CENTER_Y     | \|cy_i - cy_j\| < tolerance                                    | Same-line elements        |
+| SAME_SIZE    | max(\|w_i-w_j\|/w_j, \|h_i-h_j\|/h_j) < tolerance              | Uniform buttons/icons     |
+| SPACING      | \|gap_{i,i+1} - gap_{i+1,i+2}\| < tolerance                    | Equidistant lists/grids   |
+| CONTAINMENT  | One bbox fully encloses another (with margin)                   | Container-child hierarchy |
+| GRID         | Row + column clustering detects 2D arrangement                  | Tables, icon grids        |
+
+### 3.3 Train vs. Inference
+
+The current stub code makes **no distinction** between train and inference modes.
+The design intent (to be implemented) is:
+
+| Dimension         | Train                          | Inference                    |
+|-------------------|--------------------------------|------------------------------|
+| Element source    | GT bboxes                      | VLM predicted bboxes         |
+| Tolerance (eps)   | 0.02 (tight)                   | 0.05 (loose)                 |
+| Constraint filter | Keep all                       | Drop low-confidence (weight < 0.3) |
+
+---
+
+## 4. Visualisation
+
+Implemented in `src/bipartite_gnn_gui/graph/visualize.py`.
+
+```python
+def plot_bipartite_graph(
+    elements: Sequence[ElementNode],
+    constraints: Sequence[ConstraintNode],
+    ax: Any | None = None,
+) -> Any:
+    """Placeholder visualisation showing element and constraint counts.
+
+    Args:
+        elements:   ElementNode list.
+        constraints: ConstraintNode list.
+        ax:         Optional matplotlib Axes. Created if None.
+
+    Returns:
+        The matplotlib Axes, or None if matplotlib is not available.
+    """
+```
+
+Current behaviour: renders a text-only matplotlib figure showing element and
+constraint counts. Does **not** overlay bboxes on a screenshot, does **not**
+render edges between nodes, and has no color-by-type support.
+
+> **Planned:** The full-featured `plot_graph_on_screenshot`, `color_by_element_type`,
+> `color_by_constraint_type`, and `export_graph` functions described in the original
+> design are deferred to a later iteration.
+
+---
+
+## 5. Graph Augmentation
+
+Implemented in `src/bipartite_gnn_gui/graph/augment.py`.
+
+```python
+@dataclass
+class GraphAugmenter:
+    """Apply light-weight stochastic augmentations."""
+
+    node_dropout_rate: float = 0.0   # Fraction of elements to drop
+    jitter_std: float = 0.0           # Std of Gaussian noise on bbox coords
+
+    def augment(
+        self,
+        elements: Sequence[ElementNode],
+        constraints: Sequence[ConstraintNode],
+    ) -> tuple[list[ElementNode], list[ConstraintNode]]:
+        """Return a copy of the input graph components.
+
+        Currently a no-op pass-through. The dropout_rate and jitter_std
+        parameters are accepted but not yet applied.
+        """
+```
+
+> **Current state:** The `augment()` method is a **pass-through stub** — it
+> returns `list(elements), list(constraints)` without applying any stochastic
+> transformations. The parameters are stored for future use.
+
+> **Design intent** (not yet implemented):
+> - **NodeDropout**: randomly drop elements with probability `node_dropout_rate` to
+>   simulate VLM missed detections.
+> - **CoordinateJitter**: add Gaussian noise (std=`jitter_std`) to bbox coordinates
+>   to simulate VLM localisation error.
+> - **ConstraintPerturbation**: randomly flip constraint edge states.
+
+---
+
+## 6. Full HeteroData Key Reference
 
 ```python
 data = HeteroData()
 
-# Element nodes: (N_elem, 23)
-data["element"].x = torch.empty(N_elem, 23)
+# ── Node stores ──────────────────────────────────────
+data["element"].x       # torch.float32  (N_elem, 5)
+                        # Columns: [bbox[0], bbox[1], bbox[2], bbox[3], confidence]
 
-# Constraint nodes: (N_con, 12)
-data["constraint"].x = torch.empty(N_con, 12)
+data["constraint"].x    # torch.float32  (N_con, D)  where D = len(params) or 1
+                        # Current stub: D = 1 (tolerance value)
 
-# Edge index: (2, num_edges)
-data["element", "satisfies", "constraint"].edge_index = torch.empty(2, num_edges, dtype=torch.long)
-data["constraint", "satisfied_by", "element"].edge_index = torch.empty(2, num_edges, dtype=torch.long)
-
-# Edge features: (num_edges, 4)
-data["element", "satisfies", "constraint"].edge_attr = torch.empty(num_edges, 4)
-data["constraint", "satisfied_by", "element"].edge_attr = torch.empty(num_edges, 4)
+# ── Edge stores ──────────────────────────────────────
+data["element", "to", "constraint"].edge_index     # torch.long  (2, E)
+data["constraint", "to", "element"].edge_index     # torch.long  (2, E)  (flipped)
+# No edge_attr on either store.
 ```
 
 ---
 
-## 2. ConstraintType 枚举
+## 7. Design Roadmap (Planned Enhancements)
 
-```python
-from enum import IntEnum
+The current implementation is a functional stub. The following enhancements are
+part of the design intent and will be implemented in later phases:
 
-class ConstraintType(IntEnum):
-    ALIGN_LEFT     = 0  # 元素共享左边缘
-    ALIGN_RIGHT    = 1  # 元素共享右边缘
-    ALIGN_TOP      = 2  # 元素共享上边缘
-    ALIGN_BOTTOM   = 3  # 元素共享下边缘
-    CENTER_X       = 4  # 垂直中心线对齐
-    CENTER_Y       = 5  # 水平中心线对齐
-    SAME_SIZE      = 6  # 相似的宽度和高度
-    SPACING        = 7  # 相邻元素间距一致
-    CONTAINMENT    = 8  # 一个元素包含另一个
-    GRID           = 9  # 行/列排列
-```
-
-### 约束语义与适用场景
-
-| 类型 | 语义 | 适用场景 |
-|------|------|----------|
-| ALIGN_LEFT | $|x_1^i - x_1^j| < \epsilon$ | 按钮组、列表项 |
-| ALIGN_RIGHT | $|x_2^i - x_2^j| < \epsilon$ | 右对齐面板、输入框 |
-| ALIGN_TOP | $|y_1^i - y_1^j| < \epsilon$ | 同一行元素、导航栏 |
-| ALIGN_BOTTOM | $|y_2^i - y_2^j| < \epsilon$ | 底部导航、页脚 |
-| CENTER_X | $|cx^i - cx^j| < \epsilon$ | 居中对齐的弹窗、卡片 |
-| CENTER_Y | $|cy^i - cy^j| < \epsilon$ | 同一行元素 |
-| SAME_SIZE | $\max(\frac{|w^i-w^j|}{w^j}, \frac{|h^i-h^j|}{h^j}) < \epsilon$ | 等大小按钮、图标 |
-| SPACING | $|\text{gap}^{i,i+1} - \text{gap}^{i+1,i+2}| < \epsilon$ | 等间距列表、网格 |
-| CONTAINMENT | $x_1^j \ge x_1^i, x_2^j \le x_2^i, y_1^j \ge y_1^i, y_2^j \le y_2^i$ | 容器内元素 |
-| GRID | 行/列聚类 + 对齐检测 | 表格、图标网格 |
-
-> **注意:** 训练模式用 GT bbox 提取约束（精确），推理模式用 VLM 预测（有噪声，需更大 $\epsilon$）。
-
----
-
-## 3. 约束提取算法
-
-### 3.1 对齐约束 (Alignment)
-
-```
-输入: elements (list of bboxes), eps (float)
-输出: list of ConstraintNode
-
-对于每对 (i, j):
-  1. 若 |x1_i - x1_j| < eps → ALIGN_LEFT
-  2. 若 |x2_i - x2_j| < eps → ALIGN_RIGHT
-  3. 若 |y1_i - y1_j| < eps → ALIGN_TOP
-  4. 若 |y2_i - y2_j| < eps → ALIGN_BOTTOM
-  5. 若 |cx_i - cx_j| < eps → CENTER_X
-  6. 若 |cy_i - cy_j| < eps → CENTER_Y
-```
-
-### 3.2 包含约束 (Containment)
-
-```
-输入: elements (list of bboxes)
-输出: list of ConstraintNode
-
-对于每对 (i, j) 且 i ≠ j:
-  若 x1_j ≥ x1_i - margin 且 x2_j ≤ x2_i + margin
-    且 y1_j ≥ y1_i - margin 且 y2_j ≤ y2_i + margin:
-    → CONTAINMENT (i 包含 j)
-```
-
-### 3.3 等大小约束 (Same Size)
-
-```
-输入: elements (list of bboxes), eps (float)
-输出: list of ConstraintNode
-
-对于每对 (i, j):
-  size_diff = max(|w_i - w_j|/w_j, |h_i - h_j|/h_j)
-  若 size_diff < eps → SAME_SIZE
-```
-
-### 3.4 间距约束 (Spacing)
-
-```
-输入: elements (list of bboxes), eps (float)
-输出: list of ConstraintNode
-
-1. 按 cx 对元素排序
-2. 计算相邻间隙: gap_i = x1_{i+1} - x2_i
-3. 若 |gap_i - gap_{i+1}| < eps → SPACING
-```
-
-### 3.5 网格约束 (Grid)
-
-```
-输入: elements (list of bboxes)
-输出: list of ConstraintNode
-
-1. 用 cy 进行一维聚类 (DBSCAN, eps=0.05) → 行
-2. 用 cx 进行一维聚类 (DBSCAN, eps=0.05) → 列
-3. 每行内检测对齐 + 等间距
-4. 每列内检测对齐 + 等间距
-5. 若行数 ≥ 2 且列数 ≥ 2 → GRID
-```
-
-### 3.6 主入口
-
-```python
-def extract_constraints(
-    elements: list[VLMOutputElement],
-    mode: Literal["train", "infer"] = "train",
-) -> list[ConstraintNode]:
-    """
-    提取所有约束。
-
-    Args:
-        elements: VLM 解析后的元素列表
-        mode: 'train' 用 GT bbox (eps=0.02), 'infer' 用 VLM bbox (eps=0.05)
-
-    Returns:
-        约束节点列表
-    """
-    eps = 0.02 if mode == "train" else 0.05
-    constraints = []
-    constraints.extend(extract_alignment_constraints(elements, eps))
-    constraints.extend(extract_containment_constraints(elements))
-    constraints.extend(extract_same_size_constraints(elements, eps))
-    constraints.extend(extract_spacing_constraints(elements, eps))
-    constraints.extend(extract_grid_constraints(elements))
-    return constraints
-```
-
----
-
-## 4. HeteroGraphBuilder
-
-```python
-class HeteroGraphBuilder:
-    """
-    从 VLM 输出构建 HeteroData 异构图。
-
-    Usage:
-        builder = HeteroGraphBuilder(config)
-        data = builder.build(vlm_output)
-    """
-
-    def __init__(self, config: ModelConfig):
-        self.eps_train = 0.02
-        self.eps_infer = 0.05
-
-    def build(
-        self,
-        elements: list[VLMOutputElement],
-        constraints: Optional[list[ConstraintNode]] = None,
-        mode: str = "train",
-    ) -> HeteroData:
-        """
-        构建异构图。
-
-        Returns:
-            HeteroData with keys:
-            - "element".x: (N_elem, 23)
-            - "constraint".x: (N_con, 12)
-            - ("element","satisfies","constraint").edge_index: (2, E)
-            - ("element","satisfies","constraint").edge_attr: (E, 4)
-            - ("constraint","satisfied_by","element").edge_index: (2, E)
-            - ("constraint","satisfied_by","element").edge_attr: (E, 4)
-        """
-        ...
-
-    def _build_element_nodes(self, elements: list) -> Tensor:
-        """构建元素节点特征矩阵 (N_elem, 23)。"""
-        ...
-
-    def _build_constraint_nodes(self, constraints: list) -> Tensor:
-        """构建约束节点特征矩阵 (N_con, 12)。"""
-        ...
-
-    def _build_edges(
-        self, elements: list, constraints: list
-    ) -> tuple[Tensor, Tensor, Tensor]:
-        """
-        构建边索引和边特征。
-        正向 + 反向边。
-        """
-        ...
-```
-
----
-
-## 5. 可视化
-
-```python
-def plot_graph_on_screenshot(
-    img: np.ndarray | Image.Image,
-    hetero_data: HeteroData,
-    element_types: list[str],
-    constraint_types: list[str],
-    show_labels: bool = True,
-) -> plt.Figure:
-    """
-    在截图上覆盖图结构可视化。
-    - 元素节点: 矩形框 + 类型标签 (颜色编码)
-    - 约束节点: 小圆点 (不同颜色)
-    - 边: 连线 (颜色按约束类型)
-    """
-    ...
-
-def color_by_element_type() -> dict:
-    """每种元素类型的颜色映射表。"""
-    ...
-
-def color_by_constraint_type() -> dict:
-    """每种约束类型的颜色映射表。"""
-    ...
-
-def export_graph(hetero_data: HeteroData, path: str):
-    """将图结构导出为 JSON 格式，供外部工具查看。"""
-    ...
-```
-
----
-
-## 6. 训练模式 vs 推理模式
-
-| 维度 | 训练 (train) | 推理 (infer) |
-|------|-------------|-------------|
-| 元素来源 | GT element bbox | VLM 预测 bbox |
-| 约束提取 | 精确 (eps=0.02) | 宽松 (eps=0.05) |
-| 约束过滤 | 所有约束保留 | 低置信度约束丢弃 (weight < 0.3) |
-| 图增强 | 应用 augmentation | 不增强 |
-
----
-
-## 7. 图增强 (Augmentation)
-
-```python
-class NodeDropout:
-    """随机丢弃部分元素节点 (p=0.1)，模拟 VLM 漏检。"""
-    ...
-
-class CoordinateJitter:
-    """给坐标加高斯噪声 (sigma=0.01)，模拟 VLM 定位误差。"""
-    ...
-
-class ConstraintPerturbation:
-    """随机翻转约束边状态 (p=0.05)，模拟约束提取误差。"""
-    ...
-
-class GraphAugmentationPipeline:
-    """组合多个增强变换。"""
-    ...
-```
+| # | Enhancement                                                    | Priority |
+|---|----------------------------------------------------------------|----------|
+| 1 | Full constraint extraction algorithms for all 10 types (§3.2)  | High     |
+| 2 | One-hot type encoding for ElementNode (18+ types) → 23-d       | Medium   |
+| 3 | Fixed-dim ConstraintNode features (one-hot type + tolerance + weight) → 12-d | Medium |
+| 4 | Edge features: spatial_distance, dx, dy, IoU → 4-d `edge_attr` | Medium   |
+| 5 | Train vs. inference mode separation with different tolerances   | Medium   |
+| 6 | Full visualisation: `plot_graph_on_screenshot` with bbox overlay + edge rendering | Low |
+| 7 | Working augmentation pipeline (dropout, jitter, perturbation)   | Low      |
+| 8 | `export_graph` for JSON serialisation of graph structure         | Low      |
+| 9 | Edge type semantics (using `EdgeType` enum values in HeteroData keys) | Low |
 
 ---
 
 ## 修订历史
 
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| 1.0 | 2026-05-25 | 初始版本 |
+| 版本 | 日期       | 变更                                                                                       |
+|------|------------|--------------------------------------------------------------------------------------------|
+| 2.0  | 2026-05-25 | 完全重写以与实际代码对齐：ConstraintType 改为 `str, Enum`；Builder 改为 `BipartiteGraphBuilder`；特征维度更新为 5/1；边键改为 `"to"`；标注当前 stub 状态；新增设计路线图 §7。 |
+| 1.0  | 2026-05-25 | 初始版本（仅设计意图）                                                                     |
