@@ -3,8 +3,31 @@
 from __future__ import annotations
 
 import logging
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional
+
+# ---------------------------------------------------------------------------
+# Optional wandb backend
+# ---------------------------------------------------------------------------
+
+try:
+    import wandb
+
+    _wandb_available = True
+except ImportError:
+    _wandb_available = False
+
+# ---------------------------------------------------------------------------
+# Optional TensorBoard backend
+# ---------------------------------------------------------------------------
+
+try:
+    from torch.utils.tensorboard import SummaryWriter
+
+    _tensorboard_available = True
+except ImportError:
+    _tensorboard_available = False
 
 
 def setup_logger(name: str = "bipartite_gnn_gui", level: int = logging.INFO, log_file: str | Path | None = None) -> logging.Logger:
@@ -36,11 +59,21 @@ def get_logger(name: str = "bipartite_gnn_gui") -> logging.Logger:
     return logging.getLogger(name)
 
 
-class MetricsLogger:
+class MetricsLogger(ABC):
     """Base class for metric logging backends."""
 
+    @abstractmethod
     def log_metrics(self, metrics: dict[str, Any], step: Optional[int] = None) -> None:
-        raise NotImplementedError
+        """Log a dictionary of metrics.
+
+        Args:
+            metrics: Metric name-to-value mapping.
+            step: Optional global step / epoch number.
+        """
+
+    @abstractmethod
+    def finish(self) -> None:
+        """Flush and clean up the logging backend."""
 
 
 class NoopMetricsLogger(MetricsLogger):
@@ -49,22 +82,64 @@ class NoopMetricsLogger(MetricsLogger):
     def log_metrics(self, metrics: dict[str, Any], step: Optional[int] = None) -> None:
         return None
 
+    def finish(self) -> None:
+        return None
+
 
 class WandbMetricsLogger(MetricsLogger):
-    """Optional Weights & Biases logger."""
+    """Optional Weights & Biases logger.
 
-    def __init__(self, *_: Any, **__: Any) -> None:
-        self._available = False
+    When the ``wandb`` package is installed, ``__init__`` calls
+    ``wandb.init()`` and ``log_metrics`` forwards to ``wandb.log()``.
+    When unavailable, all methods are no-ops and ``available`` returns
+    ``False``.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._available = _wandb_available
+        self._run = None
+        if _wandb_available:
+            self._run = wandb.init(*args, **kwargs)
+
+    @property
+    def available(self) -> bool:
+        """Whether the wandb backend is installed."""
+        return self._available
 
     def log_metrics(self, metrics: dict[str, Any], step: Optional[int] = None) -> None:
-        return None
+        if self._run is not None:
+            self._run.log(metrics, step=step)
+
+    def finish(self) -> None:
+        if self._run is not None:
+            self._run.finish()
 
 
 class TensorboardMetricsLogger(MetricsLogger):
-    """Optional TensorBoard logger."""
+    """Optional TensorBoard logger.
 
-    def __init__(self, *_: Any, **__: Any) -> None:
-        self._available = False
+    When ``torch.utils.tensorboard`` is available, ``__init__`` creates
+    a ``SummaryWriter`` and ``log_metrics`` writes each metric via
+    ``add_scalar``.  When unavailable, all methods are no-ops and
+    ``available`` returns ``False``.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._available = _tensorboard_available
+        self._writer = None
+        if _tensorboard_available:
+            self._writer = SummaryWriter(*args, **kwargs)
+
+    @property
+    def available(self) -> bool:
+        """Whether the TensorBoard backend is installed."""
+        return self._available
 
     def log_metrics(self, metrics: dict[str, Any], step: Optional[int] = None) -> None:
-        return None
+        if self._writer is not None:
+            for key, value in metrics.items():
+                self._writer.add_scalar(key, value, global_step=step or 0)
+
+    def finish(self) -> None:
+        if self._writer is not None:
+            self._writer.close()
