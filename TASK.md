@@ -261,8 +261,9 @@
   - PR: #10
   - 测试: `test_data_preprocess.py`
 
-- [ ] **4.2.4** 实现数据集 (`src/bipartite_gnn_gui/data/dataset.py`):
+- [x] **4.2.4** 实现数据集 (`src/bipartite_gnn_gui/data/dataset.py`):
   GUIDataset, collate_variable_elements, create_dataloader
+  - PR: #11
   - 测试: `test_data_dataset.py`
 
 ### 4.3 图构建层
