@@ -23,7 +23,12 @@ from .constraints import (
     extract_all_constraints,
 )
 from .builder import BipartiteGraphBuilder
-from .visualize import plot_bipartite_graph
+from .visualize import (
+    color_by_constraint_type,
+    color_by_element_type,
+    export_graph,
+    plot_graph_on_screenshot,
+)
 from .augment import GraphAugmenter
 
 __all__ = [
@@ -38,6 +43,9 @@ __all__ = [
     "extract_grid_constraints",
     "extract_all_constraints",
     "BipartiteGraphBuilder",
-    "plot_bipartite_graph",
+    "color_by_element_type",
+    "color_by_constraint_type",
+    "export_graph",
+    "plot_graph_on_screenshot",
     "GraphAugmenter",
 ]
