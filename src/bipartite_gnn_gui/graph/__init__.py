@@ -29,7 +29,12 @@ from .visualize import (
     export_graph,
     plot_graph_on_screenshot,
 )
-from .augment import GraphAugmenter
+from .augment import (
+    ConstraintPerturbation,
+    CoordinateJitter,
+    GraphAugmentationPipeline,
+    NodeDropout,
+)
 
 __all__ = [
     "EdgeFeatures",
@@ -47,5 +52,8 @@ __all__ = [
     "color_by_constraint_type",
     "export_graph",
     "plot_graph_on_screenshot",
-    "GraphAugmenter",
+    "NodeDropout",
+    "CoordinateJitter",
+    "ConstraintPerturbation",
+    "GraphAugmentationPipeline",
 ]
