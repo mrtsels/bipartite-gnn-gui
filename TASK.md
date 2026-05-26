@@ -278,10 +278,11 @@
   - 测试: `test_graph_constraints.py`
 
   - PR: #13
-- [ ] **4.3.3** 实现图构建器 (`src/bipartite_gnn_gui/graph/builder.py`):
+- [x] **4.3.3** 实现图构建器 (`src/bipartite_gnn_gui/graph/builder.py`):
   HeteroGraphBuilder (含 build 方法和内部 _build_* 辅助方法)
   - 测试: `test_graph_builder.py`
 
+  - PR: #14
 - [ ] **4.3.4** 实现图可视化 (`src/bipartite_gnn_gui/graph/visualize.py`):
   plot_graph_on_screenshot, color_by_element_type, color_by_constraint_type, export_graph
   - 测试: `test_graph_visualize.py`
