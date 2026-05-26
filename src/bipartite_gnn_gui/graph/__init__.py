@@ -14,7 +14,7 @@ Submodules:
     augment     — Graph augmentation for robustness (node dropout, jitter, etc.).
 """
 
-from .schema import ElementNode, ConstraintNode, ConstraintType, EdgeType
+from .schema import EdgeFeatures, ElementNode, ConstraintNode, ConstraintType, EdgeType
 from .constraints import (
     extract_alignment_constraints,
     extract_containment_constraints,
@@ -27,6 +27,7 @@ from .visualize import plot_bipartite_graph
 from .augment import GraphAugmenter
 
 __all__ = [
+    "EdgeFeatures",
     "ElementNode",
     "ConstraintNode",
     "ConstraintType",
