@@ -7,7 +7,7 @@
 
 ---
 
-## Phase 1: 需求分析 (Requirements Analysis)
+## Phase 1: 需求分析 (Requirements Analysis) ✅
 
 **Goal:** Understand the problem domain, analyze data formats, define what success looks like.
 **Key artifacts:** `docs/requirements/` — data format specs, use case diagram, metrics definition.
@@ -19,22 +19,22 @@
 **Verify:** Document covers all fields from both Qwen3.5-2B and MiniMax-VL-01 output JSONs.
 **Depends on:** nothing.
 
-- [ ] **1.1.1** 收集 Qwen3.5-2B JSON 输出样例，分析字段结构和坐标格式
+- [x] **1.1.1** 收集 Qwen3.5-2B JSON 输出样例，分析字段结构和坐标格式
   - 记录: bbox 格式 (xyxy/xywh/cxcywh), 坐标系原点, 绝对/相对值
   - 产出: `vlm_format.md` 中 Qwen 格式说明
 
-- [ ] **1.1.2** 收集 MiniMax-VL-01 JSON 输出样例，分析字段结构和坐标格式
+- [x] **1.1.2** 收集 MiniMax-VL-01 JSON 输出样例，分析字段结构和坐标格式
   - 同上，记录差异
   - 产出: `vlm_format.md` 中 MiniMax 格式说明
 
-- [ ] **1.1.3** 定义 `VLMOutputElement` 和 `VLMOutput` 数据类结构（骨架，不编码）
+- [x] **1.1.3** 定义 `VLMOutputElement` 和 `VLMOutput` 数据类结构（骨架，不编码）
   - 确定必填字段 vs 可选字段、缺失值默认值策略
   - 确定坐标归一化需求（absolute→relative, 原点转换）
 
-- [ ] **1.1.4** 确定 `parse_qwen_output` / `parse_minimax_output` 接口和错误处理策略
+- [x] **1.1.4** 确定 `parse_qwen_output` / `parse_minimax_output` 接口和错误处理策略
   - 接口签名、返回值类型、异常情况
 
-- [ ] **1.1.5** 确定全局元素类型分类体系（共享于 VLM 和 GT 之间）
+- [x] **1.1.5** 确定全局元素类型分类体系（共享于 VLM 和 GT 之间）
   - 类型枚举: button, text, image, input, icon, container, list, etc.
 
 ### 1.2 Ground Truth 格式分析 (`docs/requirements/gt_format.md`)
@@ -42,30 +42,30 @@
 **Verify:** Document covers GUI-360° and ScreenSpot annotation structure.
 **Depends on:** nothing.
 
-- [ ] **1.2.1** 分析 GUI-360° JSON 标注格式，记录字段和结构
+- [x] **1.2.1** 分析 GUI-360° JSON 标注格式，记录字段和结构
   - 产出: `gt_format.md` 中 GUI-360° 说明
 
-- [ ] **1.2.2** 分析 ScreenSpot JSON 标注格式，记录字段和结构
+- [x] **1.2.2** 分析 ScreenSpot JSON 标注格式，记录字段和结构
   - 产出: `gt_format.md` 中 ScreenSpot 说明
 
-- [ ] **1.2.3** 定义 `GTElement` 和 `GroundTruth` 数据类结构（骨架，不编码）
+- [x] **1.2.3** 定义 `GTElement` 和 `GroundTruth` 数据类结构（骨架，不编码）
   - 确定跨数据集的统一表示
 
-- [ ] **1.2.4** 确定 VLM 预测 ↔ Ground Truth 匹配策略
+- [x] **1.2.4** 确定 VLM 预测 ↔ Ground Truth 匹配策略
   - IoU 代价矩阵 + 匈牙利算法，筛选阈值策略
 
-- [ ] **1.2.5** 确定评估中的 FP/FN 定义（unmatched VLM → FP, unmatched GT → FN）
+- [x] **1.2.5** 确定评估中的 FP/FN 定义（unmatched VLM → FP, unmatched GT → FN）
 
 ### 1.3 用例定义与核心功能规划 (`docs/requirements/use_case.md`)
 
 **Verify:** Use case diagram captures all primary and secondary flows.
 **Depends on:** 1.1, 1.2.
 
-- [ ] **1.3.1** 创建 Mermaid 用例图：VLM JSON → Graph → GNN → Corrected JSON
+- [x] **1.3.1** 创建 Mermaid 用例图：VLM JSON → Graph → GNN → Corrected JSON
   - 主流程：predict → parse → build graph → encode → refine → output
   - 支撑流程：train model, evaluate, visualize, configure
 
-- [ ] **1.3.2** 规划系统模块划分和模块间接口契约
+- [x] **1.3.2** 规划系统模块划分和模块间接口契约
   - data → graph → model → eval 的边界和交换数据类型
 
 ### 1.4 非功能性需求：评估指标体系 (`docs/requirements/metrics.md`)
@@ -73,16 +73,16 @@
 **Verify:** Each metric has a clear definition and expected behavior on edge cases.
 **Depends on:** nothing.
 
-- [ ] **1.4.1** 定义 `PositionError`: `‖(x̂,ŷ) − (x,y)‖₂` 平均欧氏距离
-- [ ] **1.4.2** 定义 `SizeError`: `‖(ŵ,ĥ) − (w,h)‖₂` 平均欧氏距离
-- [ ] **1.4.3** 定义 `AlignmentError`: 对齐组偏差度量
-- [ ] **1.4.4** 定义 `ElementRecall`: IoU > threshold 的 GT 元素占比
-- [ ] **1.4.5** 定义 `ElementPrecision`: 匹配到 GT 的预测元素占比
-- [ ] **1.4.6** 定义 `ALL_METRICS` 注册策略和统计显著性方法（bootstrap / Wilcoxon）
+- [x] **1.4.1** 定义 `PositionError`: `‖(x̂,ŷ) − (x,y)‖₂` 平均欧氏距离
+- [x] **1.4.2** 定义 `SizeError`: `‖(ŵ,ĥ) − (w,h)‖₂` 平均欧氏距离
+- [x] **1.4.3** 定义 `AlignmentError`: 对齐组偏差度量
+- [x] **1.4.4** 定义 `ElementRecall`: IoU > threshold 的 GT 元素占比
+- [x] **1.4.5** 定义 `ElementPrecision`: 匹配到 GT 的预测元素占比
+- [x] **1.4.6** 定义 `ALL_METRICS` 注册策略和统计显著性方法（bootstrap / Wilcoxon）
 
 ---
 
-## Phase 2: 概要设计 (High-Level Design)
+## Phase 2: 概要设计 (High-Level Design) ✅
 
 **Goal:** Define system architecture, data schema, and component interaction.
 **Key artifacts:** `docs/design/high_level.md` — architecture diagram, schema specs.
@@ -94,47 +94,47 @@
 **Verify:** Config schema covers all training/evaluation hyperparameters with defaults.
 **Depends on:** nothing.
 
-- [ ] **2.1.1** 设计 `DataConfig`: raw_dir, processed_dir, dataset_names, val_split, test_split
-- [ ] **2.1.2** 设计 `ModelConfig`: hidden_dim, n_layers, dropout, encoder_type, head_dims
-- [ ] **2.1.3** 设计 `TrainingConfig`: lr, epochs, batch_size, seed, weight_decay, warmup_steps, grad_clip, amp
-- [ ] **2.1.4** 设计 `Config` 复合结构、YAML 文件布局、校验策略（pydantic schema）
+- [x] **2.1.1** 设计 `DataConfig`: raw_dir, processed_dir, dataset_names, val_split, test_split
+- [x] **2.1.2** 设计 `ModelConfig`: hidden_dim, n_layers, dropout, encoder_type, head_dims
+- [x] **2.1.3** 设计 `TrainingConfig`: lr, epochs, batch_size, seed, weight_decay, warmup_steps, grad_clip, amp
+- [x] **2.1.4** 设计 `Config` 复合结构、YAML 文件布局、校验策略（pydantic schema）
 
 ### 2.2 日志与实验跟踪架构设计
 
 **Verify:** Logger architecture supports console file and optional external tracking.
 **Depends on:** nothing.
 
-- [ ] **2.2.1** 设计结构化日志格式和 `setup_logger` 接口
-- [ ] **2.2.2** 设计 `MetricsLogger` 抽象基类接口
-- [ ] **2.2.3** 设计 `WandbMetricsLogger` 和 `TensorboardMetricsLogger`（作为可选 extra）
-- [ ] **2.2.4** 设计 `NoopMetricsLogger` 降级策略和 optional import 处理
+- [x] **2.2.1** 设计结构化日志格式和 `setup_logger` 接口
+- [x] **2.2.2** 设计 `MetricsLogger` 抽象基类接口
+- [x] **2.2.3** 设计 `WandbMetricsLogger` 和 `TensorboardMetricsLogger`（作为可选 extra）
+- [x] **2.2.4** 设计 `NoopMetricsLogger` 降级策略和 optional import 处理
 
 ### 2.3 依赖管理策略 (`pyproject.toml`)
 
 **Verify:** Dependency groups are cleanly separated into core, dev, test, wandb, tensorboard.
 **Depends on:** nothing.
 
-- [ ] **2.3.1** 规划 `scipy` 声明（匈牙利匹配 + 统计检验）
-- [ ] **2.3.2** 规划 `pydantic` 声明（config 校验）
-- [ ] **2.3.3** 规划 `wandb` optional extra
-- [ ] **2.3.4** 规划 `tensorboard` optional extra
-- [ ] **2.3.5** 规划 `[dev]` 和 `[test]` extras 分组策略
+- [x] **2.3.1** 规划 `scipy` 声明（匈牙利匹配 + 统计检验）
+- [x] **2.3.2** 规划 `pydantic` 声明（config 校验）
+- [x] **2.3.3** 规划 `wandb` optional extra
+- [x] **2.3.4** 规划 `tensorboard` optional extra
+- [x] **2.3.5** 规划 `[dev]` 和 `[test]` extras 分组策略
 
 ### 2.4 图模式设计：HeteroData "表结构" (`docs/design/schema.md`)
 
 **Verify:** Schema covers all node/edge types, feature dimensions, and their PyG HeteroData keys.
 **Depends on:** 2.1.
 
-- [ ] **2.4.1** 设计 `ElementNode`: type one-hot, spatial features (cx, cy, w, h), confidence
+- [x] **2.4.1** 设计 `ElementNode`: type one-hot, spatial features (cx, cy, w, h), confidence
   - 确定特征维度: D_elem = num_types + 4 + 1
 
-- [ ] **2.4.2** 设计 `ConstraintType` 枚举: ALIGN_LEFT/RIGHT/TOP/BOTTOM, CENTER_X/Y, SAME_SIZE, SPACING, CONTAINMENT, GRID (10种)
+- [x] **2.4.2** 设计 `ConstraintType` 枚举: ALIGN_LEFT/RIGHT/TOP/BOTTOM, CENTER_X/Y, SAME_SIZE, SPACING, CONTAINMENT, GRID (10种)
   - 每种约束的语义和适用场景
 
-- [ ] **2.4.3** 设计 `ConstraintNode`: type one-hot + params
+- [x] **2.4.3** 设计 `ConstraintNode`: type one-hot + params
   - 确定特征维度: D_con = 10 + param_dim
 
-- [ ] **2.4.4** 设计 `EdgeFeatures`: spatial_distance, relative_position (dx, dy), IoU
+- [x] **2.4.4** 设计 `EdgeFeatures`: spatial_distance, relative_position (dx, dy), IoU
   - 确定特征维度: D_edge = 4
 
 ### 2.5 约束提取策略设计（系统功能规划）
@@ -142,16 +142,16 @@
 **Verify:** Strategy document specifies training-time and inference-time extraction flows.
 **Depends on:** 2.4.
 
-- [ ] **2.5.1** 设计 Alignment 约束提取算法（共享边缘检测、tolerance 参数）
-- [ ] **2.5.2** 设计 Containment 约束提取算法（bbox 包含关系检测）
-- [ ] **2.5.3** 设计 Spacing 约束提取算法（相邻元素间隙一致性检测）
-- [ ] **2.5.4** 设计 Grid 约束提取算法（行/列排列检测）
-- [ ] **2.5.5** 设计训练模式 (GT-based) vs 推理模式 (Heuristic) 的约束提取策略差异
-- [ ] **2.5.6** 设计约束特征到 `HeteroData` 的映射方案
+- [x] **2.5.1** 设计 Alignment 约束提取算法（共享边缘检测、tolerance 参数）
+- [x] **2.5.2** 设计 Containment 约束提取算法（bbox 包含关系检测）
+- [x] **2.5.3** 设计 Spacing 约束提取算法（相邻元素间隙一致性检测）
+- [x] **2.5.4** 设计 Grid 约束提取算法（行/列排列检测）
+- [x] **2.5.5** 设计训练模式 (GT-based) vs 推理模式 (Heuristic) 的约束提取策略差异
+- [x] **2.5.6** 设计约束特征到 `HeteroData` 的映射方案
 
 ---
 
-## Phase 3: 详细设计 (Detailed Design)
+## Phase 3: 详细设计 (Detailed Design) ✅
 
 **Goal:** Define class hierarchies, interfaces, algorithms, and deployment plan.
 **Key artifacts:** `docs/design/detailed.md` — class diagrams, algorithm pseudocode, deployment spec.
@@ -163,95 +163,102 @@
 **Verify:** All interfaces and data flows between classes are specified.
 **Depends on:** 2.1, 2.2.
 
-- [ ] **3.1.1** 设计 `CoordinateNormalizer` 类接口: fit/transform 方法签名
-- [ ] **3.1.2** 设计 `FeatureExtractor` 函数接口: spatial_features, type_embedding, confidence 签名
-- [ ] **3.1.3** 设计 `GUIDataset`: `__init__`, `__len__`, `__getitem__`, yield 的 dict 键
-- [ ] **3.1.4** 设计 `collate_variable_elements` 和 `create_dataloader` 接口
+- [x] **3.1.1** 设计 `CoordinateNormalizer` 类接口: fit/transform 方法签名
+- [x] **3.1.2** 设计 `FeatureExtractor` 函数接口: spatial_features, type_embedding, confidence 签名
+- [x] **3.1.3** 设计 `GUIDataset`: `__init__`, `__len__`, `__getitem__`, yield 的 dict 键
+- [x] **3.1.4** 设计 `collate_variable_elements` 和 `create_dataloader` 接口
 
 ### 3.2 图构建层类设计
 
 **Verify:** Builder class interface covers all HeteroData construction steps.
 **Depends on:** 2.4, 2.5.
 
-- [ ] **3.2.1** 设计 `HeteroGraphBuilder`: `__init__`, `_build_element_nodes`, `_build_constraint_nodes`, `build(elements, constraints) -> HeteroData`
-- [ ] **3.2.2** 设计可视化函数接口: `plot_graph_on_screenshot`, `color_by_*`, `export_graph`
-- [ ] **3.2.3** 设计增强变换接口: `NodeDropout`, `CoordinateJitter`, `ConstraintPerturbation`, `GraphAugmentationPipeline`
-- [ ] **3.2.4** 设计 `HeteroData` 完整键结构文档
+- [x] **3.2.1** 设计 `HeteroGraphBuilder`: `__init__`, `_build_element_nodes`, `_build_constraint_nodes`, `build(elements, constraints) -> HeteroData`
+- [x] **3.2.2** 设计可视化函数接口: `plot_graph_on_screenshot`, `color_by_*`, `export_graph`
+- [x] **3.2.3** 设计增强变换接口: `NodeDropout`, `CoordinateJitter`, `ConstraintPerturbation`, `GraphAugmentationPipeline`
+- [x] **3.2.4** 设计 `HeteroData` 完整键结构文档
 
 ### 3.3 模型层类设计
 
 **Verify:** Model forward pass tensor shapes are specified end-to-end.
 **Depends on:** 3.1, 3.2.
 
-- [ ] **3.3.1** 设计 `HeteroGraphSAGE` 类: `__init__`, `_build_convs`, `forward`, `reset_parameters`
+- [x] **3.3.1** 设计 `HeteroGraphSAGE` 类: `__init__`, `_build_convs`, `forward`, `reset_parameters`
   - 信息流: element → constraint → element
   - 输出形状: `{"element": (N_elem, out_dim), "constraint": (N_con, out_dim)}`
 
-- [ ] **3.3.2** 设计三个预测 Head 接口:
+- [x] **3.3.2** 设计三个预测 Head 接口:
   - `CoordinateRefinementHead`: MLP → (Δcx, Δcy, Δw, Δh)
   - `ViolationPredictionHead`: MLP → violation_score (sigmoid)
   - `ExistencePredictionHead`: MLP → existence_prob (sigmoid)
 
-- [ ] **3.3.3** 设计 `BipartiteGNNCorrector`: encoder + 3 heads 组装、forward 输出元组
-- [ ] **3.3.4** 设计 `CombinedLoss`: ℒ = w_c·ℒ_coord + w_v·ℒ_vio + w_a·ℒ_align + w_e·ℒ_exist
+- [x] **3.3.3** 设计 `BipartiteGNNCorrector`: encoder + 3 heads 组装、forward 输出元组
+- [x] **3.3.4** 设计 `CombinedLoss`: ℒ = w_c·ℒ_coord + w_v·ℒ_vio + w_a·ℒ_align + w_e·ℒ_exist
 
 ### 3.4 训练与推理规划 (`docs/design/deployment.md`)
 
 **Verify:** Training and inference lifecycle is fully specified.
 **Depends on:** 3.3.
 
-- [ ] **3.4.1** 设计 `Trainer` 生命周期: __init__ → fit → train_epoch ↔ validate → checkpoint
-- [ ] **3.4.2** 设计优化器/调度策略: AdamW + cosine annealing with warmup
-- [ ] **3.4.3** 设计早停和 checkpoint 格式
-- [ ] **3.4.4** 设计 `InferencePipeline`: vlm_json → HeteroData → model → apply delta → corrected JSON
+- [x] **3.4.1** 设计 `Trainer` 生命周期: __init__ → fit → train_epoch ↔ validate → checkpoint
+- [x] **3.4.2** 设计优化器/调度策略: AdamW + cosine annealing with warmup
+- [x] **3.4.3** 设计早停和 checkpoint 格式
+- [x] **3.4.4** 设计 `InferencePipeline`: vlm_json → HeteroData → model → apply delta → corrected JSON
   - 设备策略、AMP、batch 推理
 
 ### 3.5 评估层设计
 
 **Verify:** Evaluator interface covers all defined metrics with per-category breakdown.
-**Depends on:** 1.4, 3.3.
+**Depends on:** 3.3.
 
-- [ ] **3.5.1** 设计 `Evaluator`: metrics 注册、evaluate、per_category_breakdown
-- [ ] **3.5.2** 设计基线接口: VLMOutputBaseline, RuleBasedCorrection, MLPOnlyBaseline
-- [ ] **3.5.3** 设计定性分析函数接口: side_by_side, case_study, attention_pattern, failure_analysis
-- [ ] **3.5.4** 设计报告生成函数接口: latex_table, comparison_fig, export_json/csv, summary_report
+- [x] **3.5.1** 设计 `Evaluator`: metrics 注册、evaluate、per_category_breakdown
+- [x] **3.5.2** 设计基线接口: VLMOutputBaseline, RuleBasedCorrection, MLPOnlyBaseline
+- [x] **3.5.3** 设计定性分析函数接口: side_by_side, case_study, attention_pattern, failure_analysis
+- [x] **3.5.4** 设计报告生成函数接口: latex_table, comparison_fig, export_json/csv, summary_report
 
 ---
 
-## Phase 4: 开发 (Development)
+## Phase 4: 开发 (Development) 🔄
 
 **Goal:** Implement all modules following the designs from Phases 1–3.
 **Each subtask = write code + unit tests + verify passes.**
 
 ---
 
-### 4.1 基础设施模块
+### 4.1 基础设施模块 ✅
 
-- [ ] **4.1.1** 实现 BBox 工具 (`src/bipartite_gnn_gui/utils/bbox.py`): `compute_iou`, `bbox_transform`, `apply_delta`
+- [x] **4.1.1** 实现 BBox 工具 (`src/bipartite_gnn_gui/utils/bbox.py`): `compute_iou`, `bbox_transform`, `apply_delta`
+  - PR: #2
   - 测试: `test_utils_bbox.py`
 
-- [ ] **4.1.2** 实现配置系统 (`src/bipartite_gnn_gui/utils/config.py`): DataConfig, ModelConfig, TrainingConfig, Config, load_config, save_config
+- [x] **4.1.2** 实现配置系统 (`src/bipartite_gnn_gui/utils/config.py`): DataConfig, ModelConfig, TrainingConfig, Config, load_config, save_config
   - 创建 `configs/default.yaml`
+  - PR: #5
   - 测试: `test_utils_config.py`
 
-- [ ] **4.1.3** 实现日志系统 (`src/bipartite_gnn_gui/utils/logging.py`): setup_logger, MetricsLogger, NoopMetricsLogger, WandbMetricsLogger, TensorboardMetricsLogger
+- [x] **4.1.3** 实现日志系统 (`src/bipartite_gnn_gui/utils/logging.py`): setup_logger, MetricsLogger, NoopMetricsLogger, WandbMetricsLogger, TensorboardMetricsLogger
+  - PR: #6
   - 测试: `test_utils_logging.py`
 
-- [ ] **4.1.4** 实现依赖声明: 更新 `pyproject.toml`（scipy, pydantic 核心依赖; wandb, tensorboard optional extras）
+- [x] **4.1.4** 实现依赖声明: 更新 `pyproject.toml`（scipy, pydantic 核心依赖; wandb, tensorboard optional extras）
+  - PR: #7
   - 测试: `test_setup.py`
 
-### 4.2 数据层
+### 4.2 数据层 🔄
 
-- [ ] **4.2.1** 实现 VLM 输出解析 (`src/bipartite_gnn_gui/data/vlm_output.py`):
+- [x] **4.2.1** 实现 VLM 输出解析 (`src/bipartite_gnn_gui/data/vlm_output.py`):
   VLMOutputElement, VLMOutput, parse_qwen_output, parse_minimax_output, normalize_coordinates
+  - PR: #8
   - 测试: `test_data_vlm.py`
 
-- [ ] **4.2.2** 实现 Ground Truth 加载 (`src/bipartite_gnn_gui/data/ground_truth.py`):
+- [x] **4.2.2** 实现 Ground Truth 加载 (`src/bipartite_gnn_gui/data/ground_truth.py`):
   GTElement, GroundTruth, load_gui360_annotation, load_screenspot_annotation, match_predictions_to_ground_truth
+  - PR: #9
   - 测试: `test_data_ground_truth.py`
 
-- [ ] **4.2.3** 实现数据预处理 (`src/bipartite_gnn_gui/data/preprocess.py`):
+- [x] **4.2.3** 实现数据预处理 (`src/bipartite_gnn_gui/data/preprocess.py`):
   CoordinateNormalizer, extract_spatial_features, extract_type_embedding, extract_confidence_scores, train_val_test_split
+  - PR: #10
   - 测试: `test_data_preprocess.py`
 
 - [ ] **4.2.4** 实现数据集 (`src/bipartite_gnn_gui/data/dataset.py`):
