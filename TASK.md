@@ -268,8 +268,9 @@
 
 ### 4.3 图构建层
 
-- [ ] **4.3.1** 实现图模式 (`src/bipartite_gnn_gui/graph/schema.py`):
+- [x] **4.3.1** 实现图模式 (`src/bipartite_gnn_gui/graph/schema.py`):
   ElementNode, ConstraintType, ConstraintNode, EdgeFeatures (含 to_tensor 方法)
+  - PR: #12
   - 测试: `test_graph_schema.py`
 
 - [ ] **4.3.2** 实现约束提取 (`src/bipartite_gnn_gui/graph/constraints.py`):
