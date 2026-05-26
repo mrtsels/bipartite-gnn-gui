@@ -288,8 +288,9 @@
   - 测试: `test_graph_visualize.py`
 
   - PR: #15
-- [ ] **4.3.5** 实现图增强 (`src/bipartite_gnn_gui/graph/augment.py`):
+- [x] **4.3.5** 实现图增强 (`src/bipartite_gnn_gui/graph/augment.py`):
   NodeDropout, CoordinateJitter, ConstraintPerturbation, GraphAugmentationPipeline
+  - PR: #16
   - 测试: `test_graph_augment.py`
 
 ### 4.4 模型层
