@@ -273,10 +273,11 @@
   - PR: #12
   - 测试: `test_graph_schema.py`
 
-- [ ] **4.3.2** 实现约束提取 (`src/bipartite_gnn_gui/graph/constraints.py`):
+- [x] **4.3.2** 实现约束提取 (`src/bipartite_gnn_gui/graph/constraints.py`):
   extract_alignment/containment/spacing/grid_constraints, extract_constraints_ground_truth, propose_constraints_heuristic
   - 测试: `test_graph_constraints.py`
 
+  - PR: #13
 - [ ] **4.3.3** 实现图构建器 (`src/bipartite_gnn_gui/graph/builder.py`):
   HeteroGraphBuilder (含 build 方法和内部 _build_* 辅助方法)
   - 测试: `test_graph_builder.py`
