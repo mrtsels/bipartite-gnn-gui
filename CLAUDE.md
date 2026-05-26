@@ -62,17 +62,19 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-### 5. Ship Incrementally
+### 5. Ship Incrementally: Commit After Every Change
 
-**Each completed step gets its own PR.**
+**One change = one commit. Commit, push, sync immediately.**
 
-After finishing any logically complete unit of work (a new module, a bug fix, a feature, a phase):
-1. Create a branch: `git checkout -b <feature-branch>`
-2. Commit your changes with a proper commit message (per the Commit Message Style section)
-3. Push the branch
-4. Open a PR on GitHub
+After every single change (editing a file, adding a test, fixing a bug, etc.):
+1. `git add` the changed files
+2. `git commit -m "<area>: <description>"`
+3. `git push origin main`
 
-Do not accumulate multiple units of work in a single branch. Each PR should be small, focused, and independently reviewable.
+Rules:
+- Never batch multiple changes into one commit.
+- Push to `main` directly (no feature branches for single-change commits).
+- If the user asks you to open a PR, use a branch. Otherwise, push to main.
 
 ---
 
