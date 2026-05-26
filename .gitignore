@@ -30,6 +30,8 @@ ENV/
 
 # Data
 data/raw/
+data/raw
+data/raw_local/
 data/processed/
 data/external/
 *.csv
@@ -65,3 +67,6 @@ coverage/
 htmlcov/
 .coverage
 *.log
+
+# Personal scripts
+download_datasets.py
