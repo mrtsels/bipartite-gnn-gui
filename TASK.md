@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **~110 subtasks across 8 phases.**
+> **~140 subtasks across 10 phases.**
 
 ---
 
@@ -433,6 +433,197 @@
 
 ---
 
+## Phase 9: Web Demo (Web 演示)
+
+**Goal:** Single-page web application where users upload a screenshot, run VLM + GNN correction, and visualize results side-by-side with bbox overlay.
+
+**Key artifacts:** `web/backend/server.py` (FastAPI), `web/frontend/index.html` (vanilla JS SPA).
+
+**Dependencies:** Phase 7 (trained model checkpoint), Phase 4.4.6 (InferencePipeline).
+
+---
+
+### 9.1 后端 API (`web/backend/`)
+
+**Verify:** `curl -F "image=@screenshot.png" http://localhost:8000/api/correct` returns valid JSON with `raw` and `corrected` keys.
+**Depends on:** 4.4.6 (InferencePipeline).
+
+- [ ] **9.1.1** 创建 FastAPI 应用骨架: app 实例、CORS 中间件、`GET /api/health`
+  - 文件: `web/backend/server.py`
+  - 测试: `curl localhost:8000/api/health` → `{"status": "ok"}`
+
+- [ ] **9.1.2** 实现 `POST /api/correct`: 接收 multipart image → VLM 推理 → GNN 修正 → JSON 响应
+  - 响应格式: `{"raw": VLMOutput.to_dict(), "corrected": [...], "image_size": [w, h]}`
+  - 错误处理: VLM 加载失败返回 503, 图片格式错误返回 400
+  - 测试: `test_web_api.py`
+
+- [ ] **9.1.3** 实现 VLM 推理适配器 (`web/backend/vlm_adapter.py`): 加载 Qwen3.5-2B (transformers), 截图→元素 JSON
+  - 支持 `--vlm-device` (cuda/cpu) 和 `--vlm-model` (model name or path) 启动参数
+  - 支持 mock 模式 (`MOCK_VLM=true` 环境变量): 返回合成元素列表，无需 GPU
+  - 启动时 warm-load 模型，避免首次请求冷启动
+  - 测试: `test_web_vlm_adapter.py`
+
+- [ ] **9.1.4** 实现 GNN 修正集成: 调用 `InferencePipeline` (4.4.6), VLM JSON → `HeteroData` → model → corrected
+  - 加载训练好的 checkpoint，可选 checkpoint 路径参数
+  - 若无 checkpoint，回退到 stub 推理 (坐标原样返回)
+  - 测试: `test_web_inference.py`
+
+- [ ] **9.1.5** 添加 CLI 启动参数: `--port`, `--vlm-device`, `--vlm-model`, `--checkpoint`, `--mock`
+  - argparse 集成，所有参数有合理默认值
+
+- [ ] **9.1.6** 创建启动脚本 `web/start_server.sh`
+  - 自动检测 conda env, CUDA 可用性
+  - 前台启动 uvicorn
+
+### 9.2 前端页面 (`web/frontend/`)
+
+**Verify:** 在浏览器中打开 `index.html`，可以上传图片、看到 bbox overlay、看到左右对比 JSON。
+**Depends on:** 9.1.2 (API endpoint).
+
+- [ ] **9.2.1** 创建 `index.html` 单文件: 上传区 (左) + 图片预览区 (中) + JSON 对比区 (右) 三栏 flexbox 布局
+  - 响应式: 窄屏自动切换为上下堆叠
+  - 文件: `web/frontend/index.html`
+
+- [ ] **9.2.2** 实现图片拖拽上传和文件选择器: 支持 drag-and-drop 和 click-to-browse
+  - 上传后自动调用 `POST /api/correct`
+  - 显示上传进度
+
+- [ ] **9.2.3** 实现图片预览 + Canvas bbox overlay: 在 `<canvas>` 上绘制图片，叠加 corrected bbox 矩形
+  - 支持 bbox 标签文字显示（元素类型）
+  - 颜色按元素类型区分
+
+- [ ] **9.2.4** 实现 before/after bbox 切换: 单选框或 toggle 在 raw VLM bbox 和 GNN corrected bbox 之间切换
+  - 默认显示 corrected（GNN 修正后）
+
+- [ ] **9.2.5** 实现 raw vs corrected JSON 并排展示: 左侧 raw VLM JSON, 右侧 corrected JSON
+  - 使用 `<pre>` + 简单语法高亮（键名/值/字符串分色）
+  - 差异元素高亮标记（bbox 发生变化的元素）
+
+- [ ] **9.2.6** 实现下载 corrected JSON 按钮: 触发浏览器下载 `corrected.json`
+  - 文件名: `corrected_{timestamp}.json`
+
+- [ ] **9.2.7** 实现加载状态和错误提示: spinning indicator, 错误 toast 通知
+  - 超时处理 (30s VLM 推理超时)
+
+### 9.3 测试与文档
+
+**Verify:** 全流程 e2e 测试通过，README 可指导新手启动。
+**Depends on:** 9.1, 9.2.
+
+- [ ] **9.3.1** 端到端集成测试: 使用 mock VLM 模式，上传样例截图 → 验证返回 JSON 结构正确
+  - 测试: `test_web_e2e.py` (使用 FastAPI TestClient + httpx)
+  - 验证: 响应码 200, `raw` 和 `corrected` 键存在, bbox 坐标在 [0,1] 范围内
+
+- [ ] **9.3.2** 前端冒烟测试: 验证 index.html 加载无 JS 错误，上传 mock 图片流程走通
+  - 使用 Playwright 或手动验证
+
+- [ ] **9.3.3** 创建 `web/README.md`: 启动步骤、API 文档、配置说明、mock 模式说明
+  - 包含: 安装依赖 → 下载模型 → 启动服务 → 打开浏览器 完整流程
+
+### 9.4 部署
+
+**Verify:** `docker build && docker run` 可正常启动，`/api/health` 返回 200。
+**Depends on:** 9.1, 9.2.
+
+- [ ] **9.4.1** 创建 `web/Dockerfile`: 基于 `pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime`
+  - 安装项目依赖 + transformers + fastapi + uvicorn
+  - 预下载或挂载 VLM 模型
+  - COPY 项目源码和 web/ 目录
+
+- [ ] **9.4.2** 创建 `web/docker-compose.yml`: 简化本地启动
+  - 挂载模型 checkpoint 和 VLM 模型目录为 volumes
+
+---
+
+## Phase 10: HTML/CSS 代码生成 (Code Generation)
+
+**Goal:** Convert corrected element JSON into a standalone HTML file with absolute-positioned elements, enabling direct UI reconstruction from VLM output.
+
+**Key artifacts:** `web/codegen/html_generator.py` (JSON → HTML/CSS).
+
+**Dependencies:** Phase 4.4.6 (InferencePipeline), Phase 9.1 (API server).
+
+---
+
+### 10.1 代码生成核心 (`web/codegen/`)
+
+**Verify:** 输入 corrected elements 数组，输出合法 HTML 文件，浏览器打开可渲染。
+**Depends on:** nothing (pure function, no model dependency).
+
+- [ ] **10.1.1** 创建 `web/codegen/html_generator.py`: 主函数 `generate_html(elements, image_size) -> str`
+  - 输入: corrected element list (每个元素含 bbox, label, text, confidence)
+  - 输出: 完整 HTML 文档字符串
+  - 测试: `test_codegen_html.py`
+
+- [ ] **10.1.2** 实现 bbox → absolute CSS 转换:
+  - Normalized [0,1] → absolute px (基于 image_size)
+  - `box-sizing: border-box` 以匹配 bbox 语义
+  - z-index 按 bbox 面积从小到大 (大容器在底层，小元素在上层)
+  - 测试: 验证生成坐标 = bbox × image_size
+
+- [ ] **10.1.3** 实现 element label → HTML tag 映射表:
+  | label | HTML tag | 说明 |
+  |-------|----------|------|
+  | button | `<button>` | 按钮 |
+  | text / label | `<span>` | 文本标签 |
+  | image / img / icon | `<img>` | 图片/图标 (src 为占位符) |
+  | input / textbox / textarea | `<input>` 或 `<textarea>` | 输入框 |
+  | container / div / card / section | `<div>` | 容器 |
+  | list | `<ul>` + `<li>` | 列表 |
+  | unknown | `<div>` | 未知类型回退 |
+
+- [ ] **10.1.4** 处理 text content 嵌入: 若 element 有 `text` 字段非空，嵌入为标签内文本
+  - `<button>` → innerText
+  - `<span>` / `<div>` → innerText/HTML
+  - `<input>` → placeholder 属性
+
+- [ ] **10.1.5** 生成完整 HTML 文档: `<!DOCTYPE html>` → `<head>` (meta charset, viewport, title) → `<body>` (container div + 所有元素)
+  - container div: `position: relative; width: {w}px; height: {h}px;`
+  - 自动缩放: 若 image_size > viewport, container 设置 `transform: scale()` 适配
+
+### 10.2 API 端点
+
+**Verify:** `POST /api/generate-html` 返回合法 HTML, `?download=true` 触发下载。
+**Depends on:** 10.1, 9.1.1.
+
+- [ ] **10.2.1** 创建 `POST /api/generate-html`: 接收 corrected JSON → 调用 html_generator → 返回 HTML 字符串
+  - 请求体: `{"elements": [...], "image_size": [w, h]}`
+  - 响应: `{"html": "<!DOCTYPE html>...", "element_count": N}`
+
+- [ ] **10.2.2** 添加 `?download=true` query param: 触发 `Content-Disposition: attachment; filename="generated.html"` 浏览器下载
+
+### 10.3 前端集成
+
+**Verify:** 点击 "生成 HTML/CSS" 按钮后，代码预览区出现 HTML 代码，可下载。
+**Depends on:** 10.2.1, 9.2.
+
+- [ ] **10.3.1** 添加 "生成 HTML/CSS" 按钮到前端: 在 corrected JSON 展示区旁边
+  - 仅在 corrected JSON 可用时激活（灰显等待）
+
+- [ ] **10.3.2** 添加代码预览区: `<pre><code class="language-html">` 显示生成的 HTML
+  - 基本语法高亮（标签/属性/值分色）
+
+- [ ] **10.3.3** 添加下载 `.html` 文件按钮: 下载生成的完整 HTML 文件
+  - 文件名: `generated_{timestamp}.html`
+
+- [ ] **10.3.4** 添加复制到剪贴板按钮: 一键复制全部 HTML 代码
+  - 使用 `navigator.clipboard.writeText()`
+
+### 10.4 测试
+
+**Verify:** 单元测试覆盖所有 element labels 和边缘情况。
+**Depends on:** 10.1.
+
+- [ ] **10.4.1** 单元测试 `test_codegen_html.py`:
+  - 空元素列表 → 空 container div
+  - 单元素各类型 (button, text, image, input, div)
+  - 含 text content 的元素
+  - 多元素 z-index 排序验证
+  - 输出为合法 HTML (可被 BeautifulSoup 解析)
+  - 边界情况: 0 尺寸元素, confidence=0 元素 (应有半透明样式)
+
+---
+
 ## 方法论对照
 
 | 方法论阶段 | TASK 对应 | 产出 |
@@ -445,6 +636,8 @@
 | 性能测试 | Phase 6 | 基准测试数据 |
 | 实施 | Phase 7 | `experiments/` (实验脚本与结果) |
 | 方案 | Phase 8 | README、文档、使用示例 |
+| Web 演示 | Phase 9 | `web/` (FastAPI + 前端 HTML) |
+| 代码生成 | Phase 10 | `web/codegen/` (JSON → HTML/CSS) |
 
 ---
 
@@ -455,6 +648,8 @@
 3. **Phase 5-6 可在 Phase 4 中间穿插**: 当一个模块开发完毕，可以立即运行集成测试，不需要等全部模块完成
 4. **Phase 7 依赖 Phase 4-6 全部完成**: 实验使用完整的系统运行真实数据
 5. **每个 checkbox 一个 PR**: 完成 → 推分支 → 提 PR → 合并 (遵循 CLAUDE.md Ship Incrementally)
+6. **Phase 9 依赖 Phase 4.4.6 (InferencePipeline) + trained checkpoint**: Web Demo 需要完整的推理管线 + 训练好的模型; mock 模式下可提前并行开发前端
+7. **Phase 10 可独立开发**: `html_generator.py` 是纯函数，接收 JSON 输出 HTML，不依赖任何 ML 组件; 前端集成需 Phase 9.2 基础设施
 
 ## Stretch Goals
 
@@ -464,5 +659,4 @@
 | **S2** | Cross-attention between VLM features and graph features |
 | **S3** | Multi-scale graph: hierarchical container → child → leaf element |
 | **S4** | Synthetic GUI layout generator for data augmentation |
-| **S5** | Real-time web demo of VLM → correction pipeline |
-| **S6** | ONNX / TorchScript export for deployment |
+| **S5** | ONNX / TorchScript export for deployment |
