@@ -144,6 +144,7 @@ class Trainer:
 
         for epoch in range(1, self.config.epochs + 1):
             train_loss = self._train_epoch(train_loader, epoch)
+            self.last_train_loss = train_loss
             self.metrics_logger.log_metrics({"train_loss": train_loss}, step=epoch)
             logger.info(
                 "Epoch %d/%d — train_loss: %.6f", epoch, self.config.epochs, train_loss

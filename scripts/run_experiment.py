@@ -608,21 +608,17 @@ def setup_logging(level: str) -> None:
     )
 
 
-def main() -> bool:
-    parser = create_parser()
-    args = parser.parse_args()
+def run_experiment(cfg: ExperimentConfig) -> dict:
+    """Run a full experiment with the given configuration and return results.
 
-    # Load config
-    if args.config:
-        cfg = ExperimentConfig.from_yaml(args.config)
-        logger.info("Loaded config from %s", args.config)
-    else:
-        cfg = ExperimentConfig()
-    cfg.update_from_args(args)
+    Args:
+        cfg: Fully populated ExperimentConfig instance.
 
-    # Apply log level
-    setup_logging(cfg.log_level)
-
+    Returns:
+        Dict with keys: best_val_loss, final_train_loss, recall, precision,
+        f1, position_error, size_error, noop_recall, noop_precision,
+        noop_f1, noop_position_error.
+    """
     # Set seeds
     torch.manual_seed(cfg.seed)
 
@@ -638,7 +634,7 @@ def main() -> bool:
     rico_dir = Path(cfg.rico_dir)
     if not rico_dir.is_dir():
         logger.error("RICO data directory not found: %s", rico_dir)
-        return False
+        return {"error": f"RICO data directory not found: {rico_dir}"}
 
     all_jsons = sorted(rico_dir.glob("*.json"))
     n_use = cfg.n_samples if cfg.n_samples > 0 else len(all_jsons)
@@ -688,7 +684,7 @@ def main() -> bool:
 
     if len(all_graphs) < 2:
         logger.error("Need at least 2 valid graphs, got %d", len(all_graphs))
-        return False
+        return {"error": f"Need at least 2 valid graphs, got {len(all_graphs)}"}
 
     # Show stats
     n_elems = [g[0]["element"].x.shape[0] for g in all_graphs]
@@ -765,6 +761,7 @@ def main() -> bool:
         val_loader=val_loader,
     )
 
+    final_train_loss = getattr(trainer, 'last_train_loss', float('nan'))
     logger.info("Training complete. Best val loss: %.6f", best_val_loss)
 
     # ── 6. Final evaluation ──
@@ -829,6 +826,40 @@ def main() -> bool:
                 len(all_graphs), cfg.epochs, n_params)
     print("=" * 55)
 
+    return {
+        "best_val_loss": best_val_loss,
+        "final_train_loss": final_train_loss,
+        "recall": model_metrics.recall,
+        "precision": model_metrics.precision,
+        "f1": model_metrics.f1,
+        "position_error": model_metrics.position_error,
+        "size_error": model_metrics.size_error,
+        "noop_recall": noop_metrics.recall,
+        "noop_precision": noop_metrics.precision,
+        "noop_f1": noop_metrics.f1,
+        "noop_position_error": noop_metrics.position_error,
+    }
+
+
+def main() -> bool:
+    parser = create_parser()
+    args = parser.parse_args()
+
+    # Load config
+    if args.config:
+        cfg = ExperimentConfig.from_yaml(args.config)
+        logger.info("Loaded config from %s", args.config)
+    else:
+        cfg = ExperimentConfig()
+    cfg.update_from_args(args)
+
+    # Apply log level
+    setup_logging(cfg.log_level)
+
+    results = run_experiment(cfg)
+    if "error" in results:
+        logger.error(results["error"])
+        return False
     return True
 
 
