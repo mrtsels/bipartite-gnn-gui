@@ -141,6 +141,18 @@ bipartite-gnn-gui/
 ├── pyproject.toml
 ├── .gitignore
 ├── requirements.txt
+├── scripts/
+│   ├── run_experiment.py       # Standardized training pipeline
+│   ├── sweep.py                # Hyperparameter sweep
+│   └── generate_vlm_predictions.py  # Qwen3-VL API inference
+├── experiments/
+│   └── results.json            # Sweep results
+├── configs/
+│   └── experiment.yaml         # Experiment config template
+├── docs/
+│   └── requirements/
+│       ├── gt_format.md        # Ground truth data format spec
+│       └── vlm_inference.md    # VLM prediction generation
 ├── src/
 │   └── bipartite_gnn_gui/
 │       ├── __init__.py

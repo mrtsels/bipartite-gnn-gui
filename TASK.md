@@ -372,6 +372,12 @@
   - PR: #25
   - experiments/results.json, experiments/sweep.py
 
+- [x] **4.6.3** VLM 推理管线搭建
+  - `scripts/generate_vlm_predictions.py`: Qwen3-VL API 调用框架
+  - `docs/requirements/vlm_inference.md`: 使用文档 / API setup / cost estimate
+  - 支持多线程并发、重试、断点续跑、dry-run
+  - 等待 DASHSCOPE_API_KEY 后即可开始生成真实 VLM 预测
+
 ---
 
 ## Phase 5: 集成测试 (Integration Testing)
