@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover - optional dependency fallback
     CosineAnnealingLR = None  # type: ignore[assignment]
     LambdaLR = None  # type: ignore[assignment]
 
+from bipartite_gnn_gui.utils.bbox import xyxy_to_xywh
 from bipartite_gnn_gui.utils.config import TrainingConfig
 from bipartite_gnn_gui.utils.logging import MetricsLogger, NoopMetricsLogger
 
@@ -203,12 +204,29 @@ class Trainer:
             warmup_factor = _linear_warmup(
                 self._current_step, self._warmup_steps, self.config.lr
             )
-            for param_group in self.optimizer.param_groups:
-                param_group["lr"] = param_group["lr"] * warmup_factor if self._current_step <= self._warmup_steps else param_group["lr"]
+            if self._current_step <= self._warmup_steps:
+                for param_group in self.optimizer.param_groups:
+                    param_group["lr"] = self.config.lr * warmup_factor
+
+            # Extract alignment loss inputs from HeteroData.
+            original_bboxes = None
+            edge_index = None
+            try:
+                original_bboxes = xyxy_to_xywh(data["element"].x[:, :4])
+            except Exception:
+                pass
+            try:
+                edge_index = data["element", "to", "constraint"].edge_index
+            except Exception:
+                pass
 
             with torch.cuda.amp.autocast(enabled=self.config.amp):  # type: ignore[attr-defined]
                 predictions = self.model(data)
-                loss = self.model.compute_loss(predictions, targets)
+                loss = self.model.compute_loss(
+                    predictions, targets,
+                    original_bboxes=original_bboxes,
+                    edge_index=edge_index,
+                )
 
             self.optimizer.zero_grad()
             self._scaler.scale(loss).backward()
@@ -243,9 +261,25 @@ class Trainer:
                 data = self._to_device(data)
                 targets = self._to_device(targets)
 
+                # Extract alignment loss inputs from HeteroData.
+                original_bboxes = None
+                edge_index = None
+                try:
+                    original_bboxes = xyxy_to_xywh(data["element"].x[:, :4])
+                except Exception:
+                    pass
+                try:
+                    edge_index = data["element", "to", "constraint"].edge_index
+                except Exception:
+                    pass
+
                 with torch.cuda.amp.autocast(enabled=self.config.amp):  # type: ignore[attr-defined]
                     predictions = self.model(data)
-                    loss = self.model.compute_loss(predictions, targets)
+                    loss = self.model.compute_loss(
+                        predictions, targets,
+                        original_bboxes=original_bboxes,
+                        edge_index=edge_index,
+                    )
 
                 total_loss += loss.detach()
                 num_batches += 1
@@ -261,6 +295,9 @@ class Trainer:
             return {k: self._to_device(v) for k, v in obj.items()}
         if isinstance(obj, (list, tuple)):
             return type(obj)(self._to_device(v) for v in obj)
+        # Handle PyG HeteroData/Data objects (have a .to() method).
+        if hasattr(obj, "to"):
+            return obj.to(self.device)
         return obj
 
     def _save_checkpoint(

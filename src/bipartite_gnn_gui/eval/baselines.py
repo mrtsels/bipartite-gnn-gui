@@ -258,6 +258,9 @@ class RandomJitterBaseline:
             bbox = elem["bbox"]
             for j in range(4):
                 bbox[j] = max(0.0, min(1.0, bbox[j] + noise[j].item()))
+            # Ensure valid box: x1 <= x2 and y1 <= y2.
+            x1, y1, x2, y2 = bbox
+            bbox[0], bbox[1], bbox[2], bbox[3] = min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)
 
         return {
             "image_id": vlm_json.get("image_id", ""),
