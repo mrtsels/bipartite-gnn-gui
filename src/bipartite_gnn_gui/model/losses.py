@@ -40,8 +40,10 @@ def compute_violation_loss(prediction: Tensor, target: Tensor) -> Tensor:
         target: ``(N_con, 1)`` binary labels (0 = valid, 1 = violated).
 
     Returns:
-        Scalar BCE loss.
+        Scalar BCE loss. Returns 0.0 if no constraints exist.
     """
+    if prediction.numel() == 0 or target.numel() == 0:
+        return torch.tensor(0.0, device=prediction.device)
     return F.binary_cross_entropy(prediction, target)
 
 
@@ -53,8 +55,10 @@ def compute_existence_loss(prediction: Tensor, target: Tensor) -> Tensor:
         target: ``(N_elem, 1)`` binary labels (0 = spurious, 1 = real).
 
     Returns:
-        Scalar BCE loss.
+        Scalar BCE loss. Returns 0.0 if no elements exist.
     """
+    if prediction.numel() == 0 or target.numel() == 0:
+        return torch.tensor(0.0, device=prediction.device)
     return F.binary_cross_entropy(prediction, target)
 
 

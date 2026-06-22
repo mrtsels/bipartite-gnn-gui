@@ -113,7 +113,7 @@ class BipartiteGraphSAGE(nn.Module):
             con_msg = self.e_to_c_convs[i](
                 (x_elem, x_con), edge_e2c
             )
-            x_con = self.c_norms[i](con_msg)
+            x_con = self.c_norms[i](con_msg) if x_con.numel() > 0 else con_msg
             x_con = F.relu(x_con)
             x_con = self.dropout(x_con)
 
@@ -121,7 +121,7 @@ class BipartiteGraphSAGE(nn.Module):
             elem_msg = self.c_to_e_convs[i](
                 (x_con, x_elem), edge_c2e
             )
-            x_elem = self.e_norms[i](elem_msg)
+            x_elem = self.e_norms[i](elem_msg) if x_elem.numel() > 0 else elem_msg
             x_elem = F.relu(x_elem)
             x_elem = self.dropout(x_elem)
 
