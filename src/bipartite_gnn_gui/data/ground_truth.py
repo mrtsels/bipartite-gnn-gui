@@ -335,10 +335,11 @@ def load_ground_truth(path: Union[str, Path], source: Optional[str] = None) -> G
 
     Args:
         path: Path to the annotation file.
-        source: Dataset identifier ("gui360" or "screenspot").
+        source: Dataset identifier ("gui360", "screenspot", or "rico").
             When None, the format is auto-detected from the file
             contents by checking for the presence of a "platform" key
-            (GUI-360 degree) or "group" key (ScreenSpot).
+            (GUI-360 degree), "group" key (ScreenSpot), or "root" key
+            (RICO View Hierarchy).
 
     Returns:
         GroundTruth instance.
@@ -353,23 +354,32 @@ def load_ground_truth(path: Union[str, Path], source: Optional[str] = None) -> G
     if source is None:
         with path.open("r", encoding="utf-8") as f:
             data: Dict[str, Any] = json.load(f)
-        if "platform" in data:
+        if "root" in data:
+            source = "rico"
+        elif "platform" in data:
             source = "gui360"
         elif "group" in data:
             source = "screenspot"
         else:
             raise GroundTruthParseError(
                 f"Cannot determine ground-truth format from {path}: "
-                "missing both 'platform' (GUI-360) and 'group' (ScreenSpot) keys"
+                "missing 'platform' (GUI-360), 'group' (ScreenSpot), "
+                "or 'root' (RICO) keys"
             )
 
     if source == "gui360":
         return load_gui360_annotation(path)
     elif source == "screenspot":
         return load_screenspot_annotation(path)
+    elif source == "rico":
+        from .rico_loader import parse_rico_view_hierarchy
+        # Use the parent directory of the JSON as images_dir
+        images_dir = path.parent
+        return parse_rico_view_hierarchy(path, images_dir)
     else:
         raise GroundTruthParseError(
-            f"Unknown ground-truth source '{source}'; expected 'gui360' or 'screenspot'"
+            f"Unknown ground-truth source '{source}'; "
+            "expected 'gui360', 'screenspot', or 'rico'"
         )
 
 

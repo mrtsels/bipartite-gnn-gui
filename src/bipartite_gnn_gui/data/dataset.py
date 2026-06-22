@@ -79,12 +79,13 @@ def _resolve_gt_path(image_id: str, root_dir: Path) -> Optional[Path]:
     """Search for a ground-truth JSON file for *image_id*.
 
     Tries multiple standard locations and filename variants (with or without
-    extension stripping).
+    extension stripping).  Also searches RICO ``unique_uis/`` subdirectories
+    when present.
 
     Args:
         image_id: Image identifier (may include file extension).
-        root_dir: Root data directory containing ``gui360/`` or
-            ``screenspot/`` subdirectories.
+        root_dir: Root data directory containing ``gui360/``,
+            ``screenspot/``, or ``rico/unique_uis/`` subdirectories.
 
     Returns:
         Path to the GT file, or ``None`` if not found.
@@ -98,8 +99,15 @@ def _resolve_gt_path(image_id: str, root_dir: Path) -> Optional[Path]:
         root_dir,
     ]
 
+    # Also add RICO unique_uis subdirectories if present
+    rico_dir = root_dir / "unique_uis"
+    if rico_dir.is_dir():
+        search_dirs.extend(sorted(rico_dir.iterdir()))
+
     candidates: List[Path] = []
     for d in search_dirs:
+        if not d.is_dir():
+            continue
         # Try with and without explicit .json extension
         if not str(image_id).endswith(".json"):
             candidates.append(d / f"{image_id}.json")
