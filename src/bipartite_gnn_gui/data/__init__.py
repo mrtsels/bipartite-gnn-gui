@@ -37,6 +37,7 @@ from .preprocess import (
     train_val_test_split,
 )
 from .dataset import GUIDataset, GUIDataModule
+from .graph_dataset import GraphDataset, collate_graph_samples
 from .rico_loader import (
     get_rico_image_id,
     load_rico_directory,

@@ -1,0 +1,54 @@
+# Default experiment configuration for bipartite-gnn-gui training pipeline.
+# Used by scripts/run_experiment.py.  CLI arguments override these values.
+
+data:
+  # Number of RICO JSONs to use (set to -1 to use all)
+  n_samples: 500
+  # Gaussian noise scale applied to GT bboxes when simulating VLM predictions
+  noise_scale: 0.12
+  # Fraction of data held out for validation
+  val_split: 0.2
+  # Random seed for dataset splitting and noise generation
+  seed: 42
+  # Directory containing RICO View Hierarchy JSONs
+  rico_dir: data/rico_local/combined
+  # Cache directory for processed .pt files
+  cache_dir: data/rico_cache
+
+model:
+  # Hidden dimension for encoder and heads
+  hidden_dim: 128
+  # Number of message-passing layers
+  num_layers: 2
+  # Dropout probability
+  dropout: 0.1
+
+training:
+  # Number of training epochs
+  epochs: 50
+  # Peak learning rate
+  lr: 0.001
+  # Samples per "batch" (each sample is one full graph)
+  batch_size: 8
+  # AdamW weight decay
+  weight_decay: 1e-5
+  # Linear warmup steps
+  warmup_steps: 50
+  # Max gradient L2 norm (0 = no clipping)
+  grad_clip: 1.0
+  # Automatic mixed precision (requires CUDA)
+  amp: false
+  # Early stopping patience (epochs without improvement)
+  early_stopping_patience: 10
+
+evaluation:
+  # IoU threshold for element recall/precision/F1
+  iou_threshold: 0.5
+  # Alignment detection tolerance
+  alignment_tolerance: 0.02
+
+logging:
+  # Checkpoint output directory
+  checkpoint_dir: checkpoints/experiment
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  log_level: INFO
