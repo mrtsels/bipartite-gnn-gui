@@ -20,6 +20,11 @@ from torch import Tensor
 from ..data.vlm_output import VLMOutputElement, normalize_element_type
 from ..utils.bbox import bbox_to_tensor, compute_iou
 
+try:
+    from PIL import Image as PILImage
+except ImportError:  # pragma: no cover - optional dependency
+    PILImage = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -325,6 +330,181 @@ def load_screenspot_annotation(path: Union[str, Path]) -> GroundTruth:
     )
 
 
+def load_screenspot_combined(
+    path: Union[str, Path],
+    images_dir: Union[str, Path],
+) -> List[GroundTruth]:
+    """Load the ScreenSpot combined JSON format into a list of GroundTruth objects.
+
+    The combined format is a single JSON array where each entry describes one
+    screenshot and its annotations.  Image dimensions are read from the
+    corresponding PNG files via PIL since the combined JSON does not include
+    ``image_width`` / ``image_height`` fields.
+
+    Bounding boxes are stored as ``[x, y, w, h]`` (top-left corner + size),
+    converted to normalised ``[x1, y1, x2, y2]`` in ``[0, 1]``.
+
+    Args:
+        path: Path to the combined ScreenSpot JSON file (e.g.
+            ``ScreenSpot_combined.json``).
+        images_dir: Directory containing the PNG image files referenced
+            by the ``"image"`` field of each entry.
+
+    Returns:
+        List of GroundTruth objects, one per image entry in the combined JSON.
+
+    Raises:
+        FileNotFoundError: The combined JSON file does not exist.
+        GroundTruthParseError: The JSON is not a list (invalid combined format).
+    """
+    if PILImage is None:  # pragma: no cover
+        raise ImportError("Pillow is required to load ScreenSpot combined format")
+
+    path = Path(path)
+    images_dir = Path(images_dir)
+
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, list):
+        raise GroundTruthParseError(
+            f"Expected a JSON array for combined ScreenSpot format, "
+            f"got {type(data).__name__}"
+        )
+
+    results: List[GroundTruth] = []
+
+    for entry in data:
+        if not isinstance(entry, dict):
+            logger.warning("Skipping non-dict entry in combined ScreenSpot JSON")
+            continue
+
+        image_file = str(entry.get("image", ""))
+        if not image_file:
+            logger.warning("Skipping entry with missing 'image' field")
+            continue
+
+        # Open the image to get pixel dimensions
+        image_path = images_dir / image_file
+        try:
+            with PILImage.open(image_path) as img:
+                image_width, image_height = img.size
+        except Exception as exc:
+            logger.warning(
+                "Failed to open image %s: %s, skipping entry", image_path, exc
+            )
+            continue
+
+        if image_width <= 0 or image_height <= 0:
+            logger.warning(
+                "Skipping entry with invalid image dimensions (%d, %d): %s",
+                image_width, image_height, image_file,
+            )
+            continue
+
+        annotations_raw: List[Dict[str, Any]] = entry.get("annotations", [])
+        if not isinstance(annotations_raw, list):
+            annotations_raw = []
+
+        elements: List[GTElement] = []
+
+        for idx, item in enumerate(annotations_raw):
+            if not isinstance(item, dict):
+                logger.warning(
+                    "Skipping non-dict annotation %d in %s", idx, image_file
+                )
+                continue
+
+            # bounding_box is [x, y, w, h] — convert to xyxy
+            bbox_raw = item.get("bounding_box")
+            if (
+                bbox_raw is None
+                or not isinstance(bbox_raw, (list, tuple))
+                or len(bbox_raw) != 4
+            ):
+                logger.warning(
+                    "Skipping annotation %d with missing/invalid "
+                    "bounding_box in %s", idx, image_file,
+                )
+                continue
+
+            x, y, w, h = map(float, bbox_raw)
+            x1_px = x
+            y1_px = y
+            x2_px = x + w
+            y2_px = y + h
+
+            # Normalise to [0, 1] and clamp
+            x1 = max(0.0, min(1.0, x1_px / image_width))
+            y1 = max(0.0, min(1.0, y1_px / image_height))
+            x2 = max(0.0, min(1.0, x2_px / image_width))
+            y2 = max(0.0, min(1.0, y2_px / image_height))
+            bbox = (x1, y1, x2, y2)
+
+            if x2 <= x1 or y2 <= y1:
+                logger.warning(
+                    "Skipping degenerate bbox in %s annotation %d "
+                    "(x2=%.4f <= x1=%.4f or y2=%.4f <= y1=%.4f)",
+                    image_file, idx, x2, x1, y2, y1,
+                )
+                continue
+
+            # Map field names: data_type → type
+            raw_type = (
+                str(item.get("data_type", ""))
+                if item.get("data_type") is not None
+                else ""
+            )
+            element_type = normalize_element_type(raw_type)
+            if element_type == "other" and raw_type.strip():
+                logger.warning(
+                    "Unknown type '%s' in %s annotation %d, mapped to 'other'",
+                    raw_type, image_file, idx,
+                )
+
+            # Map field names: objective_reference → text
+            text_content: Optional[str] = item.get("objective_reference")
+            if (
+                text_content is not None
+                and isinstance(text_content, str)
+                and text_content == ""
+            ):
+                text_content = None
+
+            # Map field names: data_source → group
+            data_source = str(item.get("data_source", ""))
+
+            element_id = f"{Path(image_file).stem}_{idx}"
+
+            metadata: Dict[str, Any] = {
+                "group": data_source,
+                "data_source": data_source,
+            }
+
+            elements.append(
+                GTElement(
+                    element_id=element_id,
+                    bbox=bbox,
+                    element_type=element_type,
+                    text_content=text_content,
+                    source_dataset="screenspot",
+                    metadata=metadata,
+                )
+            )
+
+        results.append(
+            GroundTruth(
+                elements=elements,
+                image_path=str(image_path),
+                image_width=image_width,
+                image_height=image_height,
+                source="screenspot",
+            )
+        )
+
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Factory dispatcher
 # ---------------------------------------------------------------------------
@@ -352,7 +532,16 @@ def load_ground_truth(path: Union[str, Path], source: Optional[str] = None) -> G
 
     if source is None:
         with path.open("r", encoding="utf-8") as f:
-            data: Dict[str, Any] = json.load(f)
+            data: Union[Dict[str, Any], List[Any]] = json.load(f)
+
+        # Detect combined ScreenSpot format (JSON array)
+        if isinstance(data, list):
+            raise GroundTruthParseError(
+                f"{path} is a ScreenSpot combined JSON array. "
+                "Use load_screenspot_combined() with an images_dir instead."
+            )
+
+        # data is now known to be a dict
         if "platform" in data:
             source = "gui360"
         elif "group" in data:

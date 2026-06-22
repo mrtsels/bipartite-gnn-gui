@@ -28,6 +28,7 @@ from bipartite_gnn_gui.data.ground_truth import (
     GroundTruth,
     GroundTruthParseError,
     load_ground_truth,
+    load_screenspot_combined,
     match_predictions_to_ground_truth,
 )
 from bipartite_gnn_gui.data.preprocess import (
@@ -190,9 +191,33 @@ class GUIDataset(Dataset):
         Skips samples whose cache file already exists (unless
         ``force_rebuild=True``).  Logs a warning and skips samples where
         the GT file cannot be found or parsed.
+
+        When ``gt_dir`` is a ``.json`` file (rather than a directory), it is
+        treated as a ScreenSpot combined JSON and all ground-truth entries are
+        pre-loaded into a lookup table.
         """
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         num_types = len(self.taxonomy)
+
+        # Detect combined ScreenSpot JSON and pre-load all GT entries
+        _gt_lookup: Optional[Dict[str, GroundTruth]] = None
+        if not self.gt_dir.is_dir() and self.gt_dir.suffix == ".json":
+            try:
+                images_dir = self.gt_dir.parent / "images"
+                gt_list = load_screenspot_combined(self.gt_dir, images_dir)
+                _gt_lookup = {}
+                for gt in gt_list:
+                    # Key by image filename stem for lookup by image_id
+                    stem = Path(gt.image_path).stem
+                    _gt_lookup[stem] = gt
+                logger.info(
+                    "Loaded %d GT entries from combined ScreenSpot JSON", len(gt_list)
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to load combined ScreenSpot JSON %s: %s",
+                    self.gt_dir, exc,
+                )
 
         for image_id in self.image_ids:
             cache_path = self.cache_dir / f"{image_id}.pt"
@@ -216,19 +241,30 @@ class GUIDataset(Dataset):
                 vlm_output = VLMOutput(image_id=image_id)
 
             # ---- Load GT ----------------------------------------------
-            if self.gt_dir.is_dir():
+            if _gt_lookup is not None:
+                # Look up from pre-loaded combined JSON
+                stem = Path(image_id).stem
+                gt = _gt_lookup.get(stem)
+                if gt is None:
+                    logger.warning(
+                        "No GT found for %s in combined ScreenSpot JSON, skipping",
+                        image_id,
+                    )
+                    continue
+            elif self.gt_dir.is_dir():
                 gt_path = _resolve_gt_path(image_id, self.gt_dir)
+                if gt_path is None:
+                    logger.warning("No GT found for %s, skipping", image_id)
+                    continue
+                try:
+                    gt = load_ground_truth(gt_path)
+                except (GroundTruthParseError, Exception) as exc:
+                    logger.warning(
+                        "Failed to parse GT for %s: %s, skipping", image_id, exc
+                    )
+                    continue
             else:
-                gt_path = None
-
-            if gt_path is None:
                 logger.warning("No GT found for %s, skipping", image_id)
-                continue
-
-            try:
-                gt: GroundTruth = load_ground_truth(gt_path)
-            except (GroundTruthParseError, Exception) as exc:
-                logger.warning("Failed to parse GT for %s: %s, skipping", image_id, exc)
                 continue
 
             # ---- Hungarian matching -----------------------------------
