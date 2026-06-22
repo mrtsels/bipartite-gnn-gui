@@ -246,21 +246,19 @@ RICO 是当前最大的移动端 UI 数据集，包含从 9.3K Android 应用挖
 | 标注元素总量 (total annotations) | ~3,000,000 |
 | 平均每图元素数 (avg. elements/image) | ~45      |
 | 平台 (platforms)     | Android          |
-| 坐标格式 (coordinate format) | **绝对像素** bounds `[x1,y1][x2,y2]` |
+| 坐标格式 (coordinate format) | **绝对像素** bounds `[x1, y1, x2, y2]` (int list) |
 
 ### 3.5.2 原始格式 (Raw Format)
 
-RICO 数据以 `unique_uis.tar.gz` 分发，内按包名组织：
+RICO 数据以扁平目录结构分发（所有 JSON 和图片在同一目录下）：
 
 ```
-unique_uis/
-  com.example.app1/
-    screenshot_001.png
-    screenshot_001.json       # View Hierarchy
-    screenshot_002.png
-    screenshot_002.json
-  com.example.app2/
-    ...
+combined/
+  10101.json       # View Hierarchy
+  10101.jpg        # paired screenshot
+  10010.json
+  10010.jpg
+  ...
 ```
 
 每个 View Hierarchy JSON 文件的结构如下：
@@ -268,56 +266,64 @@ unique_uis/
 ```json
 {
   "activity_name": "com.example.MainActivity",
-  "screen_id": "screenshot_001",
-  "screen_width": 1440,
-  "screen_height": 2560,
-  "root": {
-    "bounds": "[0,0][1440,2560]",
-    "class": "android.widget.FrameLayout",
-    "children": [
-      {
-        "bounds": "[0,0][1440,2560]",
-        "class": "android.widget.LinearLayout",
-        "children": [
-          {
-            "bounds": "[50,100][200,300]",
-            "class": "android.widget.Button",
-            "text": "Submit",
-            "content-desc": "",
-            "clickable": true,
-            "visibility": "visible"
-          }
-        ]
-      }
-    ]
+  "activity": {
+    "root": {
+      "bounds": [0, 0, 1440, 2560],
+      "class": "android.widget.FrameLayout",
+      "visibility": "visible",
+      "visible-to-user": true,
+      "children": [
+        {
+          "bounds": [0, 0, 1440, 2560],
+          "class": "android.widget.LinearLayout",
+          "visibility": "visible",
+          "visible-to-user": true,
+          "children": [
+            {
+              "bounds": [50, 100, 200, 300],
+              "class": "android.widget.Button",
+              "text": "Submit",
+              "content-desc": [null],
+              "clickable": true,
+              "visibility": "visible",
+              "visible-to-user": true
+            }
+          ]
+        }
+      ]
+    }
   }
 }
 ```
 
 | 字段 (Field)          | 类型 (Type)      | 说明 (Description)                        |
 | --------------------- | ---------------- | ----------------------------------------- |
-| `activity_name`       | `str`            | Android Activity 名。                     |
-| `screen_id`           | `str`            | 截屏文件名（不含扩展名）。                |
-| `screen_width`        | `int`            | 截屏宽度（像素）。                        |
-| `screen_height`       | `int`            | 截屏高度（像素）。                        |
-| `root`                | `dict`           | View Hierarchy 根节点。                   |
-| `root.children`       | `list[dict]`     | 子节点，递归结构。                        |
-| `node.bounds`         | `str`            | `"[x1,y1][x2,y2]"` 格式的绝对像素坐标。   |
+| `activity_name`       | `str`            | Android Activity 名（可选，仅元数据）。   |
+| `activity`            | `dict`           | 包裹层，内含 `root`。                     |
+| `activity.root`       | `dict`           | View Hierarchy 根节点。                   |
+| `node.bounds`         | `list[int,×4]`   | `[x1, y1, x2, y2]` 绝对像素坐标。         |
 | `node.class`          | `str`            | Android 类名（如 `android.widget.Button`）。|
-| `node.text`           | `str`            | 显示的文本（可为空）。                    |
-| `node.content-desc`   | `str`            | 无障碍描述文本。                          |
+| `node.text`           | `str` 或 `null`  | 显示的文本（可能不存在或为 `null`）。     |
+| `node.content-desc`   | `list[str\|null]`| 无障碍描述列表（如 `[null]` 或 `["desc"]`）。|
 | `node.clickable`      | `bool`           | 是否可点击。                              |
 | `node.visibility`     | `str`            | `"visible"` / `"invisible"` / `"gone"`。 |
+| `node.visible-to-user`| `bool`           | 用户实际是否可见（补充过滤器）。          |
+
+> **注意:** 实际的 RICO JSON **不**包含 `screen_id`、`screen_width` 或 `screen_height` 顶层字段。`screen_id` 从 JSON 文件名派生（取 stem），`screen_width` / `screen_height` 从根节点的 `bounds[2]` / `bounds[3]` 推导。
 
 ### 3.5.3 GT 提取策略 (Extraction Strategy)
 
 从 RICO View Hierarchy 提取 GT 元素时：
 
-1. **递归遍历** root 下的所有节点，只取**叶子节点**（无 children 的节点）。
-2. **过滤** `visibility != "visible"` 或 bbox 面积为 0 的元素。
-3. **解析 bounds** 字符串 `"[x1,y1][x2,y2]"` → `(x1, y1, x2, y2)` 元组。
-4. **归一化**：各分量除以 `(screen_width, screen_height)`。
-5. **类型映射**：Android class → 共享分类体系（见 §4 `vlm_format.md`）。
+1. **解析根节点**：尝试 `data["activity"]["root"]`，回退到 `data["root"]`（legacy 格式）。
+2. **推导屏幕尺寸**：`screen_width = root["bounds"][2]`, `screen_height = root["bounds"][3]`。
+3. **递归遍历** root 下的所有节点，只取**叶子节点**（无 children 的节点）。
+4. **过滤**：跳过 `visibility != "visible"` 或 `visible-to-user == False` 或 bbox 面积为 0 的元素。
+5. **解析 bounds**：`bounds` 为 `[x1, y1, x2, y2]` 整数列表（也兼容旧的字符串格式 `"[x1,y1][x2,y2]"`）。
+6. **归一化**：各分量除以 `(screen_width, screen_height)`。
+7. **类型映射**：优先使用 `componentLabel`（Semantic 格式），回退到 Android class → 共享分类体系。
+8. **文本提取**：优先 `text` → 回退到 `content-desc` 列表（取第一个非 `null` 字符串）。
+9. **截图路径**：文件名 stem + `.jpg`（优先）或 `.png`（回退）。
 
 | Android Class Pattern            | Canonical Type |
 | -------------------------------- | -------------- |
@@ -340,9 +346,56 @@ unique_uis/
 Google Research 提供的人工精标注版本（~500K 元素），bbox 质量高于自动提取的 View Hierarchy：
 
 - 下载: `semantic_annotations.zip` (150 MB)
-- 格式: 每张截图对应一个 JSON 文件，结构与 §3.5.2 类似但 bbox 为人工修正
+- 格式: 每张截图对应一个 JSON 文件，**与 View Hierarchy 使用相同的递归树结构**，但增加了 `componentLabel` 字段
 - 覆盖范围: ~500K 个元素（RICO 子集），含 icon shape/semantic 分类
-- **建议优先使用** Semantic Annotations 中存在的元素；对未覆盖的部分回退到 View Hierarchy 提取
+
+**Semantic Annotation JSON 格式：**
+
+```json
+{
+  "class": "com.android.internal.policy.PhoneWindow$DecorView",
+  "bounds": [0, 0, 1440, 2560],
+  "clickable": false,
+  "children": [
+    {
+      "class": "android.widget.Button",
+      "bounds": [50, 100, 200, 300],
+      "text": "Submit",
+      "componentLabel": "Button",
+      "clickable": true
+    },
+    {
+      "class": "android.widget.ImageView",
+      "bounds": [600, 200, 700, 300],
+      "componentLabel": "Icon",
+      "clickable": false
+    }
+  ]
+}
+```
+
+> **注意:** Semantic Annotations 中根节点直接位于 JSON 顶层（无 `activity.root` 包裹）。`componentLabel` 提供比 Android class 更精细的类型标识。
+
+**`componentLabel` → canonical type 映射：**
+
+| componentLabel      | Canonical Type |
+| ------------------- | -------------- |
+| `"Icon"`            | `icon`         |
+| `"Text"`            | `text`         |
+| `"Input"`           | `input`        |
+| `"Drawer"`          | `container`    |
+| `"Image"`           | `image`        |
+| `"Button"`          | `button`       |
+| `"List"`            | `list`         |
+| `"Checkbox"`        | `icon`         |
+| `"Switch"`          | `icon`         |
+| `"On/Off"`          | `icon`         |
+| `"Radio Button"`    | `icon`         |
+| `"Text Button"`     | `button`       |
+| `"Toolbar"`         | `container`    |
+| 其它 (any other)    | `other`        |
+
+- **建议优先使用** Semantic Annotations 中存在的元素；对未覆盖的部分回退到 View Hierarchy 提取。
 
 ---
 

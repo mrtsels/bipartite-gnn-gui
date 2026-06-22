@@ -518,8 +518,8 @@ def load_ground_truth(path: Union[str, Path], source: Optional[str] = None) -> G
         source: Dataset identifier ("gui360", "screenspot", or "rico").
             When None, the format is auto-detected from the file
             contents by checking for the presence of a "platform" key
-            (GUI-360 degree), "group" key (ScreenSpot), or "root" key
-            (RICO View Hierarchy).
+            (GUI-360 degree), "group" key (ScreenSpot), or "activity" /
+            "root" / "children"+"class" keys (RICO).
 
     Returns:
         GroundTruth instance.
@@ -543,7 +543,11 @@ def load_ground_truth(path: Union[str, Path], source: Optional[str] = None) -> G
             )
 
         # data is now known to be a dict
-        if "root" in data:
+        # RICO: check for "activity" (View Hierarchy), "root" (legacy),
+        #        or top-level "children" + "class" (Semantic Annotations)
+        if "root" in data or "activity" in data or (
+            "children" in data and "class" in data
+        ):
             source = "rico"
         elif "platform" in data:
             source = "gui360"
