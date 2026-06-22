@@ -336,23 +336,27 @@
 
 ### 4.5 评估层
 
-- [ ] **4.5.1** 实现评估指标 (`src/bipartite_gnn_gui/eval/metrics.py`):
-  position_error, size_error, alignment_error, element_recall, element_precision, ALL_METRICS
-  - 测试: `test_eval_metrics.py`
+- [x] **4.5.1** 实现评估指标 (`src/bipartite_gnn_gui/eval/metrics.py`):
+  position_error, size_error, alignment_error, element_recall, element_precision, F1Score, MetricsBundle
+  - PR: #22
+  - 测试: `test_eval_metrics.py` (49 tests)
 
-- [ ] **4.5.2** 实现评估器 (`src/bipartite_gnn_gui/eval/evaluator.py`):
-  Evaluator (evaluate + per_category_breakdown + statistical_significance with scipy)
-  - 测试: `test_eval_evaluator.py`
+- [x] **4.5.2** 实现评估器 (`src/bipartite_gnn_gui/eval/evaluator.py`):
+  Evaluator (evaluate + per_category_breakdown + per_source + per_image + print_report)
+  - PR: #22
+  - 测试: `test_eval_evaluator.py` (21 tests)
 
-- [ ] **4.5.3** 实现基线模型 (`src/bipartite_gnn_gui/eval/baselines.py`):
-  VLMOutputBaseline, RuleBasedCorrection (pure-PyTorch NMS), MLPOnlyBaseline
-  - 测试: `test_eval_baselines.py`
+- [x] **4.5.3** 实现基线模型 (`src/bipartite_gnn_gui/eval/baselines.py`):
+  NoOpBaseline, IdentityBaseline, RandomJitterBaseline
+  - PR: #21
+  - 测试: `test_eval_baselines.py` (24 tests)
 
-- [ ] **4.5.4** 实现定性分析 (`src/bipartite_gnn_gui/eval/qualitative.py`):
-  side_by_side_comparison, case_study_report, plot_attention_patterns, failure_analysis
-  - 测试: `test_eval_qualitative.py`
+- [x] **4.5.4** 实现定性分析 (`src/bipartite_gnn_gui/eval/qualitative.py`):
+  plot_correction_comparison, plot_error_heatmap, plot_correction_grid
+  - PR: #21
+  - 测试: `test_eval_qualitative.py` (14 tests)
 
-- [ ] **4.5.5** 实现报告生成 (`experiments/report.py`):
+### 4.6 实验阶段
   generate_latex_table, generate_comparison_fig, export_results_json/csv, generate_summary_report
   - 测试: `test_experiment_report.py`
 
