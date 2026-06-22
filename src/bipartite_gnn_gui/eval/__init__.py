@@ -18,13 +18,15 @@ Submodules:
 """
 
 from .metrics import (
+    AlignmentError,
+    ElementPrecision,
+    ElementRecall,
+    F1Score,
+    MetricsBundle,
     PositionError,
     SizeError,
-    AlignmentError,
-    ElementRecall,
-    ElementPrecision,
-    compute_iou,
     compute_all_metrics,
+    compute_iou,
 )
 from .evaluator import Evaluator, EvaluationResult
 from .baselines import NoOpBaseline, IdentityBaseline, RandomJitterBaseline
@@ -35,13 +37,15 @@ from .qualitative import (
 )
 
 __all__ = [
+    "AlignmentError",
+    "ElementPrecision",
+    "ElementRecall",
+    "F1Score",
+    "MetricsBundle",
     "PositionError",
     "SizeError",
-    "AlignmentError",
-    "ElementRecall",
-    "ElementPrecision",
-    "compute_iou",
     "compute_all_metrics",
+    "compute_iou",
     "Evaluator",
     "EvaluationResult",
     "NoOpBaseline",
