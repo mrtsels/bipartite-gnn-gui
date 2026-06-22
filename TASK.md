@@ -300,9 +300,13 @@
   - 测试: `test_data_ground_truth.py`, `test_data_dataset.py`
 
 - [x] **4.3a.2** RICO View Hierarchy 加载器 (`src/bipartite_gnn_gui/data/rico_loader.py`)
-  - PR: #17
-  - 递归树解析, Android class→type 映射, Semantic Annotations 支持
-  - 测试: `test_data_rico.py`
+  - PR: #17 → 修复: commit 8b85760
+  - 实际数据格式: `activity.root`, bounds 为数组, content-desc 为列表
+  - 支持 View Hierarchy 和 Semantic Annotations 两种格式
+  - componentLabel → canonical type 映射
+  - 测试: `test_data_rico.py` (84 tests)
+  - **数据: 66,261 screenshots + 66,261 JSONs (23 GB) → `data/rico_local/combined/`**
+  - **平均每图 22.4 个元素, 64.5K 唯一 UI 屏幕**
 
 ### 4.4 模型层
 
