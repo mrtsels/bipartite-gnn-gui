@@ -65,6 +65,7 @@ def _make_config(
     cfg.noise_scale = noise_scale
     cfg.epochs = epochs
     cfg.checkpoint_dir = str(CHECKPOINT_BASE / name)
+    cfg.rico_dir = "/Users/minimx/bipartite-gnn-gui/data/rico_local/combined"
     cfg.log_level = "WARNING"  # reduce noise during sweep
     return cfg
 
