@@ -37,6 +37,14 @@ from .preprocess import (
     train_val_test_split,
 )
 from .dataset import GUIDataset, GUIDataModule
+from .rico_loader import (
+    get_rico_image_id,
+    load_rico_directory,
+    parse_rico_bounds,
+    parse_rico_semantic,
+    parse_rico_view_hierarchy,
+    rico_class_to_type,
+)
 
 __all__ = [
     "CoordinateNormalizer",
@@ -45,6 +53,7 @@ __all__ = [
     "extract_element_features",
     "extract_spatial_features",
     "extract_type_embedding",
+    "get_rico_image_id",
     "GTElement",
     "GroundTruth",
     "GroundTruthParseError",
@@ -52,6 +61,7 @@ __all__ = [
     "GUIDataset",
     "load_ground_truth",
     "load_gui360_annotation",
+    "load_rico_directory",
     "load_screenspot_annotation",
     "match_predictions_to_ground_truth",
     "normalize_bbox",
@@ -59,6 +69,10 @@ __all__ = [
     "normalize_element_type",
     "parse_minimax_output",
     "parse_qwen_output",
+    "parse_rico_bounds",
+    "parse_rico_semantic",
+    "parse_rico_view_hierarchy",
+    "rico_class_to_type",
     "train_val_test_split",
     "VLMOutput",
     "VLMOutputElement",
