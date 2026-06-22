@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import torch
 import yaml
+from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 
@@ -43,6 +44,7 @@ from bipartite_gnn_gui.graph.constraints import extract_all_constraints
 from bipartite_gnn_gui.graph.schema import ElementNode
 from bipartite_gnn_gui.model.model import BipartiteGNNCorrector
 from bipartite_gnn_gui.model.trainer import Trainer
+from bipartite_gnn_gui.utils.bbox import compute_iou, xyxy_to_xywh
 from bipartite_gnn_gui.utils.config import TrainingConfig
 
 logger = logging.getLogger(__name__)
@@ -370,6 +372,165 @@ def make_noisy_vlm(
 # ---------------------------------------------------------------------------
 
 
+def _match_vlm_to_gt(
+    vlm_bboxes: Tensor,
+    gt_bboxes: Tensor,
+    iou_threshold: float = 0.3,
+) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
+    """Match VLM bounding boxes to GT boxes using Hungarian algorithm.
+
+    Uses a large finite cost for low-IoU pairs and filters after
+    matching to avoid scipy ValueError on infeasible submatrices.
+
+    Returns (matched_pairs, fp_indices, fn_indices) where each pair
+    is (vlm_idx, gt_idx).
+    """
+    M = vlm_bboxes.size(0)
+    N = gt_bboxes.size(0)
+
+    if M == 0 or N == 0:
+        return [], list(range(M)), list(range(N))
+
+    # IoU matrix (M, N)
+    iou_matrix = compute_iou(vlm_bboxes, gt_bboxes)
+    LARGE_COST = 1e9
+
+    # Cost = 1 - IoU; set very high cost for low-IoU pairs
+    cost = 1.0 - iou_matrix
+    cost[iou_matrix < iou_threshold] = LARGE_COST
+
+    # Hungarian always works with finite values
+    row_indices, col_indices = linear_sum_assignment(cost.numpy())
+
+    matched_pairs: List[Tuple[int, int]] = []
+    matched_rows: set = set()
+    matched_cols: set = set()
+
+    for i, j in zip(row_indices, col_indices):
+        if cost[i, j] < LARGE_COST / 2:  # genuinely feasible pair
+            matched_pairs.append((int(i), int(j)))
+            matched_rows.add(int(i))
+            matched_cols.add(int(j))
+
+    fp_indices = [i for i in range(M) if i not in matched_rows]
+    fn_indices = [j for j in range(N) if j not in matched_cols]
+
+    return matched_pairs, fp_indices, fn_indices
+
+
+def _xyxy_to_xywh(bboxes: Tensor) -> Tensor:
+    """Convert xyxy → cxcywh for a (N, 4) tensor."""
+    x1, y1, x2, y2 = bboxes[:, 0], bboxes[:, 1], bboxes[:, 2], bboxes[:, 3]
+    return torch.stack([(x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1], dim=-1)
+
+
+def _build_graph_with_matching(
+    gt_elements: list[ElementNode],
+    vlm_elements: list[ElementNode],
+    builder: BipartiteGraphBuilder,
+) -> Tuple[Any, Dict[str, Tensor]]:
+    """Build graph from real VLM predictions with Hungarian matching.
+
+    Handles mismatched element counts between VLM and GT by:
+    1. Matching VLM → GT via Hungarian algorithm
+    2. Creating a combined element list: matched VLM in GT order,
+       then unmatched GT (FN), then unmatched VLM (FP)
+    3. Remapping constraint indices to the combined element ordering
+    4. Setting per-element targets: delta for matched, zero-delta
+       for FN, existence=0 for FP
+
+    Returns (hetero_data, targets).
+    """
+    gt_boxes_t = torch.tensor([e.bbox for e in gt_elements], dtype=torch.float32)
+    vlm_boxes_t = torch.tensor([e.bbox for e in vlm_elements], dtype=torch.float32)
+
+    matched_pairs, fp_indices, fn_indices = _match_vlm_to_gt(
+        vlm_boxes_t, gt_boxes_t, iou_threshold=0.3
+    )
+
+    N_gt = len(gt_elements)
+    N_vlm = len(vlm_elements)
+
+    # --- Build index maps ---
+    # gt_to_combined: for each GT index j, the position in the combined list
+    # If j is matched, it's at position j (GT index order is preserved).
+    # All GT-referenced elements (matched + FN) occupy positions 0..N_gt-1
+    # in GT index order. FP VLM elements are appended at positions N_gt..N_gt+N_fp-1.
+    gt_to_combined: dict[int, int] = {j: j for j in range(N_gt)}
+
+    # combined_vlm: list of ElementNodes for the graph
+    combined_vlm: list[ElementNode] = [None] * N_gt  # placeholder, fill below
+
+    # matched_gt_to_vlm: for each GT index j that's matched, the VLM index
+    matched_gt_to_vlm: dict[int, int] = {}
+    for vlm_i, gt_j in matched_pairs:
+        matched_gt_to_vlm[gt_j] = vlm_i
+
+    # Populate combined_vlm positions 0..N_gt-1
+    for j in range(N_gt):
+        if j in matched_gt_to_vlm:
+            # Matched: use VLM element
+            vlm_i = matched_gt_to_vlm[j]
+            combined_vlm[j] = vlm_elements[vlm_i]
+        else:
+            # FN: use GT element (VLM didn't detect it)
+            combined_vlm[j] = gt_elements[j]
+
+    # Append FP VLM elements
+    fp_count = len(fp_indices)
+    for fp_i in fp_indices:
+        combined_vlm.append(vlm_elements[fp_i])
+
+    # --- Remap constraint indices ---
+    # Constraints reference GT element indices. GT index j maps to
+    # combined index j for all j < N_gt. FP elements are beyond N_gt
+    # and no constraint references them.
+    constraints = extract_all_constraints(gt_elements)
+    if len(constraints) == 0:
+        return None
+
+    # Constraints already use GT indices. Since combined[0..N_gt-1]
+    # corresponds to GT[0..N_gt-1], no remapping is needed.
+    # (FP elements are at positions N_gt..N_gt+fp_count-1, unreferenced.)
+
+    # --- Build graph from combined VLM elements ---
+    hetero_data = builder.build(combined_vlm, constraints)
+
+    # --- Build targets ---
+    N_elem = len(combined_vlm)
+    N_con = len(constraints)
+
+    # gt_boxes: GT boxes for positions 0..N_gt-1, zeros for FP
+    gt_boxes = torch.zeros((N_elem, 4), dtype=torch.float32)
+    gt_boxes[:N_gt] = gt_boxes_t
+
+    # vlm_boxes for the combined elements
+    combined_vlm_boxes = torch.tensor(
+        [e.bbox for e in combined_vlm], dtype=torch.float32
+    )
+
+    # Deltas: for matched positions, gt_xywh - vlm_xywh
+    # For FN positions, 0 (input is GT, no correction needed)
+    # For FP positions, 0 (existence=0, coord target doesn't matter)
+    gt_xywh = _xyxy_to_xywh(gt_boxes)
+    vlm_xywh = _xyxy_to_xywh(combined_vlm_boxes)
+    delta = gt_xywh - vlm_xywh
+
+    # Existence: 1 for GT-referenced positions (0..N_gt-1), 0 for FP
+    existence = torch.ones(N_elem, 1, dtype=torch.float32)
+    if fp_count > 0:
+        existence[N_gt:] = 0.0
+
+    targets: Dict[str, Tensor] = {
+        "coord": delta,
+        "gt_boxes": gt_boxes,
+        "existence": existence,
+        "violation": torch.zeros(N_con, 1, dtype=torch.float32),
+    }
+
+    return hetero_data, targets
+
+
 def build_graph(
     gt_elements: list[ElementNode],
     noise_scale: float,
@@ -378,13 +539,17 @@ def build_graph(
 ) -> Tuple[Any, Dict[str, Tensor]] | None:
     """Build a (HeteroData, targets) pair from ground-truth elements.
 
-    Simulates noisy VLM predictions, extracts heuristic constraints,
-    constructs the bipartite graph, and assembles the target dict.
+    When ``vlm_elements`` is provided with a different count than
+    ``gt_elements``, uses Hungarian matching to align predictions to
+    ground truth and handles false-positives / false-negatives.
+
+    Otherwise simulates noisy VLM predictions (same count as GT).
 
     Args:
         gt_elements: Normalised ground-truth element nodes.
         noise_scale: Noise scale for VLM simulation.
         builder: Graph builder instance.
+        vlm_elements: Optional real VLM predictions (normalised).
 
     Returns:
         ``(hetero_data, targets)`` tuple, or ``None`` if the sample
@@ -393,7 +558,13 @@ def build_graph(
     if len(gt_elements) < 2:
         return None
 
-    # Use real VLM predictions when provided, otherwise simulate noise
+    # Use real VLM predictions when provided; if count differs, match them
+    if vlm_elements is not None and len(vlm_elements) != len(gt_elements):
+        return _build_graph_with_matching(
+            gt_elements, vlm_elements, builder
+        )
+
+    # Same-count path: standard simulation or direct VLM elements
     if vlm_elements is None:
         vlm_nodes = make_noisy_vlm(gt_elements, noise_scale=noise_scale)
     else:
@@ -405,7 +576,7 @@ def build_graph(
         return None
 
     # Build HeteroData graph
-    hetero_data = builder.build(vlm_elements, constraints)
+    hetero_data = builder.build(vlm_nodes, constraints)
 
     # Build targets
     N = len(gt_elements)
@@ -417,13 +588,8 @@ def build_graph(
         [e.bbox for e in vlm_nodes], dtype=torch.float32
     )
 
-    # Convert xyxy → cxcywh for delta computation
-    def _cxcywh(b):
-        x1, y1, x2, y2 = b[:, 0], b[:, 1], b[:, 2], b[:, 3]
-        return torch.stack([(x1+x2)/2, (y1+y2)/2, x2-x1, y2-y1], dim=-1)
-
-    gt_xywh = _cxcywh(gt_boxes)
-    vlm_xywh = _cxcywh(vlm_boxes)
+    gt_xywh = _xyxy_to_xywh(gt_boxes)
+    vlm_xywh = _xyxy_to_xywh(vlm_boxes)
     delta = gt_xywh - vlm_xywh
 
     targets: Dict[str, Tensor] = {
@@ -598,6 +764,9 @@ def evaluate_model(
     to the VLM input boxes.  This function applies those deltas to obtain
     corrected boxes in xyxy, then compares them to ground-truth boxes.
 
+    Elements with existence target == 0 (false positives from VLM) are
+    excluded from evaluation.
+
     Args:
         model: Trained model.
         val_dataset: Validation dataset.
@@ -625,6 +794,15 @@ def evaluate_model(
 
                 # Apply deltas to get corrected boxes
                 corrected_boxes = _apply_deltas_to_vlm_boxes(vlm_boxes_xyxy, deltas)
+
+                # Filter out FP elements (existence target == 0)
+                existence = targets.get("existence")
+                if existence is not None:
+                    mask = existence.squeeze(-1) > 0.5  # (N,) bool
+                    corrected_boxes = corrected_boxes[mask]
+                    gt_boxes = gt_boxes[mask]
+                    vlm_boxes_xyxy = vlm_boxes_xyxy[mask]
+
                 all_corrected_boxes.append(corrected_boxes)
                 all_gt_boxes.append(gt_boxes)
                 all_vlm_boxes.append(vlm_boxes_xyxy)
@@ -763,12 +941,13 @@ def run_experiment(cfg: ExperimentConfig) -> dict:
             if e.bbox[2] > e.bbox[0] and e.bbox[3] > e.bbox[1]
         ]
 
-        # Load real VLM predictions if available
+        # Load real VLM predictions if available and normalize them
         vlm_nodes: list[ElementNode] | None = None
         if cfg.vlm_dir:
             vlm_path = Path(cfg.vlm_dir) / f"{path.stem}.json"
             if vlm_path.exists():
-                vlm_nodes = load_vlm_predictions(vlm_path)
+                vlm_nodes_raw = load_vlm_predictions(vlm_path)
+                vlm_nodes = [normalize_bbox(e, img_w, img_h) for e in vlm_nodes_raw]
 
         result = build_graph(gt_elements, cfg.noise_scale, builder,
                              vlm_elements=vlm_nodes)
