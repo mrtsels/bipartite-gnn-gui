@@ -67,6 +67,7 @@ class ExperimentConfig:
     seed: int = 42
     rico_dir: str = "data/rico_local/combined"
     cache_dir: str = "data/rico_cache"
+    vlm_dir: str = ""  # dir with real VLM predictions; empty = simulated noise
 
     # Model
     hidden_dim: int = 128
@@ -129,6 +130,7 @@ class ExperimentConfig:
             "amp": args.amp,
             "val_split": args.val_split,
             "noise_scale": args.noise_scale,
+            "vlm_dir": args.vlm_dir,
             "checkpoint_dir": args.checkpoint_dir,
         }
         for key, value in overrides.items():
@@ -188,6 +190,77 @@ def rico_class_to_label(cls: str) -> str:
         if short.endswith(suffix):
             return label
     return "other"
+
+
+def load_vlm_predictions(path: str | Path) -> list[ElementNode]:
+    """Load real VLM predictions from a JSON file and return ElementNodes.
+
+    The JSON must follow the Qwen3-VL output format produced by
+    scripts/generate_vlm_predictions.py:
+      {"elements": [{"bbox_xyxy": [x1,y1,x2,y2], "label": "button", ...}, ...]}
+    or the legacy Qwen3.5-2B format:
+      [{"bbox_xyxy": [x1,y1,x2,y2], "label": "button", ...}, ...]
+
+    Args:
+        path: Path to prediction JSON.
+
+    Returns:
+        List of ElementNode objects. Empty list if file is missing or malformed.
+    """
+    import json
+
+    try:
+        with open(path) as f:
+            raw = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError, OSError):
+        return []
+
+    # Handle both formats: {"elements": [...]} and plain [...]
+    if isinstance(raw, dict):
+        elements_raw = raw.get("elements", [])
+    elif isinstance(raw, list):
+        elements_raw = raw
+    else:
+        return []
+
+    nodes: list[ElementNode] = []
+    for item in elements_raw:
+        if not isinstance(item, dict):
+            continue
+        # Support bbox_xyxy (Qwen3-VL) and bbox (Qwen3.5-2B)
+        bbox = item.get("bbox_xyxy") or item.get("bbox")
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            continue
+        try:
+            x1, y1, x2, y2 = map(float, bbox)
+        except (ValueError, TypeError):
+            continue
+        label = _normalize_label(item.get("label", "other"))
+        nodes.append(ElementNode(
+            bbox=[x1, y1, x2, y2],
+            label=label,
+            confidence=float(item.get("confidence", 1.0)),
+        ))
+    return nodes
+
+
+_LABEL_ALIASES = {
+    "btn": "button", "img": "image", "glyph": "icon",
+    "textbox": "input", "search": "input", "textarea": "input", "textfield": "input",
+    "div": "container", "section": "container", "frame": "container", "panel": "container",
+    "check": "checkbox", "radiobutton": "radio", "range": "slider",
+    "toggle": "switch", "dropdown": "menu", "nav": "menu",
+    "separator": "divider", "hr": "divider",
+    "dialog": "modal", "overlay": "modal",
+    "snackbar": "toast", "notification": "toast",
+    "announcement": "banner", "alertbar": "banner",
+}
+
+
+def _normalize_label(label: str) -> str:
+    """Map VLM label to canonical type."""
+    key = label.strip().lower()
+    return _LABEL_ALIASES.get(key, key)
 
 
 def extract_elements(root: dict) -> list[ElementNode]:
@@ -301,6 +374,7 @@ def build_graph(
     gt_elements: list[ElementNode],
     noise_scale: float,
     builder: BipartiteGraphBuilder,
+    vlm_elements: list[ElementNode] | None = None,
 ) -> Tuple[Any, Dict[str, Tensor]] | None:
     """Build a (HeteroData, targets) pair from ground-truth elements.
 
@@ -319,8 +393,11 @@ def build_graph(
     if len(gt_elements) < 2:
         return None
 
-    # Simulate VLM predictions
-    vlm_elements = make_noisy_vlm(gt_elements, noise_scale=noise_scale)
+    # Use real VLM predictions when provided, otherwise simulate noise
+    if vlm_elements is None:
+        vlm_nodes = make_noisy_vlm(gt_elements, noise_scale=noise_scale)
+    else:
+        vlm_nodes = vlm_elements
 
     # Extract constraints from GT structure
     constraints = extract_all_constraints(gt_elements)
@@ -337,7 +414,7 @@ def build_graph(
         [e.bbox for e in gt_elements], dtype=torch.float32
     )
     vlm_boxes = torch.tensor(
-        [e.bbox for e in vlm_elements], dtype=torch.float32
+        [e.bbox for e in vlm_nodes], dtype=torch.float32
     )
 
     # Convert xyxy → cxcywh for delta computation
@@ -605,6 +682,8 @@ def create_parser() -> argparse.ArgumentParser:
                         help="Validation fraction")
     parser.add_argument("--noise-scale", type=float, default=None,
                         help="Noise scale for VLM simulation")
+    parser.add_argument("--vlm-dir", type=str, default=None,
+                        help="Directory with real VLM predictions (replaces simulated noise)")
     parser.add_argument("--config", type=str, default="",
                         help="Path to YAML config file")
     parser.add_argument("--checkpoint-dir", type=str, default=None,
@@ -684,7 +763,15 @@ def run_experiment(cfg: ExperimentConfig) -> dict:
             if e.bbox[2] > e.bbox[0] and e.bbox[3] > e.bbox[1]
         ]
 
-        result = build_graph(gt_elements, cfg.noise_scale, builder)
+        # Load real VLM predictions if available
+        vlm_nodes: list[ElementNode] | None = None
+        if cfg.vlm_dir:
+            vlm_path = Path(cfg.vlm_dir) / f"{path.stem}.json"
+            if vlm_path.exists():
+                vlm_nodes = load_vlm_predictions(vlm_path)
+
+        result = build_graph(gt_elements, cfg.noise_scale, builder,
+                             vlm_elements=vlm_nodes)
         if result is None:
             n_skipped += 1
             continue
