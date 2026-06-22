@@ -234,6 +234,116 @@ class ScreenSpotRecord:
     annotations: list[ScreenSpotAnnotation]
 ```
 
+## 3.5 RICO 数据集 (RICO Dataset)
+
+### 3.5.1 数据集概述 (Overview)
+
+RICO 是当前最大的移动端 UI 数据集，包含从 9.3K Android 应用挖掘的 66K+ 唯一 UI 屏幕和 3M+ UI 元素。每个 UI 带有一张截图和完整的 Android View Hierarchy，从中可提取所有可见元素的 bbox、类型和文本。
+
+| 指标 (Metric)       | 数值 (Value)     |
+| ------------------- | ---------------- |
+| 截屏数量 (screenshots) | ~66,000        |
+| 标注元素总量 (total annotations) | ~3,000,000 |
+| 平均每图元素数 (avg. elements/image) | ~45      |
+| 平台 (platforms)     | Android          |
+| 坐标格式 (coordinate format) | **绝对像素** bounds `[x1,y1][x2,y2]` |
+
+### 3.5.2 原始格式 (Raw Format)
+
+RICO 数据以 `unique_uis.tar.gz` 分发，内按包名组织：
+
+```
+unique_uis/
+  com.example.app1/
+    screenshot_001.png
+    screenshot_001.json       # View Hierarchy
+    screenshot_002.png
+    screenshot_002.json
+  com.example.app2/
+    ...
+```
+
+每个 View Hierarchy JSON 文件的结构如下：
+
+```json
+{
+  "activity_name": "com.example.MainActivity",
+  "screen_id": "screenshot_001",
+  "screen_width": 1440,
+  "screen_height": 2560,
+  "root": {
+    "bounds": "[0,0][1440,2560]",
+    "class": "android.widget.FrameLayout",
+    "children": [
+      {
+        "bounds": "[0,0][1440,2560]",
+        "class": "android.widget.LinearLayout",
+        "children": [
+          {
+            "bounds": "[50,100][200,300]",
+            "class": "android.widget.Button",
+            "text": "Submit",
+            "content-desc": "",
+            "clickable": true,
+            "visibility": "visible"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+| 字段 (Field)          | 类型 (Type)      | 说明 (Description)                        |
+| --------------------- | ---------------- | ----------------------------------------- |
+| `activity_name`       | `str`            | Android Activity 名。                     |
+| `screen_id`           | `str`            | 截屏文件名（不含扩展名）。                |
+| `screen_width`        | `int`            | 截屏宽度（像素）。                        |
+| `screen_height`       | `int`            | 截屏高度（像素）。                        |
+| `root`                | `dict`           | View Hierarchy 根节点。                   |
+| `root.children`       | `list[dict]`     | 子节点，递归结构。                        |
+| `node.bounds`         | `str`            | `"[x1,y1][x2,y2]"` 格式的绝对像素坐标。   |
+| `node.class`          | `str`            | Android 类名（如 `android.widget.Button`）。|
+| `node.text`           | `str`            | 显示的文本（可为空）。                    |
+| `node.content-desc`   | `str`            | 无障碍描述文本。                          |
+| `node.clickable`      | `bool`           | 是否可点击。                              |
+| `node.visibility`     | `str`            | `"visible"` / `"invisible"` / `"gone"`。 |
+
+### 3.5.3 GT 提取策略 (Extraction Strategy)
+
+从 RICO View Hierarchy 提取 GT 元素时：
+
+1. **递归遍历** root 下的所有节点，只取**叶子节点**（无 children 的节点）。
+2. **过滤** `visibility != "visible"` 或 bbox 面积为 0 的元素。
+3. **解析 bounds** 字符串 `"[x1,y1][x2,y2]"` → `(x1, y1, x2, y2)` 元组。
+4. **归一化**：各分量除以 `(screen_width, screen_height)`。
+5. **类型映射**：Android class → 共享分类体系（见 §4 `vlm_format.md`）。
+
+| Android Class Pattern            | Canonical Type |
+| -------------------------------- | -------------- |
+| `android.widget.Button`          | `button`       |
+| `android.widget.ImageButton`     | `icon`         |
+| `android.widget.ImageView`       | `image`        |
+| `android.widget.TextView`        | `text`         |
+| `android.widget.EditText`        | `input`        |
+| `android.widget.CheckBox`        | `icon`         |
+| `android.widget.Switch`          | `icon`         |
+| `android.widget.Spinner`         | `icon`         |
+| `android.widget.ProgressBar`     | `icon`         |
+| `android.webkit.WebView`         | `container`    |
+| `android.widget.ListView`        | `list`         |
+| `android.widget.ScrollView`      | `container`    |
+| 其它 (any other)                 | `other`        |
+
+### 3.5.4 Semantic Annotations (RICO Semantics)
+
+Google Research 提供的人工精标注版本（~500K 元素），bbox 质量高于自动提取的 View Hierarchy：
+
+- 下载: `semantic_annotations.zip` (150 MB)
+- 格式: 每张截图对应一个 JSON 文件，结构与 §3.5.2 类似但 bbox 为人工修正
+- 覆盖范围: ~500K 个元素（RICO 子集），含 icon shape/semantic 分类
+- **建议优先使用** Semantic Annotations 中存在的元素；对未覆盖的部分回退到 View Hierarchy 提取
+
 ---
 
 ## 4. Unified GTElement 数据结构 (Unified GTElement Dataclass)
@@ -263,7 +373,7 @@ class GTElement:
 | `bbox`          | `tuple[float×4]`        | yes      | `(x1, y1, x2, y2)` in normalised `[0, 1]` screen coordinates.    |
 | `element_type`  | `str`                   | yes      | Canonical element type from the shared taxonomy (§4 `vlm_format.md`). |
 | `text_content`  | `Optional[str]`         | no       | OCR text or element description.  `None` when no text is present. |
-| `source_dataset`| `str`                   | yes      | Origin dataset identifier: `"gui360"` or `"screenspot"`.          |
+| `source_dataset`| `str`                   | yes      | Origin dataset identifier: `"gui360"`, `"screenspot"` or `"rico"`.|
 | `metadata`      | `dict`                  | yes      | Original metadata merged from the source (see §4.1).              |
 
 ### 4.1 元数据合并规则 (Metadata Merging Rules)
@@ -272,6 +382,7 @@ class GTElement:
 | --------------- | ------------------------------------------------------- |
 | GUI-360°        | `{"platform": "...", **raw_attributes}`                 |
 | ScreenSpot      | `{"group": "...", "instruction": "...", **raw_attributes}` |
+| RICO            | `{"app_category": "...", "package_name": "...", "class": "...", **raw_attributes}` |
 
 ### 4.2 类型规范化 (Type Normalisation)
 
@@ -322,7 +433,7 @@ class GroundTruth:
 | `image_path`   | `str`             | no       | Local filesystem path to the corresponding screenshot image.  |
 | `image_width`  | `int`             | no       | Original image pixel width.  `0` when unknown.                |
 | `image_height` | `int`             | no       | Original image pixel height.  `0` when unknown.               |
-| `source`       | `str`             | no       | Source dataset identifier: `"gui360"` or `"screenspot"`.     |
+| `source`       | `str`             | no       | Source dataset identifier: `"gui360"`, `"screenspot"` or `"rico"`.|
 
 > **关系 (Relationship):** `GroundTruth` 与 `VLMOutput`（§3 `vlm_format.md`）结构对称，
 > 便于匹配算法需要时将两者并排使用。`image_path` 替代了 `VLMOutput` 中的
@@ -525,7 +636,37 @@ def load_screenspot_annotation(path: str | Path) -> GroundTruth:
     """
 ```
 
-### 7.3 工厂函数 (Factory Dispatcher)
+### 7.3 `load_rico_annotation`
+
+```python
+def load_rico_annotation(path: str | Path, semantic: bool = False) -> GroundTruth:
+    """从 RICO View Hierarchy JSON 加载并返回统一 GroundTruth。
+
+    递归遍历 View Hierarchy 树，提取所有可见叶子节点的 bbox 和类型信息。
+
+    Args:
+        path: RICO View Hierarchy JSON 文件路径。
+        semantic: 是否为 Semantic Annotations 格式（字段名略有差异）。
+
+    Returns:
+        GroundTruth 实例，所有 bbox 已归一化，类型已规范化。
+
+    Processing steps:
+        1. 读取 JSON 文件，提取 screen_width, screen_height。
+        2. 递归遍历 root.children。
+        3. 对每个叶子节点（无 children 或 children 为空列表）：
+           - 解析 bounds "[x1,y1][x2,y2]" → (x1, y1, x2, y2)。
+           - 过滤 visibility != "visible" 或面积为 0 的元素。
+           - 归一化：各分量除以 (screen_width, screen_height)。
+           - 映射 class → element_type（Android class → canonical type）。
+           - text / content-desc → text_content。
+           - 构造 GTElement。
+        4. 根据 screen_id 推导 image_path。
+        5. 返回 GroundTruth(elements=..., source="rico")。
+    """
+```
+
+### 7.4 工厂函数 (Factory Dispatcher)
 
 ```python
 def load_ground_truth(path: str | Path, source: str | None = None) -> GroundTruth:
@@ -533,7 +674,7 @@ def load_ground_truth(path: str | Path, source: str | None = None) -> GroundTrut
 
     Args:
         path: 标注文件路径。
-        source: 可选的数据集标识 ("gui360" 或 "screenspot")。
+        source: 可选的数据集标识 (`"gui360"`, `"screenspot"` 或 `"rico"`)。
                 为 None 时通过文件内容自动推断。
 
     Returns:
@@ -542,6 +683,7 @@ def load_ground_truth(path: str | Path, source: str | None = None) -> GroundTrut
     Auto-detection heuristics (when source is None):
         - 文件中存在 "platform" 键 → GUI-360°
         - 文件中存在 "group" 键   → ScreenSpot
+        - 文件中存在 "root" 键    → RICO (View Hierarchy)
         - 否则 → 抛出 GroundTruthParseError
     """
 ```
@@ -567,7 +709,8 @@ def load_ground_truth(path: str | Path, source: str | None = None) -> GroundTrut
 | `builder.py`        | 4.3.3   | `HeteroGraphBuilder` 同时消费 GT 和 VLM 元素构建训练图。       |
 | `metrics.py`        | 4.5.1   | `ElementRecall`、`ElementPrecision` 依赖匹配结果计算指标。    |
 | `evaluator.py`      | 4.5.2   | `Evaluator` 调用 `match_predictions_to_ground_truth` 建立对应。 |
-| `ground_truth.py`   | 4.2.2   | 本文档的协议在此文件中实现。                                    |
+| `ground_truth.py`   | 4.2.2   | 本文档的协议在此文件中实现。新增 `load_rico_annotation` 支持 RICO。 |
+| `rico_loader.py`    | 新      | RICO View Hierarchy 递归解析器（可选独立模块）。               |
 
 ---
 
