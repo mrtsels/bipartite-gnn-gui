@@ -365,7 +365,12 @@
   - PR: #24
   - 测试: 25 tests, 910 total pass
 
-- [ ] **4.6.2** 超参实验对比
+- [x] **4.6.2** 超参实验对比
+  - 6 配置 sweep: hidden_dim 64/128/256, lr 1e-3/5e-4, noise 0.08/0.12/0.20
+  - Best: hd128, big-noise (val_loss=0.0537)
+  - 发现: hidden dim 不影响; 所有配置收敛一致
+  - PR: #25
+  - experiments/results.json, experiments/sweep.py
 
 ---
 
