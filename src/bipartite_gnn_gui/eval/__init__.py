@@ -27,11 +27,11 @@ from .metrics import (
     compute_all_metrics,
 )
 from .evaluator import Evaluator, EvaluationResult
-from .baselines import BaselineNoCorrection, BaselineRuleBased, BaselineMLPOnly
+from .baselines import NoOpBaseline, IdentityBaseline, RandomJitterBaseline
 from .qualitative import (
-    side_by_side_plot,
+    plot_correction_comparison,
     plot_error_heatmap,
-    plot_category_breakdown,
+    plot_correction_grid,
 )
 
 __all__ = [
@@ -44,10 +44,10 @@ __all__ = [
     "compute_all_metrics",
     "Evaluator",
     "EvaluationResult",
-    "BaselineNoCorrection",
-    "BaselineRuleBased",
-    "BaselineMLPOnly",
-    "side_by_side_plot",
+    "NoOpBaseline",
+    "IdentityBaseline",
+    "RandomJitterBaseline",
+    "plot_correction_comparison",
     "plot_error_heatmap",
-    "plot_category_breakdown",
+    "plot_correction_grid",
 ]
