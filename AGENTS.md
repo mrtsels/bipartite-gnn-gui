@@ -46,7 +46,41 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
+### 6. Hermes Subagent Workflow: One Task = One Subagent
+
+**Every Claude session must be dispatched via `delegate_task()` as a Hermes subagent.**
+
+Rationale:
+- Hermes tracks the subagent's lifecycle, output, and cost automatically.
+- Multiple tasks run in parallel (up to 3 concurrently for this project).
+- Each subagent has its own isolated context, preventing cross-task pollution.
+- The summary it returns is logged in Hermes session history for later retrieval.
+
+Rules:
+1. **Never call `claude` in terminal directly.** Always wrap in delegate_task().
+2. **Each task gets its own worktree branch.** Never have one agent touch multiple branches.
+3. **Each subagent produces one PR** (or one set of commits if small).
+4. **Cost tracking**: every subagent's `total_cost_usd` is appended to the project's cost-tracking.json.
+5. **Verification is the subagent's responsibility.** It must run tests and confirm they pass before finishing.
+6. **Subagent prompt must be self-contained.** Include file paths, error context, git commands, and verification steps. Subagents have no memory of the parent conversation.
+
 ### 4. Goal-Driven Execution
+
+**Every Claude session must be dispatched via `delegate_task()` as a Hermes subagent.**
+
+Rationale:
+- Hermes tracks the subagent's lifecycle, output, and cost automatically.
+- Multiple tasks run in parallel (up to 3 concurrently for this project).
+- Each subagent has its own isolated context, preventing cross-task pollution.
+- The summary it returns is logged in Hermes session history for later retrieval.
+
+Rules:
+1. **Never call `claude` in terminal directly.** Always wrap in delegate_task().
+2. **Each task gets its own worktree branch.** Never have one agent touch multiple branches.
+3. **Each subagent produces one PR** (or one set of commits if small).
+4. **Cost tracking**: every subagent's `total_cost_usd` is appended to the project's cost-tracking.json.
+5. **Verification is the subagent's responsibility.** It must run tests and confirm they pass before finishing.
+6. **Subagent prompt must be self-contained.** Include file paths, error context, git commands, and verification steps. Subagents have no memory of the parent conversation.
 
 **Define success criteria. Loop until verified.**
 
@@ -84,7 +118,14 @@ Rules:
 
 ## Current State
 
-Initial scaffold — module APIs designed with docstrings and `__init__.py` exports, no implementations yet. ~25 tasks across 4 phases in `TASK.md`. Implement sequentially: data → graph → model → eval.
+All core modules implemented and tested (Phase 1-4.5 complete):
+- Data: VLM parsing, GT loading (ScreenSpot + RICO), Dataset/DataLoader, cache
+- Graph: schema, constraint extraction (10 types), HeteroData builder, augmentation, viz
+- Model: HeteroGraphSAGE encoder, 3 prediction heads, losses, trainer, inference pipeline
+- Eval: metrics (PositionError, AlignmentError, Recall, Precision, F1, IoU), evaluator, baselines (NoOp, Identity, RandomJitter), qualitative viz
+- End-to-end training verified on RICO data (885 tests, all pass)
+
+Remaining: Phase 4.6 (experiments / training pipeline), Phase 5 (web demo).
 
 ## Commands
 
