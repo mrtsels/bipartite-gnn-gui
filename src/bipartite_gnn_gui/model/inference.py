@@ -53,24 +53,27 @@ def _parse_elements_from_dict(vlm_json: Dict[str, Any]) -> VLMOutput:
     for i, item in enumerate(elements_raw):
         if not isinstance(item, dict):
             continue
-        bbox_raw = item.get("bbox", [0, 0, 0, 0])
-        bbox = normalize_bbox(
-            list(bbox_raw),
-            format="xyxy",
-            img_width=img_width,
-            img_height=img_height,
-        )
-        label = str(item.get("label", "unknown"))
-        confidence = float(item.get("confidence", 1.0))
-        confidence = max(0.0, min(1.0, confidence))
+        try:
+            bbox_raw = item.get("bbox", [0, 0, 0, 0])
+            bbox = normalize_bbox(
+                list(bbox_raw),
+                format="xyxy",
+                img_width=img_width,
+                img_height=img_height,
+            )
+            label = str(item.get("label", "unknown"))
+            confidence = float(item.get("confidence", 1.0))
+            confidence = max(0.0, min(1.0, confidence))
 
-        elem = VLMOutputElement(
-            element_id=i,
-            bbox=bbox,
-            element_type=label,
-            confidence=confidence,
-        )
-        elements.append(elem)
+            elem = VLMOutputElement(
+                element_id=i,
+                bbox=bbox,
+                element_type=label,
+                confidence=confidence,
+            )
+            elements.append(elem)
+        except Exception as exc:
+            logger.warning("Skipping invalid element %d: %s", i, exc)
 
     return VLMOutput(
         image_id=image_id,

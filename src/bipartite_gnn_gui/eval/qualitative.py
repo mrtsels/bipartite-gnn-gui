@@ -17,12 +17,12 @@ import logging
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import matplotlib
+matplotlib.use("Agg")  # Non-interactive backend (headless) — must be before all other matplotlib imports
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import FancyBboxPatch
-
-matplotlib.use("Agg")  # Non-interactive backend (headless)
 
 from bipartite_gnn_gui.data.ground_truth import GroundTruth
 from bipartite_gnn_gui.utils.bbox import compute_iou
@@ -119,13 +119,14 @@ def _compute_iou_between_dicts(
     except ImportError:
         return 0.0
 
-    # Build tensors
-    pred_boxes = torch.tensor(
-        [e["bbox"] for e in pred_elements], dtype=torch.float32
-    )
-    gt_boxes = torch.tensor(
-        [e["bbox"] for e in gt_elements], dtype=torch.float32
-    )
+    # Build tensors — skip elements missing the "bbox" key.
+    pred_bboxes = [e["bbox"] for e in pred_elements if "bbox" in e]
+    gt_bboxes = [e["bbox"] for e in gt_elements if "bbox" in e]
+    if not pred_bboxes or not gt_bboxes:
+        return 0.0
+
+    pred_boxes = torch.tensor(pred_bboxes, dtype=torch.float32)
+    gt_boxes = torch.tensor(gt_bboxes, dtype=torch.float32)
 
     iou_matrix = compute_iou(pred_boxes, gt_boxes)  # (M, N)
 

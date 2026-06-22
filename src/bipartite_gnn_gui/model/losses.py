@@ -129,7 +129,9 @@ def compute_alignment_consistency_loss(
         pos = pos_values[elem_for_constraint]
         mean_pos = pos.mean()
         per_elem_loss = F.mse_loss(pos, mean_pos.expand_as(pos), reduction="mean")
-        total_loss = total_loss + per_elem_loss
+        # Only penalize if max deviation exceeds tolerance.
+        if (pos - mean_pos).abs().max() > tolerance:
+            total_loss = total_loss + per_elem_loss
 
     return total_loss
 
