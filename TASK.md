@@ -293,29 +293,40 @@
   - PR: #16
   - 测试: `test_graph_augment.py`
 
+### 4.3a 新增: 数据加载/适配
+
+- [x] **4.3a.1** ScreenSpot 数据格式适配 (combined JSON, xywh→xyxy, 字段映射)
+  - PR: #18
+  - 测试: `test_data_ground_truth.py`, `test_data_dataset.py`
+
+- [x] **4.3a.2** RICO View Hierarchy 加载器 (`src/bipartite_gnn_gui/data/rico_loader.py`)
+  - PR: #17
+  - 递归树解析, Android class→type 映射, Semantic Annotations 支持
+  - 测试: `test_data_rico.py`
+
 ### 4.4 模型层
 
-- [ ] **4.4.1** 实现异构编码器 (`src/bipartite_gnn_gui/model/encoder.py`):
+- [x] **4.4.1** 实现异构编码器 (`src/bipartite_gnn_gui/model/encoder.py`):
   HeteroGraphSAGE (两层 SAGEConv + to_hetero + ReLU + Dropout + reset_parameters)
   - 测试: `test_model_encoder.py`
 
-- [ ] **4.4.2** 实现预测头 (`src/bipartite_gnn_gui/model/heads.py`):
+- [x] **4.4.2** 实现预测头 (`src/bipartite_gnn_gui/model/heads.py`):
   CoordinateRefinementHead, ViolationPredictionHead, ExistencePredictionHead
   - 测试: `test_model_heads.py`
 
-- [ ] **4.4.3** 实现损失函数 (`src/bipartite_gnn_gui/model/losses.py`):
+- [x] **4.4.3** 实现损失函数 (`src/bipartite_gnn_gui/model/losses.py`):
   coordinate_refinement_loss, violation_loss, alignment_consistency_loss, existence_loss, CombinedLoss
   - 测试: `test_model_losses.py`
 
-- [ ] **4.4.4** 实现完整模型 (`src/bipartite_gnn_gui/model/model.py`):
+- [x] **4.4.4** 实现完整模型 (`src/bipartite_gnn_gui/model/model.py`):
   BipartiteGNNCorrector (encoder + 3 heads + forward + compute_loss + train_step/validation_step)
   - 测试: `test_model_model.py`
 
-- [ ] **4.4.5** 实现训练器 (`src/bipartite_gnn_gui/model/trainer.py`):
+- [x] **4.4.5** 实现训练器 (`src/bipartite_gnn_gui/model/trainer.py`):
   Trainer (fit/train_epoch/validate + AdamW + cosine warmup + early stopping + checkpoint + AMP)
   - 测试: `test_model_trainer.py`
 
-- [ ] **4.4.6** 实现推理管线 (`src/bipartite_gnn_gui/model/inference.py`):
+- [x] **4.4.6** 实现推理管线 (`src/bipartite_gnn_gui/model/inference.py`):
   InferencePipeline (correct_single/correct_batch + _vlm_json_to_hetero + _apply_delta + clamp)
   - 测试: `test_model_inference.py`
 
