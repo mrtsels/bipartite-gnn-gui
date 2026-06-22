@@ -336,8 +336,22 @@ def build_graph(
     gt_boxes = torch.tensor(
         [e.bbox for e in gt_elements], dtype=torch.float32
     )
+    vlm_boxes = torch.tensor(
+        [e.bbox for e in vlm_elements], dtype=torch.float32
+    )
+
+    # Convert xyxy → cxcywh for delta computation
+    def _cxcywh(b):
+        x1, y1, x2, y2 = b[:, 0], b[:, 1], b[:, 2], b[:, 3]
+        return torch.stack([(x1+x2)/2, (y1+y2)/2, x2-x1, y2-y1], dim=-1)
+
+    gt_xywh = _cxcywh(gt_boxes)
+    vlm_xywh = _cxcywh(vlm_boxes)
+    delta = gt_xywh - vlm_xywh
+
     targets: Dict[str, Tensor] = {
-        "coord": gt_boxes,  # (N, 4) target bboxes
+        "coord": delta,           # (N, 4) model predicts Δcx, Δcy, Δw, Δh
+        "gt_boxes": gt_boxes,     # (N, 4) raw GT xyxy for evaluation
         "existence": torch.ones(N, 1, dtype=torch.float32),
         "violation": torch.zeros(N_con, 1, dtype=torch.float32),
     }
@@ -529,7 +543,7 @@ def evaluate_model(
             if "coord" in outputs:
                 # Get original VLM boxes from the graph's element node features
                 vlm_boxes_xyxy = hetero_data["element"].x[:, :4].cpu()
-                gt_boxes = targets["coord"]
+                gt_boxes = targets.get("gt_boxes", targets["coord"])
                 deltas = outputs["coord"].cpu()
 
                 # Apply deltas to get corrected boxes

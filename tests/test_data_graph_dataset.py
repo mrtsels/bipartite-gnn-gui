@@ -210,13 +210,19 @@ class TestGraphDataset:
         N = sample["gt_boxes"].size(0)
         assert targets["coord"].shape == (N, 4)
 
-    def test_target_coord_matches_gt_boxes(
+    def test_target_coord_is_delta(
         self, graph_dataset: GraphDataset, mock_dataset: _MockGUIDataset
     ) -> None:
-        """coord targets match ground-truth boxes from the flat sample."""
+        """coord targets should be (gt_xywh - vlm_xywh) delta, not raw GT."""
         _, targets = graph_dataset[0]
         sample = mock_dataset[0]
-        assert torch.allclose(targets["coord"], sample["gt_boxes"])
+        # coord should NOT equal raw gt_boxes (it's a delta now)
+        assert not torch.allclose(targets["coord"], sample["gt_boxes"]), \
+            "coord should not equal raw gt_boxes"
+        # gt_boxes should equal raw gt_boxes
+        assert "gt_boxes" in targets
+        assert torch.allclose(targets["gt_boxes"], sample["gt_boxes"]), \
+            "gt_boxes target should match raw GT"
 
     def test_target_existence_all_ones(self, graph_dataset: GraphDataset, mock_dataset: _MockGUIDataset) -> None:
         """existence targets are all 1.0 (all elements present in GT)."""

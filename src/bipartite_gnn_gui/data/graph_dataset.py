@@ -148,9 +148,21 @@ class GraphDataset(Dataset):
         hetero_data = self.builder.build(vlm_elements, constraints)
 
         # ---- Build targets ----
+        # Convert VLM and GT boxes from xyxy to cxcywh for delta computation.
+        def _to_cxcywh(boxes: Tensor) -> Tensor:
+            x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+            cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+            w, h = x2 - x1, y2 - y1
+            return torch.stack([cx, cy, w, h], dim=-1)
+
+        vlm_xywh = _to_cxcywh(vlm_boxes)
+        gt_xywh = _to_cxcywh(gt_boxes)
+        delta = gt_xywh - vlm_xywh  # model target: GT_offset - VLM_offset
+
         N_con = len(constraints)
         targets: Dict[str, Tensor] = {
-            "coord": gt_boxes,  # (N, 4) target bboxes in xyxy
+            "coord": delta,              # (N, 4) model predicts Δcx, Δcy, Δw, Δh
+            "gt_boxes": gt_boxes,        # (N, 4) raw GT xyxy for evaluation
             "existence": torch.ones(N, 1, dtype=torch.float32),
             "violation": torch.zeros(N_con, 1, dtype=torch.float32),
         }
