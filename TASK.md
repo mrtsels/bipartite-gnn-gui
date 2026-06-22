@@ -357,8 +357,15 @@
   - 测试: `test_eval_qualitative.py` (14 tests)
 
 ### 4.6 实验阶段
-  generate_latex_table, generate_comparison_fig, export_results_json/csv, generate_summary_report
-  - 测试: `test_experiment_report.py`
+
+- [x] **4.6.1** 训练管线标准化
+  - GraphDataset: GUIDataset → HeteroData 桥接层
+  - run_experiment.py: YAML 配置 / CLI 参数 / per-epoch 报告 / checkpoint
+  - configs/experiment.yaml: 默认实验配置
+  - PR: #24
+  - 测试: 25 tests, 910 total pass
+
+- [ ] **4.6.2** 超参实验对比
 
 ---
 
