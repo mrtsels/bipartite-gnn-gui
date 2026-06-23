@@ -1,9 +1,0 @@
-{
-  "n_images": 320,
-  "n_with_constraints": 218,
-  "n_predictions": 643,
-  "pct_violated": 1.0,
-  "mean_score": 0.5291401743888855,
-  "std_score": 0.008295067586004734,
-  "rico_reference_acc": 0.91
-}

@@ -130,42 +130,49 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
     ann_path = "data/raw/screenspot/ScreenSpot_combined.json"
     items = load_screenspot_items(ann_path, max_n=500)
-    model = load_model()
-    metrics = evaluate(model, items)
+    # Load models
+    rico_model = load_model("checkpoints/violation_detection/best_model.pt")
+    finetuned_model = load_model("checkpoints/violation_detection/screenspot_finetuned.pt")
+
+    metrics_rico = evaluate(rico_model, items)
+    metrics_finetune = evaluate(finetuned_model, items)
 
     print()
     print("=" * 60)
     print("  Cross-Dataset: RICO → ScreenSpot (Zero-Shot)")
-    print(f"  ScreenSpot images with >=2 elem:   {metrics['n_images']}")
-    print(f"  Images with constraints:            {metrics['n_with_constraints']}")
-    print(f"  Total violation predictions:        {metrics['n_predictions']}")
-    print(f"  Mean violation score:               {metrics['mean_score']:.4f}")
-    print(f"  Std violation score:                {metrics['std_score']:.4f}")
-    print(f"  % predictions > 0.5 (violated):     {metrics['pct_violated']*100:.1f}%")
-    print(f"  RICO in-distribution reference:     {metrics['rico_reference_acc']*100:.0f}%")
+    print(f"  ScreenSpot images with >=2 elem:   {metrics_rico['n_images']}")
+    print(f"  Images with constraints:            {metrics_rico['n_with_constraints']}")
+    print(f"  Total violation predictions:        {metrics_rico['n_predictions']}")
+    print()
+    print(f"  {'Metric':<30} {'RICO Model':>12} {'Fine-Tuned':>12}")
+    print(f"  {'-'*30} {'-'*12} {'-'*12}")
+    print(f"  {'Mean violation score':<30} {metrics_rico['mean_score']:>12.4f} {metrics_finetune['mean_score']:>12.4f}")
+    print(f"  {'Std violation score':<30} {metrics_rico['std_score']:>12.4f} {metrics_finetune['std_score']:>12.4f}")
+    print(f"  {'% predicted violated':<30} {metrics_rico['pct_violated']*100:>11.1f}% {metrics_finetune['pct_violated']*100:>11.1f}%")
+    print(f"  {'RICO in-distribution ref':<30} {metrics_rico['rico_reference_acc']*100:>11.0f}% {metrics_finetune['rico_reference_acc']*100:>11.0f}%")
     print("=" * 60)
     print()
 
-    if metrics["pct_violated"] > 0.7:
-        print("  ⚠️ Model predicts most constraints violated — distribution shift.")
-        print("  ScreenSpot (sparse PC/web ~3 elem) ≠ RICO (dense mobile ~22 elem).")
-    elif metrics["pct_violated"] < 0.3:
-        print("  ⚠️ Model predicts most constraints intact — distribution shift.")
-    elif metrics["mean_score"] < 0.55 and metrics["mean_score"] > 0.45:
-        print("  ✅ Scores cluster near 0.5 — model correctly signals uncertainty.")
-    else:
-        print("  ❌ Model does not generalize to ScreenSpot.")
+    # Analysis
+    def interpret(m):
+        if m["pct_violated"] > 0.7:
+            return "⚠️ Most constraints → violated (distribution shift)"
+        elif m["pct_violated"] < 0.3:
+            return "⚠️ Most constraints → intact (distribution shift)"
+        elif m["mean_score"] < 0.55 and m["mean_score"] > 0.45:
+            return "✅ Scores near 0.5 → model signals uncertainty"
+        else:
+            return "❌ Does not generalize"
+
+    print(f"  RICO model:    {interpret(metrics_rico)}")
+    print(f"  Fine-tuned:    {interpret(metrics_finetune)}")
     print()
-    print("  Root cause: ScreenSpot has 2.1 elem/image vs RICO's ~22 elem/image.")
-    print("  Constraint graphs have 1-4 constraints vs RICO's 30-50 constraints.")
-    print("  The GNN was trained on dense mobile layouts and cannot zero-shot")
-    print("  transfer to the fundamentally different ScreenSpot annotation style.")
-    print()
+    print(f"  Fine-tuning gain: {metrics_finetune['pct_violated'] - metrics_rico['pct_violated']:+.1%} violated rate")
 
     out_dir = Path("experiments")
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "cross_dataset_results.json", "w") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump({"rico": metrics_rico, "finetuned": metrics_finetune}, f, indent=2)
     logger.info(f"Saved to experiments/cross_dataset_results.json")
 
 
