@@ -1,0 +1,15 @@
+{
+  "n_images": 193,
+  "avg_gt_elements": 24.751295336787564,
+  "avg_vlm_elements": 14.989637305699482,
+  "avg_missed_elements": 23.984455958549223,
+  "violation_acc": 0.2761692702770233,
+  "proposal_mse": 0.08697586506605148,
+  "proposal_iou": 0.0,
+  "proposal_recall@0.3": 0.0,
+  "n_violated": 325,
+  "nn_mse": 0.07538285106420517,
+  "nn_iou": 0.031071223318576813,
+  "center_mse": 0.08792991191148758,
+  "center_iou": 0.0016217927914112806
+}
