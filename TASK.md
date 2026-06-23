@@ -392,27 +392,71 @@
 
 ## Phase 5: 集成测试 (Integration Testing)
 
-**Goal:** Verify end-to-end pipelines work on synthetic and real data.
+**Goal:** Verify end-to-end pipelines work on synthetic and real data, including both the original VLM correction pipeline and the new structural completion pipeline.
 
 ---
 
-- [ ] **5.1** 数据管线集成测试: VLM JSON → parse → normalize → extract features → Dataset → DataLoader
+### 5A — 原始管线（VLM 坐标修正）
+
+- [ ] **5A.1** 数据管线集成测试: VLM JSON → parse → normalize → extract features → Dataset → DataLoader
   - 使用合成 JSON 模拟 VLM 输出，验证完整的 data flow 不报错
-
-- [ ] **5.2** 图构建集成测试: VLM JSON → constraints → HeteroData → visualize → augment → verify keys
+  
+- [ ] **5A.2** 图构建集成测试: VLM JSON → constraints → HeteroData → visualize → augment → verify keys
   - 验证所有 HeteroData 键存在、形状正确、反向边建立
-
-- [ ] **5.3** 模型前向集成测试: 合成 HeteroData → encoder → heads → loss → backward
+  
+- [ ] **5A.3** 模型前向集成测试: 合成 HeteroData → encoder → heads (coord/violation/existence) → loss → backward
   - 验证梯度可以回传、loss 是标量、训练一步后 loss 下降
+  - ✅ 已有 `test_model_model.py` 覆盖，无需新增
 
-- [ ] **5.4** 端到端管线测试: VLM JSON → InferencePipeline → corrected JSON
+- [ ] **5A.4** 端到端管线测试: VLM JSON → InferencePipeline → corrected JSON
   - 验证输出 JSON 结构、坐标在边界内
 
-- [ ] **5.5** 评估基线集成测试: 所有 baselines + Evaluator 在合成数据上运行
+- [ ] **5A.5** 评估基线集成测试: 所有 baselines + Evaluator 在合成数据上运行
   - 验证每个 baseline 返回正确格式、Evaluator 产出所有指标
+  - ✅ 已有 `test_evaluator.py` 覆盖
 
-- [ ] **5.6** 实验脚本冒烟测试: `experiments/run.py` 在合成数据上执行全部 4 个实验
-  - 验证每个实验脚本不 crash、产出结果文件
+---
+
+### 5B — 结构性补全管线（Phase 4.9 新增）
+
+- [ ] **5B.1** 违反图构建测试: `build_violation_graph()` 在合成布局上的行为
+  - 输入1: 完整 GT 布局（3+ 元素，有约束）
+    - 验证: drop=0 → 所有 violation_labels=0, 所有 proposal_violation_mask=False
+    - 验证: drop=1 → 返回 None（没有幸存者）
+  - 输入2: 完整 GT → drop=0.5 → 随机删除一半
+    - 验证: `proposal_violation_mask.sum() > 0`（至少有一些约束被破坏）
+    - 验证: `proposal_target` 形状 = (N_constraints, 4), 值在 [0,1] 范围内
+    - 验证: `survivor_mask.sum()` = 幸存者数量
+    - 验证: 约束索引 remap 正确（无越界）
+  
+- [ ] **5B.2** 遮掩管线测试: `random_mask()` 在 HeteroData 上的行为
+  - 输入: 完整 HeteroData → `random_mask(data, mask_ratio=0.6)`
+  - 验证: 恰好 60% 的元素特征被替换为 MASK_TOKEN (-1.0)
+  - 验证: `mask_info["mask"].sum() == 0.6 * N`
+  - 验证: `mask_info["target_features"][mask]` 等于被遮掩前的原始值
+  - 输入2: `mask_ratio=0` → 无遮掩
+  - 输入3: `mask_ratio=1` → 全部遮掩
+
+- [ ] **5B.3** 提议头模型集成测试: `ElementProposalHead` 前向 + 梯度
+  - 输入: 随机约束 embedding `(N, hidden_dim)`
+  - 验证: 输出形状 `(N, 4)`, 值在 [0, 1] 范围（Sigmoid 约束）
+  - 验证: `compute_proposal_loss` 只对 violated 约束计算梯度
+  - 验证: 无违反时 loss = 0, 梯度为 0
+
+- [ ] **5B.4** 联合训练冒烟测试: `train_violation.py --n 10 --epochs 2`
+  - 验证: 训练不 crash, val loss 下降
+  - 验证: 两种 loss（violation + proposal）都参与 backward
+  - 验证: checkpoint 可以正常保存和加载
+
+- [ ] **5B.5** 完整评估冒烟测试: `evaluate_completion.py --n 10 --epochs 2 --drop-ratios "0.4,0.6" --seeds "42" --output /tmp/test_eval.json`
+  - 验证: 所有 drop ratio 可跑通
+  - 验证: 结果 JSON 包含正确 keys
+  - 验证: report 函数不 crash
+
+- [ ] **5B.6** 基线正确性测试: `evaluate_completion.py` 中的 baselines
+  - NN 基线: 当只有一个 survivor 时复制其 bbox
+  - Center 基线: 返回 layout 中心
+  - 验证: 基线结果在正常范围内 (0 < IoU < 1, MSE 非负)
 
 ---
 
