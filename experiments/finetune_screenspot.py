@@ -25,15 +25,14 @@ sys.path.insert(0, str(ROOT))
 from bipartite_gnn_gui.graph.builder import BipartiteGraphBuilder
 from bipartite_gnn_gui.graph.schema import ElementNode
 from bipartite_gnn_gui.model.model import BipartiteGNNCorrector
-
-BUILDER = BipartiteGraphBuilder()
 from scripts.train_violation import build_violation_graph
 
 logger = logging.getLogger(__name__)
 
 
-def load_vlm_elements(vlm_dir: str, max_n: int = 500) -> List[List[ElementNode]]:
-    """Load ScreenSpot VLM predictions as pseudo-GT element sets."""
+def load_vlm_elements(vlm_dir: str, max_n: int = 500, drop_ratio: float = 0.4) -> List[List[ElementNode]]:
+    """Load ScreenSpot VLM predictions, returning only element lists
+    that produce valid violation graphs (pre-verified)."""
     vlm_path = Path(vlm_dir)
     files = sorted(vlm_path.glob("*.json"))[:max_n]
     all_elems: List[List[ElementNode]] = []
@@ -43,6 +42,8 @@ def load_vlm_elements(vlm_dir: str, max_n: int = 500) -> List[List[ElementNode]]
         w, h = data.get("image_width", 1440), data.get("image_height", 2560)
         elems = []
         for el in data.get("elements", []):
+            if not isinstance(el, dict):
+                continue
             bbox = el.get("bbox_xyxy", [0, 0, 0, 0])
             x1, y1, x2, y2 = bbox
             x1 = max(0, x1) / w
@@ -55,32 +56,29 @@ def load_vlm_elements(vlm_dir: str, max_n: int = 500) -> List[List[ElementNode]]
             elems.append(ElementNode(bbox=[x1, y1, x2, y2], confidence=1.0, label=label))
         if len(elems) >= 3:
             all_elems.append(elems)
-    logger.info(f"Loaded {len(all_elems)} ScreenSpot layouts ({sum(len(e) for e in all_elems)} elements)")
+    logger.info(f"Loaded {len(all_elems)} layouts ({sum(len(e) for e in all_elems)} elements)")
     return all_elems
 
 
 class VLMViolationDataset(Dataset):
-    """Build violation graphs on the fly from VLM-predicted layouts."""
-
-    def __init__(self, elements_list: List[List[ElementNode]], drop_ratio: float = 0.4):
-        self.elements_list = elements_list
-        self.drop_ratio = drop_ratio
+    """Pre-build all violation graphs at init time. Drops any item that
+    produces None (too few survivors / no constraints)."""
+    def __init__(self, elements_list: List[List[ElementNode]],
+                 drop_ratio: float = 0.4, seed_offset: int = 0):
+        self.samples: List[Tuple] = []  # (data, targets)
+        for i, elems in enumerate(elements_list):
+            builder = BipartiteGraphBuilder()  # fresh builder per item
+            result = build_violation_graph(elems, builder=builder,
+                                           drop_ratio=drop_ratio, seed=seed_offset + i)
+            if result is not None:
+                self.samples.append(result)
+        logger.info(f"Dataset: {len(self.samples)} valid graphs from {len(elements_list)} layouts")
 
     def __len__(self) -> int:
-        return len(self.elements_list)
+        return len(self.samples)
 
     def __getitem__(self, idx: int) -> Tuple[Any, Dict[str, torch.Tensor]]:
-        result = build_violation_graph(
-            self.elements_list[idx], builder=BUILDER, drop_ratio=self.drop_ratio, seed=idx
-        )
-        if result is None:
-            # Fallback: retry with different seed
-            result = build_violation_graph(
-                self.elements_list[idx], builder=BUILDER, drop_ratio=self.drop_ratio, seed=idx + 1000
-            )
-            if result is None:
-                raise ValueError(f"No valid graph for item {idx}")
-        return result[0], result[1]
+        return self.samples[idx]
 
 
 def load_model(ckpt_path: str = "checkpoints/violation_detection/best_model.pt",
@@ -104,7 +102,7 @@ def evaluate(model: BipartiteGNNCorrector,
     accs = []
     for idx in range(min(max_n, len(elems_list))):
         result = build_violation_graph(
-            elems_list[idx], builder=BUILDER, drop_ratio=drop_ratio, seed=999 + idx
+            elems_list[idx], builder=BipartiteGraphBuilder(), drop_ratio=drop_ratio, seed=999 + idx
         )
         if result is None:
             continue
