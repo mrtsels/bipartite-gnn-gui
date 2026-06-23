@@ -115,11 +115,14 @@ class TestComputeLoss:
             "coord": torch.randn(4, 4),
             "violation": torch.randint(0, 2, (2, 1)).float(),
             "existence": torch.randint(0, 2, (4, 1)).float(),
-            # Add mask targets so mask_head also gets gradients.
+            # Add mask + proposal targets so all heads get gradients.
             "mask_completion_target": torch.randn(4, 5),
             "mask_completion_mask": torch.tensor([True, True, False, False]),
+            "proposal_target": torch.randn(2, 4),
+            "proposal_violation_mask": torch.tensor([True, False]),
         }
         model.mask_weight = 1.0
+        model.proposal_weight = 1.0
         loss = model.compute_loss(pred, targets)
         loss.backward()
         for name, param in model.named_parameters():

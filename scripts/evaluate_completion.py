@@ -98,8 +98,8 @@ def baseline_center(
     if mask.sum() == 0:
         return {"mse": 0.0, "iou": 0.0}
 
-    cx, cy = 0.5 * img_size[0], 0.5 * img_size[1]
-    w, h = 50.0 / img_size[0], 100.0 / img_size[1]
+    cx, cy = 0.5, 0.5
+    w, h = 0.05, 0.05
     center_box = torch.tensor(
         [[cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2]],
         dtype=torch.float32,
