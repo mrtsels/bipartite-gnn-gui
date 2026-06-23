@@ -140,5 +140,45 @@ class MaskCompletionHead(_MLPHead):
             hidden_dim=input_dim,
             output_dim=5,  # [x1, y1, x2, y2, confidence]
             dropout=dropout,
-            output_activation=None,
+            output_activation=nn.Sigmoid(),  # constrain to [0, 1]
         )
+
+
+class ElementProposalHead(nn.Module):
+    """Predict bounding box for elements missing from violated constraints.
+
+    Operates on **constraint embeddings** (not element embeddings).  For
+    each constraint predicted as violated, this head proposes where the
+    missing participant element's bounding box should be.
+
+    Architecture:
+        - A 2-layer MLP that maps ``(hidden_dim) → (4)`` for each
+          constraint node, producing ``(x1, y1, x2, y2)`` in [0, 1].
+        - Sigmoid output to constrain predictions to valid range.
+
+    Args:
+        input_dim: Dimensionality of constraint embeddings (default 128).
+        dropout: Dropout probability (default 0.1).
+    """
+
+    def __init__(self, input_dim: int = 128, dropout: float = 0.1) -> None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, input_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(input_dim, 4),  # (x1, y1, x2, y2)
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass.
+
+        Args:
+            x: Constraint embeddings ``(N_con, input_dim)``.
+
+        Returns:
+            Tensor ``(N_con, 4)`` with proposed bbox for each constraint,
+            in ``[x1, y1, x2, y2]`` format bounded to [0, 1].
+        """
+        return self.network(x)

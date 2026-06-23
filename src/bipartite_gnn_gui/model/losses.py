@@ -162,6 +162,35 @@ def compute_mask_loss(
     return F.mse_loss(prediction[mask], target[mask])
 
 
+def compute_proposal_loss(
+    prediction: Tensor,
+    target: Tensor,
+    violation_mask: Tensor,
+) -> Tensor:
+    """Mean squared error of predicted missing-element bboxes.
+
+    ``compute_proposal_loss`` averages MSE only over position indices
+    (columns 0–3 of the 4-d output) of constraints that are flagged as
+    violated.  This keeps the loss focused on the proposal task — if a
+    constraint is valid (not violated), its proposal output is ignored.
+
+    Args:
+        prediction: ``(N_con, 4)`` predicted bboxes ``[x1, y1, x2, y2]``.
+        target: ``(N_con, 4)`` ground-truth bbox for the missing element.
+        violation_mask: ``(N_con,)`` bool tensor; ``True`` = violated.
+
+    Returns:
+        Scalar MSE for violated constraints only.
+        Returns 0.0 if no constraints are violated.
+    """
+    if violation_mask.sum() == 0:
+        return torch.tensor(0.0, device=prediction.device)
+    return F.mse_loss(
+        prediction[violation_mask, :4],
+        target[violation_mask, :4],
+    )
+
+
 class CombinedLoss:
     """Weighted combination of four loss components for GUI layout correction.
 

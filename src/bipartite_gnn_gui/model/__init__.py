@@ -23,6 +23,7 @@ Submodules:
 from .encoder import BipartiteGraphSAGE
 from .heads import (
     CoordinateRefinementHead,
+    ElementProposalHead,
     ExistencePredictionHead,
     MaskCompletionHead,
     ViolationPredictionHead,

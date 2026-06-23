@@ -18,11 +18,12 @@ except ImportError:  # pragma: no cover - optional dependency fallback
 from .encoder import BipartiteGraphSAGE
 from .heads import (
     CoordinateRefinementHead,
+    ElementProposalHead,
     ExistencePredictionHead,
     MaskCompletionHead,
     ViolationPredictionHead,
 )
-from .losses import CombinedLoss, compute_mask_loss
+from .losses import CombinedLoss, compute_mask_loss, compute_proposal_loss
 
 
 class BipartiteGNNCorrector(nn.Module):
@@ -78,6 +79,10 @@ class BipartiteGNNCorrector(nn.Module):
         self.mask_head = MaskCompletionHead(
             input_dim=hidden_dim, dropout=dropout
         )
+        # Optional element proposal head for structural completion.
+        self.proposal_head = ElementProposalHead(
+            input_dim=hidden_dim, dropout=dropout
+        )
         self.loss_fn = CombinedLoss(
             coord_weight=coord_weight,
             existence_weight=existence_weight,
@@ -105,6 +110,7 @@ class BipartiteGNNCorrector(nn.Module):
             outputs["mask_completion"] = self.mask_head(encoded["element"])
         if "constraint" in encoded:
             outputs["violation"] = self.violation_head(encoded["constraint"])
+            outputs["proposal"] = self.proposal_head(encoded["constraint"])
         return outputs
 
     def compute_loss(
@@ -142,6 +148,21 @@ class BipartiteGNNCorrector(nn.Module):
                 targets["mask_completion_mask"],
             )
             total = total + self.mask_weight * mask_loss
+
+        # Proposal loss (structural completion training).
+        if (
+            hasattr(self, "proposal_weight")
+            and self.proposal_weight > 0.0
+            and "proposal" in predictions
+            and "proposal_target" in targets
+            and "proposal_violation_mask" in targets
+        ):
+            prop_loss = compute_proposal_loss(
+                predictions["proposal"],
+                targets["proposal_target"],
+                targets["proposal_violation_mask"],
+            )
+            total = total + self.proposal_weight * prop_loss
 
         return total
 

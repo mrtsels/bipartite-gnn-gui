@@ -54,12 +54,8 @@ def build_violation_graph(
 ) -> Tuple[Any, Dict[str, torch.Tensor]] | None:
     """Build a graph from a *partial* layout and label violated constraints.
 
-    Steps:
-        1. Take the full GT layout and extract constraints from it.
-        2. Randomly drop a fraction of elements.
-        3. Build a HeteroData from survivors ONLY.
-        4. For each constraint, check how many of its participants survived.
-           Surviving element indices are re-mapped after removal.
+    Also computes **proposal targets**: for each violated constraint, the
+    GT bbox of the missing element(s) that should complete it.
 
     Args:
         gt_elements: Normalised ground-truth elements.
@@ -87,15 +83,15 @@ def build_violation_graph(
     survivor_mask = torch.rand(N, generator=rng) >= drop_ratio
 
     if survivor_mask.sum() < 2:
-        return None  # too few survivors for a graph
+        return None
 
-    # Remap: old_idx → new_idx for survivors.
     survivor_indices_old = torch.where(survivor_mask)[0].tolist()
     old_to_new = {old: new for new, old in enumerate(survivor_indices_old)}
+    removed_indices = torch.where(~survivor_mask)[0].tolist()
 
-    # Build constraints and violation labels from the *full* constraint list.
     kept_constraints = []
-    violation_labels = []  # 0 = valid (both participants survived), 1 = violated
+    violation_labels = []
+    proposal_targets = []  # (N_con, 4) — bbox of missing element for violated constraints
 
     for con in full_constraints:
         src_set = set(con.source_indices) & set(survivor_indices_old)
@@ -103,12 +99,28 @@ def build_violation_graph(
         all_surviving = src_set | tgt_set
 
         if len(all_surviving) < 1:
-            continue  # constraint has zero surviving participants — drop
+            continue
 
-        # Violated if fewer participants than expected.
-        # A "healthy" alignment constraint has ≥2 participants.
+        # All original participants.
+        all_original = set(con.source_indices + con.target_indices)
+        # Which participants were removed?
+        missing_idx = [i for i in all_original if i in removed_indices]
+
         is_violated = len(all_surviving) < 2
         violation_labels.append(1.0 if is_violated else 0.0)
+
+        # Proposal target: average bbox of missing GT elements.
+        if is_violated and missing_idx:
+            x1s = [gt_elements[i].bbox[0] for i in missing_idx]
+            y1s = [gt_elements[i].bbox[1] for i in missing_idx]
+            x2s = [gt_elements[i].bbox[2] for i in missing_idx]
+            y2s = [gt_elements[i].bbox[3] for i in missing_idx]
+            proposal_targets.append([
+                sum(x1s) / len(x1s), sum(y1s) / len(y1s),
+                sum(x2s) / len(x2s), sum(y2s) / len(y2s),
+            ])
+        else:
+            proposal_targets.append([0.0, 0.0, 0.0, 0.0])
 
         # Remap indices.
         con.source_indices = [old_to_new[i] for i in src_set]
@@ -118,11 +130,9 @@ def build_violation_graph(
     if len(kept_constraints) == 0:
         return None
 
-    # Build graph from survivors + kept constraints.
     survivors = [gt_elements[i] for i in survivor_indices_old]
     hetero_data = builder.build(survivors, kept_constraints)
 
-    # Targets.
     N_con = len(kept_constraints)
     N_surv = len(survivors)
     gt_xywh = _bbox_xyxy_to_xywh(
@@ -136,6 +146,11 @@ def build_violation_graph(
         "violation": torch.tensor(violation_labels, dtype=torch.float32).view(-1, 1),
         "existence": torch.ones((N_surv, 1), dtype=torch.float32),
         "gt_boxes": gt_xywh,
+        # Proposal targets.
+        "proposal_target": torch.tensor(proposal_targets, dtype=torch.float32),
+        "proposal_violation_mask": torch.tensor(
+            [v > 0.5 for v in violation_labels], dtype=torch.bool
+        ),
     }
     return hetero_data, targets
 
@@ -173,6 +188,40 @@ def evaluate_violation(
     acc = ((preds > 0.5) == (labels > 0.5)).float().mean().item()
     pos_frac = labels.mean().item()
     return {"acc": acc, "pos_frac": pos_frac, "n": float(n)}
+
+
+@torch.no_grad()
+def evaluate_proposal(
+    model: BipartiteGNNCorrector,
+    dataset: Dataset,
+    device: torch.device,
+) -> dict[str, float]:
+    """Evaluate element proposal accuracy on violated constraints."""
+    model.eval()
+    mse_total = 0.0
+    mse_count = 0
+
+    for data, targets in dataset:
+        data = data.to(device)
+        targets = {k: v.to(device) for k, v in targets.items()}
+        predictions = model(data)
+
+        if "proposal" not in predictions or "proposal_violation_mask" not in targets:
+            continue
+
+        mask = targets["proposal_violation_mask"]
+        if mask.sum() == 0:
+            continue
+
+        pred = predictions["proposal"]
+        tgt = targets["proposal_target"]
+        mse_total += torch.nn.functional.mse_loss(
+            pred[mask], tgt[mask]
+        ).item() * mask.sum().item()
+        mse_count += mask.sum().item()
+
+    n = max(mse_count, 1)
+    return {"proposal_mse": mse_total / n}
 
 
 def main() -> None:
@@ -262,16 +311,16 @@ def main() -> None:
     val_loader = DataLoader(val_dataset, batch_size=None, shuffle=False)
     logger.info("Split: %d train / %d val", len(train_dataset), len(val_dataset))
 
-    # Model — only violation matters, zero out other heads.
+    # Model — enable violation + proposal, zero out other heads.
     model = BipartiteGNNCorrector(
         hidden_dim=args.hidden, dropout=0.1,
         coord_weight=0.0, existence_weight=0.0,
     ).to(DEVICE)
-    # Override loss weights: only violation weight matters.
     model.loss_fn.violation_weight = 1.0
     model.loss_fn.coord_weight = 0.0
     model.loss_fn.existence_weight = 0.0
     model.loss_fn.alignment_weight = 0.0
+    model.proposal_weight = 1.0  # enable proposal loss
 
     n_params = sum(p.numel() for p in model.parameters())
     logger.info("Model: %d params", n_params)
@@ -316,10 +365,11 @@ def main() -> None:
         avg_val_loss = val_loss / max(val_batches, 1)
 
         metrics = evaluate_violation(model, val_dataset, DEVICE)
+        prop_metrics = evaluate_proposal(model, val_dataset, DEVICE)
         logger.info(
-            "Epoch %2d/%d — train: %.4f | val: %.4f | acc: %.3f | pos_frac: %.3f | n_constraints: %.0f",
+            "Epoch %2d/%d — train: %.4f | val: %.4f | acc: %.3f | prop_mse: %.4f | n_con: %.0f",
             epoch, args.epochs, avg_train_loss, avg_val_loss,
-            metrics["acc"], metrics["pos_frac"], metrics["n"],
+            metrics["acc"], prop_metrics["proposal_mse"], metrics["n"],
         )
 
         if avg_val_loss < best_val_loss - 1e-6:
