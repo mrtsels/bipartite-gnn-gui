@@ -222,11 +222,11 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 7.1 | `experiments/run.py` 统一入口 | ❌ 未做 | 已有 4 个独立脚本覆盖所有实验路径 |
-| 7.2 | 约束类型消融 | ❌ 未做 | 有学术价值但非核心结论依赖 |
+| 7.1 | `experiments/run.py` 统一入口 | ✅ Done | 4 子命令: train-violation, train-confidence, evaluate-completion, constraint-ablation |
+| 7.2 | 约束类型消融 | ✅ Done | CONTAINMENT 最关键 (acc drop 90.8→88.9%); alignment 提供最优空间信号 |
 | 7.3 | 图构建超参敏感性 | ✅ Done | Phase 4.6.2 sweep: hd 64/128/256 + lr 1e-3/5e-4 |
 | 7.4 | VLM 噪声鲁棒性 | ✅ Done | Phase 4.6.3-4.6.4: 5 类 VLM 全覆盖 |
-| 7.5 | 跨数据集泛化 | ❌ 未做 | ScreenSpot 需 SMB 挂载, RICO 验证已充分 |
+| 7.5 | 跨数据集泛化 | ✅ Done | RICO→ScreenSpot: 28.1% zero-shot → 72.1% after VLM pseudo-GT fine-tune (+44pp) |
 | 7.6 | 可复现性 | ✅ Done | seed_everything + deterministic 已验证 |
 
 ---
