@@ -167,6 +167,28 @@ bipartite-gnn-gui/
 
 ---
 
+## Research Directions / 研究方向
+
+Phase 4 实验揭示了坐标修正方向的瓶颈（VLM 要么太准要么太弱）。详见 `docs/research/direction_confidence_completion.md`。
+
+### 方向 1: 约束感知置信度打分
+
+GNN 预测每个 VLM 检测的可靠性分数，基于空间上下文和约束满足度的自动过滤。
+
+- 无需改 VLM，兼容所有预测精度水平
+- 指标: AUROC, Precision@K, filtered F1
+
+### 方向 2: 结构性元素补全
+
+GNN 检测约束图中的"空洞"——缺失元素导致的不完整约束——并提议缺失元素的位置和类型。
+
+- 自监督训练: RICO GT 随机删除 60% 元素 → GNN 预测缺失元素
+- 完全可控实验，不依赖任何 VLM
+
+见 `docs/research/direction_confidence_completion.md` 获取完整分析和实施计划。
+
+---
+
 ## License / 许可证
 
 MIT License

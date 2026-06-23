@@ -372,11 +372,21 @@
   - PR: #25
   - experiments/results.json, experiments/sweep.py
 
-- [x] **4.6.3** VLM 推理管线搭建
+- [x] **4.6.3** VLM 推理管线搭建 + 五类实验
   - `scripts/generate_vlm_predictions.py`: Qwen3-VL API 调用框架
-  - `docs/requirements/vlm_inference.md`: 使用文档 / API setup / cost estimate
-  - 支持多线程并发、重试、断点续跑、dry-run
-  - 等待 DASHSCOPE_API_KEY 后即可开始生成真实 VLM 预测
+  - `docs/requirements/vlm_inference.md`: 使用文档
+  - Qwen3-VL Plus: 489 OK, 7312 elem (15.0/img), 10.7 img/min
+  - Qwen3-VL Flash: 200 OK, 2947 elem (14.7/img), 28.3 img/min
+  - LLaVA-7B 本地 (Ollama): 17 OK, 61 elem (3.6/img), 14.4 img/min
+  - Moondream 本地 (Ollama): 1 elem/img, 弱不可用
+  - PRs: #26 (Hungarian matching), #27 (fix coord-target delta), #28 (circular import)
+  - 存在性模式: --existence-mode (coord_weight=0.01, existence_weight=10.0)
+
+- [x] **4.6.4** 实验总结
+  - 五类实验全覆盖: 模拟噪声 / Qwen+Plus / Qwen+Flash / LLaVA / 存在性模式
+  - 核心发现: GNN 无法战胜精度过高的 VLM, 也无法补足检测过弱的 VLM
+  - 下一步: 两个新方向 → 置信度打分 + 结构性补全
+  - 完整分析 → `docs/research/direction_confidence_completion.md`
 
 ---
 
@@ -697,3 +707,44 @@
 | **S3** | Multi-scale graph: hierarchical container → child → leaf element |
 | **S4** | Synthetic GUI layout generator for data augmentation |
 | **S5** | ONNX / TorchScript export for deployment |
+
+---
+
+## Phase 4.8: 方向 1 — 约束感知置信度打分 (Research)
+
+> **Docs**: `docs/research/direction_confidence_completion.md`
+
+**核心思想**: GNN 不修正坐标，而是预测每个 VLM 检测的可靠性分数。
+
+```
+VLM detections → Bipartite Graph → GNN → confidence per element
+                                         → filter low-confidence → cleaner output
+```
+
+| # | Task |
+|---|------|
+| **4.8.1** | `src/bipartite_gnn_gui/model/confidence_head.py` — 置信度预测头 |
+| **4.8.2** | Confidence target: `σ(-‖Δpos‖/τ)` from positional error |
+| **4.8.3** | 评估: AUROC, Precision@K, filtered F1 vs NoOp |
+| **4.8.4** | 实验: Qwen3-VL + LLaVA 置信度预测对比 |
+
+---
+
+## Phase 4.9: 方向 2 — 结构性元素补全 (Research)
+
+> **Docs**: `docs/research/direction_confidence_completion.md`
+
+**核心思想**: GNN 检测约束图中的"空洞"，预测缺失元素的位置和类型。
+
+```
+Partial layout → Graph with dangling constraint edges
+                 → GNN predicts: [Δx, Δy, Δw, Δh, type] for missing elements
+```
+
+| # | Task |
+|---|------|
+| **4.9.1** | `src/bipartite_gnn_gui/data/masking.py` — 合成元素删除管线 |
+| **4.9.2** | `src/bipartite_gnn_gui/model/proposal_head.py` — 元素提议头 |
+| **4.9.3** | 自监督预训练: 全 RICO 布局, 预测元素类型从约束上下文 |
+| **4.9.4** | 微调: RICO GT 随机删 60% 元素 → GNN 预测缺失元素 |
+| **4.9.5** | 评估: recall@N, 平均 IoU of proposed elements |
