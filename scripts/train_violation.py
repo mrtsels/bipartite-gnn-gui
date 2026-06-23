@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT))
 
 from bipartite_gnn_gui.graph.builder import BipartiteGraphBuilder
 from bipartite_gnn_gui.graph.constraints import extract_all_constraints
-from bipartite_gnn_gui.graph.schema import ElementNode
+from bipartite_gnn_gui.graph.schema import ConstraintType, ElementNode
 from bipartite_gnn_gui.model.model import BipartiteGNNCorrector
 from bipartite_gnn_gui.model.heads import N_TYPES
 from scripts.run_experiment import (
@@ -64,6 +64,7 @@ def build_violation_graph(
     builder: BipartiteGraphBuilder,
     drop_ratio: float = 0.3,
     seed: int | None = None,
+    allowed_constraint_types: set[ConstraintType] | None = None,
 ) -> Tuple[Any, Dict[str, torch.Tensor]] | None:
     """Build a graph from a *partial* layout and label violated constraints.
 
@@ -75,6 +76,9 @@ def build_violation_graph(
         builder: Graph builder.
         drop_ratio: Fraction of elements to remove (default 0.3).
         seed: RNG seed.
+        allowed_constraint_types: Optional set of ConstraintType values to
+            keep. When set, only constraints of these types are used.
+            ``None`` means all constraint types are kept (default).
 
     Returns:
         ``(hetero_data, targets)`` or ``None`` if degenerate.
@@ -88,6 +92,15 @@ def build_violation_graph(
     full_constraints = extract_all_constraints(gt_elements)
     if len(full_constraints) == 0:
         return None
+
+    # Filter by allowed constraint types if specified.
+    if allowed_constraint_types is not None:
+        full_constraints = [
+            c for c in full_constraints
+            if c.constraint_type in allowed_constraint_types
+        ]
+        if len(full_constraints) == 0:
+            return None
 
     # Randomly select survivors.
     rng = torch.Generator() if seed is not None else None
