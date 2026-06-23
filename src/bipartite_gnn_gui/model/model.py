@@ -19,9 +19,10 @@ from .encoder import BipartiteGraphSAGE
 from .heads import (
     CoordinateRefinementHead,
     ExistencePredictionHead,
+    MaskCompletionHead,
     ViolationPredictionHead,
 )
-from .losses import CombinedLoss
+from .losses import CombinedLoss, compute_mask_loss
 
 
 class BipartiteGNNCorrector(nn.Module):
@@ -49,6 +50,8 @@ class BipartiteGNNCorrector(nn.Module):
         hidden_dim: int = 128,
         num_layers: int = 2,
         dropout: float = 0.1,
+        coord_weight: float = 1.0,
+        existence_weight: float = 1.0,
     ) -> None:
         super().__init__()
         self.element_dim = element_dim
@@ -71,7 +74,15 @@ class BipartiteGNNCorrector(nn.Module):
         self.existence_head = ExistencePredictionHead(
             input_dim=hidden_dim, dropout=dropout
         )
-        self.loss_fn = CombinedLoss()
+        # Optional mask completion head for self-supervised pretraining.
+        self.mask_head = MaskCompletionHead(
+            input_dim=hidden_dim, dropout=dropout
+        )
+        self.loss_fn = CombinedLoss(
+            coord_weight=coord_weight,
+            existence_weight=existence_weight,
+        )
+        self.mask_weight: float = 0.0  # disabled by default
 
     def forward(self, data: Any) -> dict[str, Tensor]:
         """Run complete correction inference on a graph.
@@ -91,6 +102,7 @@ class BipartiteGNNCorrector(nn.Module):
         if "element" in encoded:
             outputs["coord"] = self.coordinate_head(encoded["element"])
             outputs["existence"] = self.existence_head(encoded["element"])
+            outputs["mask_completion"] = self.mask_head(encoded["element"])
         if "constraint" in encoded:
             outputs["violation"] = self.violation_head(encoded["constraint"])
         return outputs
@@ -115,7 +127,23 @@ class BipartiteGNNCorrector(nn.Module):
         Returns:
             Scalar total loss tensor.
         """
-        return self.loss_fn(predictions, targets, original_bboxes, edge_index)
+        total = self.loss_fn(predictions, targets, original_bboxes, edge_index)
+
+        # Mask completion loss (self-supervised pretraining).
+        if (
+            self.mask_weight > 0.0
+            and "mask_completion" in predictions
+            and "mask_completion_target" in targets
+            and "mask_completion_mask" in targets
+        ):
+            mask_loss = compute_mask_loss(
+                predictions["mask_completion"],
+                targets["mask_completion_target"],
+                targets["mask_completion_mask"],
+            )
+            total = total + self.mask_weight * mask_loss
+
+        return total
 
     def train_step(
         self,

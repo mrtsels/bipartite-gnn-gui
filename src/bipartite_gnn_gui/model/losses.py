@@ -140,6 +140,28 @@ def compute_alignment_consistency_loss(
     return total_loss
 
 
+def compute_mask_loss(
+    prediction: Tensor,
+    target: Tensor,
+    mask: Tensor,
+) -> Tensor:
+    """Mean squared error on masked element features only.
+
+    Args:
+        prediction: ``(N_elem, 5)`` predicted original features
+            ``[x1, y1, x2, y2, confidence]``.
+        target: ``(N_elem, 5)`` original (unmasked) features.
+        mask: ``(N_elem,)`` bool tensor; ``True`` means compute loss.
+
+    Returns:
+        Scalar MSE loss for masked positions only.
+        Returns 0.0 if no elements are masked.
+    """
+    if mask.sum() == 0:
+        return torch.tensor(0.0, device=prediction.device)
+    return F.mse_loss(prediction[mask], target[mask])
+
+
 class CombinedLoss:
     """Weighted combination of four loss components for GUI layout correction.
 

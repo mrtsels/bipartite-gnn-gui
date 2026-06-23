@@ -75,6 +75,8 @@ class ExperimentConfig:
     hidden_dim: int = 128
     num_layers: int = 2
     dropout: float = 0.1
+    coord_weight: float = 1.0
+    existence_weight: float = 1.0
 
     # Training
     epochs: int = 50
@@ -107,7 +109,7 @@ class ExperimentConfig:
         cfg = cls()
         sections = {
             "data": ["n_samples", "noise_scale", "val_split", "seed", "rico_dir", "cache_dir"],
-            "model": ["hidden_dim", "num_layers", "dropout"],
+            "model": ["hidden_dim", "num_layers", "dropout", "coord_weight", "existence_weight"],
             "training": ["epochs", "lr", "batch_size", "weight_decay", "warmup_steps",
                          "grad_clip", "amp", "early_stopping_patience"],
             "evaluation": ["iou_threshold", "alignment_tolerance"],
@@ -862,6 +864,8 @@ def create_parser() -> argparse.ArgumentParser:
                         help="Noise scale for VLM simulation")
     parser.add_argument("--vlm-dir", type=str, default=None,
                         help="Directory with real VLM predictions (replaces simulated noise)")
+    parser.add_argument("--existence-mode", action="store_true",
+                        help="Focus training on existence prediction (coord_weight=0.01, existence_weight=10.0)")
     parser.add_argument("--config", type=str, default="",
                         help="Path to YAML config file")
     parser.add_argument("--checkpoint-dir", type=str, default=None,
@@ -1005,6 +1009,8 @@ def run_experiment(cfg: ExperimentConfig) -> dict:
         hidden_dim=cfg.hidden_dim,
         num_layers=cfg.num_layers,
         dropout=cfg.dropout,
+        coord_weight=cfg.coord_weight,
+        existence_weight=cfg.existence_weight,
     ).to(DEVICE)
     n_params = sum(p.numel() for p in model.parameters())
     logger.info("Model: %d params, hidden=%d, layers=%d",
@@ -1132,6 +1138,13 @@ def main() -> bool:
     else:
         cfg = ExperimentConfig()
     cfg.update_from_args(args)
+
+    # Existence mode: focus on element existence, not coordinate refinement
+    if hasattr(args, 'existence_mode') and args.existence_mode:
+        cfg.coord_weight = 0.01
+        cfg.existence_weight = 10.0
+        logger.info("Existence mode: coord_weight=%.2f, existence_weight=%.1f",
+                    cfg.coord_weight, cfg.existence_weight)
 
     # Apply log level
     setup_logging(cfg.log_level)

@@ -8,25 +8,31 @@ Architecture:
        from element embeddings.
     3. ViolationPredictionHead: MLP that predicts per-constraint violation scores.
     4. ExistencePredictionHead: MLP predicting element existence probability.
+    5. MaskCompletionHead: MLP that predicts masked element features for
+       self-supervised structural completion pretraining.
 
 Submodules:
     encoder   — Heterogeneous GraphSAGE with bipartite message passing.
-    heads     — Refinement and prediction heads (coordinate, violation, existence).
+    heads     — Refinement and prediction heads (coordinate, violation, existence, mask).
     model     — End-to-end BipartiteGNNCorrector combining encoder + all heads.
-    losses    — Combined loss: ℒ = ℒ_coord + λ₁ℒ_violation + λ₂ℒ_alignment + λ₃ℒ_existence.
+    losses    — Combined loss: ℒ = ℒ_coord + λ₁ℒ_violation + λ₂ℒ_alignment + λ₃ℒ_existence + λ₄ℒ_mask.
     trainer   — Training loop with scheduling, checkpointing, and logging.
     inference — End-to-end inference: VLM JSON → graph → GNN → corrected JSON.
 """
 
 from .encoder import BipartiteGraphSAGE
-from .heads import CoordinateRefinementHead, ExistencePredictionHead, ViolationPredictionHead
-from .inference import InferencePipeline, correct_layout
+from .heads import (
+    CoordinateRefinementHead,
+    ExistencePredictionHead,
+    MaskCompletionHead,
+    ViolationPredictionHead,
+)
 from .losses import (
     CombinedLoss,
-    BipartiteGNNLoss,
     compute_alignment_consistency_loss,
     compute_coord_loss,
     compute_existence_loss,
+    compute_mask_loss,
     compute_violation_loss,
 )
 from .model import BipartiteGNNCorrector
@@ -40,11 +46,13 @@ __all__ = [
     "CoordinateRefinementHead",
     "ExistencePredictionHead",
     "InferencePipeline",
+    "MaskCompletionHead",
     "Trainer",
     "ViolationPredictionHead",
     "compute_alignment_consistency_loss",
     "compute_coord_loss",
     "compute_existence_loss",
+    "compute_mask_loss",
     "compute_violation_loss",
     "correct_layout",
 ]

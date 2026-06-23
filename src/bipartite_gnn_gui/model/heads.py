@@ -119,3 +119,26 @@ class ExistencePredictionHead(_MLPHead):
             dropout=dropout,
             output_activation=nn.Sigmoid(),
         )
+
+
+class MaskCompletionHead(_MLPHead):
+    """Predict original features for masked element nodes.
+
+    Takes encoded element embeddings (from the GNN encoder) and attempts
+    to recover the original 5-d ``[x1, y1, x2, y2, confidence]`` features
+    that were masked.  Loss is only computed on masked positions, so the
+    model learns to infer missing elements from graph context alone.
+
+    Args:
+        input_dim: Dimensionality of encoded element features (default 128).
+        dropout: Dropout probability (default 0.1).
+    """
+
+    def __init__(self, input_dim: int = 128, dropout: float = 0.1) -> None:
+        super().__init__(
+            input_dim=input_dim,
+            hidden_dim=input_dim,
+            output_dim=5,  # [x1, y1, x2, y2, confidence]
+            dropout=dropout,
+            output_activation=None,
+        )
