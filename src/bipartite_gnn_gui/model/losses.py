@@ -191,6 +191,32 @@ def compute_proposal_loss(
     )
 
 
+def compute_proposal_type_loss(
+    prediction: Tensor,
+    target: Tensor,
+    violation_mask: Tensor,
+    n_types: int = 8,
+) -> Tensor:
+    """Cross-entropy loss on predicted element type for violated constraints.
+
+    Args:
+        prediction: ``(N_con, n_types)`` raw type logits.
+        target: ``(N_con,)`` ground-truth class indices in ``[0, n_types)``.
+        violation_mask: ``(N_con,)`` bool tensor; ``True`` = violated.
+        n_types: Number of element types (default 8).
+
+    Returns:
+        Scalar cross-entropy loss for violated constraints only.
+        Returns 0.0 if no constraints are violated.
+    """
+    if violation_mask.sum() == 0:
+        return torch.tensor(0.0, device=prediction.device)
+    return F.cross_entropy(
+        prediction[violation_mask],
+        target[violation_mask],
+    )
+
+
 class CombinedLoss:
     """Weighted combination of four loss components for GUI layout correction.
 

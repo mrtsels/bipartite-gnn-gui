@@ -24,6 +24,7 @@ from .heads import (
     ViolationPredictionHead,
 )
 from .losses import CombinedLoss, compute_mask_loss, compute_proposal_loss
+from .losses import compute_proposal_type_loss
 
 
 class BipartiteGNNCorrector(nn.Module):
@@ -88,6 +89,7 @@ class BipartiteGNNCorrector(nn.Module):
             existence_weight=existence_weight,
         )
         self.mask_weight: float = 0.0  # disabled by default
+        self.proposal_type_weight: float = 0.0  # type prediction weight (disabled by default)
 
     def forward(self, data: Any) -> dict[str, Tensor]:
         """Run complete correction inference on a graph.
@@ -101,6 +103,8 @@ class BipartiteGNNCorrector(nn.Module):
                 - ``"coord"``: ``(N_elem, 4)`` coordinate deltas.
                 - ``"violation"``: ``(N_con, 1)`` violation scores.
                 - ``"existence"``: ``(N_elem, 1)`` existence probabilities.
+                - ``"proposal"``: ``(N_con, 4)`` proposed bbox for missing elements.
+                - ``"proposal_type"``: ``(N_con, N_TYPES)`` type logits for missing elements.
         """
         encoded = self.encoder(data)
         outputs: dict[str, Tensor] = {}
@@ -110,7 +114,9 @@ class BipartiteGNNCorrector(nn.Module):
             outputs["mask_completion"] = self.mask_head(encoded["element"])
         if "constraint" in encoded:
             outputs["violation"] = self.violation_head(encoded["constraint"])
-            outputs["proposal"] = self.proposal_head(encoded["constraint"])
+            proposed = self.proposal_head(encoded["constraint"])
+            outputs["proposal"] = proposed[:, :4]       # (N_con, 4) bbox
+            outputs["proposal_type"] = proposed[:, 4:]  # (N_con, N_TYPES) type logits
         return outputs
 
     def compute_loss(
@@ -163,6 +169,20 @@ class BipartiteGNNCorrector(nn.Module):
                 targets["proposal_violation_mask"],
             )
             total = total + self.proposal_weight * prop_loss
+
+        # Proposal type loss (element type prediction).
+        if (
+            self.proposal_type_weight > 0.0
+            and "proposal_type" in predictions
+            and "proposal_type_target" in targets
+            and "proposal_violation_mask" in targets
+        ):
+            prop_type_loss = compute_proposal_type_loss(
+                predictions["proposal_type"],
+                targets["proposal_type_target"],
+                targets["proposal_violation_mask"],
+            )
+            total = total + self.proposal_type_weight * prop_type_loss
 
         return total
 

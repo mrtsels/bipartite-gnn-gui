@@ -144,17 +144,23 @@ class MaskCompletionHead(_MLPHead):
         )
 
 
+N_TYPES = 8  # RICO semantic types: button, text, icon, image, input, container, list, other
+
+
 class ElementProposalHead(nn.Module):
-    """Predict bounding box for elements missing from violated constraints.
+    """Predict bounding box **and** element type for missing participants.
 
     Operates on **constraint embeddings** (not element embeddings).  For
-    each constraint predicted as violated, this head proposes where the
-    missing participant element's bounding box should be.
+    each constraint predicted as violated, this head proposes both the
+    missing participant element's bounding box and its semantic type.
 
     Architecture:
-        - A 2-layer MLP that maps ``(hidden_dim) → (4)`` for each
-          constraint node, producing ``(x1, y1, x2, y2)`` in [0, 1].
-        - Sigmoid output to constrain predictions to valid range.
+        - A 2-layer MLP that maps ``(hidden_dim) → (4 + N_TYPES)`` for each
+          constraint node.
+        - First 4 outputs are ``(x1, y1, x2, y2)`` bounded to [0, 1] via
+          Sigmoid.
+        - Last ``N_TYPES`` outputs are un-normalised logits for type
+          classification (CrossEntropyLoss handles the softmax internally).
 
     Args:
         input_dim: Dimensionality of constraint embeddings (default 128).
@@ -167,8 +173,7 @@ class ElementProposalHead(nn.Module):
             nn.Linear(input_dim, input_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(input_dim, 4),  # (x1, y1, x2, y2)
-            nn.Sigmoid(),
+            nn.Linear(input_dim, 4 + N_TYPES),  # (x1, y1, x2, y2) + type logits
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -178,7 +183,12 @@ class ElementProposalHead(nn.Module):
             x: Constraint embeddings ``(N_con, input_dim)``.
 
         Returns:
-            Tensor ``(N_con, 4)`` with proposed bbox for each constraint,
-            in ``[x1, y1, x2, y2]`` format bounded to [0, 1].
+            Tensor ``(N_con, 4 + N_TYPES)`` where:
+                - ``[..., :4]`` is the proposed bbox ``[x1, y1, x2, y2]``
+                  bounded to [0, 1] (post-sigmoid).
+                - ``[..., 4:]`` are un-normalised type logits.
         """
-        return self.network(x)
+        raw = self.network(x)
+        bbox_out = raw[:, :4].sigmoid()
+        type_out = raw[:, 4:]
+        return torch.cat([bbox_out, type_out], dim=1)

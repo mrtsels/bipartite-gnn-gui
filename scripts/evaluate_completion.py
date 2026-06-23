@@ -61,7 +61,7 @@ def baseline_nearest_neighbor(
         return {"mse": 0.0, "iou": 0.0}
 
     # Convert prop_tgt from xyxy to xywh for comparison.
-    p_masked = prop_tgt[mask]  # (N_violated, 4) xyxy
+    p_masked = prop_tgt[mask][:, :4]  # (N_violated, 4) xyxy, drop type col
     gt_xyxy = torch.stack([
         gt_boxes[:, 0] - gt_boxes[:, 2] / 2,
         gt_boxes[:, 1] - gt_boxes[:, 3] / 2,
@@ -93,11 +93,12 @@ def baseline_center(
     """
     if "proposal_target" not in targets:
         return {"mse": 0.0, "iou": 0.0}
+    prop_tgt = targets.get("proposal_target", torch.zeros(0, 4))
     mask = targets.get("proposal_violation_mask", torch.zeros(0, dtype=torch.bool))
-    prop_tgt = targets["proposal_target"]
     if mask.sum() == 0:
         return {"mse": 0.0, "iou": 0.0}
 
+    p_masked = prop_tgt[mask][:, :4]  # drop type col, (N_violated, 4)
     cx, cy = 0.5, 0.5
     w, h = 0.05, 0.05
     center_box = torch.tensor(
@@ -105,7 +106,6 @@ def baseline_center(
         dtype=torch.float32,
     ).expand(mask.sum(), -1)
 
-    p_masked = prop_tgt[mask]
     mse = F.mse_loss(center_box, p_masked).item()
     iou = _batch_iou(center_box, p_masked).mean().item()
     return {"mse": mse, "iou": iou}
@@ -158,7 +158,7 @@ def evaluate_gnn(
         mask = t.get("proposal_violation_mask", torch.zeros(0, dtype=torch.bool))
         if "proposal" in preds and mask.sum() > 0:
             p_masked = preds["proposal"][mask]
-            tgt_masked = t["proposal_target"][mask]
+            tgt_masked = t["proposal_target"][mask, :4]  # only bbox cols, not type idx
             mse_all.append(F.mse_loss(p_masked, tgt_masked))
             iou_all.append(_batch_iou(p_masked, tgt_masked).mean())
 

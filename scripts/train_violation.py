@@ -34,6 +34,7 @@ from bipartite_gnn_gui.graph.builder import BipartiteGraphBuilder
 from bipartite_gnn_gui.graph.constraints import extract_all_constraints
 from bipartite_gnn_gui.graph.schema import ElementNode
 from bipartite_gnn_gui.model.model import BipartiteGNNCorrector
+from bipartite_gnn_gui.model.heads import N_TYPES
 from scripts.run_experiment import (
     DEVICE,
     GraphListDataset,
@@ -44,6 +45,18 @@ from scripts.run_experiment import (
 
 logger = logging.getLogger(__name__)
 MASK_TOKEN = -1.0
+
+# RICO semantic type → index mapping.
+TYPE_TO_IDX: dict[str, int] = {
+    "button": 0, "text": 1, "icon": 2, "image": 3,
+    "input": 4, "container": 5, "list": 6,
+}
+# Any label not in the map → index 7 ("other")
+TYPE_UNKNOWN_IDX: int = 7
+
+
+def _type_idx(label: str) -> int:
+    return TYPE_TO_IDX.get(label.lower(), TYPE_UNKNOWN_IDX)
 
 
 def build_violation_graph(
@@ -91,7 +104,7 @@ def build_violation_graph(
 
     kept_constraints = []
     violation_labels = []
-    proposal_targets = []  # (N_con, 4) — bbox of missing element for violated constraints
+    proposal_targets = []  # (N_con, 5) — bbox + type_idx of missing element
 
     for con in full_constraints:
         src_set = set(con.source_indices) & set(survivor_indices_old)
@@ -109,18 +122,21 @@ def build_violation_graph(
         is_violated = len(all_surviving) < 2
         violation_labels.append(1.0 if is_violated else 0.0)
 
-        # Proposal target: average bbox of missing GT elements.
+        # Proposal target: average bbox of missing GT elements + type.
         if is_violated and missing_idx:
             x1s = [gt_elements[i].bbox[0] for i in missing_idx]
             y1s = [gt_elements[i].bbox[1] for i in missing_idx]
             x2s = [gt_elements[i].bbox[2] for i in missing_idx]
             y2s = [gt_elements[i].bbox[3] for i in missing_idx]
+            # Use the type of the first missing element as target.
+            type_idx = _type_idx(gt_elements[missing_idx[0]].label)
             proposal_targets.append([
                 sum(x1s) / len(x1s), sum(y1s) / len(y1s),
                 sum(x2s) / len(x2s), sum(y2s) / len(y2s),
+                float(type_idx),
             ])
         else:
-            proposal_targets.append([0.0, 0.0, 0.0, 0.0])
+            proposal_targets.append([0.0, 0.0, 0.0, 0.0, 0.0])
 
         # Remap indices.
         con.source_indices = [old_to_new[i] for i in src_set]
@@ -147,9 +163,12 @@ def build_violation_graph(
         "existence": torch.ones((N_surv, 1), dtype=torch.float32),
         "gt_boxes": gt_xywh,
         # Proposal targets.
-        "proposal_target": torch.tensor(proposal_targets, dtype=torch.float32),
+        "proposal_target": torch.tensor(proposal_targets, dtype=torch.float32),  # (N_con, 5)
         "proposal_violation_mask": torch.tensor(
             [v > 0.5 for v in violation_labels], dtype=torch.bool
+        ),
+        "proposal_type_target": torch.tensor(
+            [int(t[4]) for t in proposal_targets], dtype=torch.long
         ),
     }
     return hetero_data, targets
@@ -200,6 +219,8 @@ def evaluate_proposal(
     model.eval()
     mse_total = 0.0
     mse_count = 0
+    type_correct = 0
+    type_total = 0
 
     for data, targets in dataset:
         data = data.to(device)
@@ -216,12 +237,23 @@ def evaluate_proposal(
         pred = predictions["proposal"]
         tgt = targets["proposal_target"]
         mse_total += torch.nn.functional.mse_loss(
-            pred[mask], tgt[mask]
+            pred[mask], tgt[mask, :4]  # tgt is (N_con, 5), only first 4 are bbox
         ).item() * mask.sum().item()
         mse_count += mask.sum().item()
 
+        # Type accuracy.
+        if "proposal_type" in predictions and "proposal_type_target" in targets:
+            type_logits = predictions["proposal_type"]  # (N_con, N_TYPES)
+            type_target = targets["proposal_type_target"]  # (N_con,)
+            type_pred = type_logits.argmax(dim=1)  # (N_con,)
+            type_correct += (type_pred[mask] == type_target[mask]).sum().item()
+            type_total += mask.sum().item()
+
     n = max(mse_count, 1)
-    return {"proposal_mse": mse_total / n}
+    return {
+        "proposal_mse": mse_total / n,
+        "type_acc": type_correct / max(type_total, 1),
+    }
 
 
 def main() -> None:
@@ -321,6 +353,7 @@ def main() -> None:
     model.loss_fn.existence_weight = 0.0
     model.loss_fn.alignment_weight = 0.0
     model.proposal_weight = 1.0  # enable proposal loss
+    model.proposal_type_weight = 0.5  # enable type prediction loss
 
     n_params = sum(p.numel() for p in model.parameters())
     logger.info("Model: %d params", n_params)

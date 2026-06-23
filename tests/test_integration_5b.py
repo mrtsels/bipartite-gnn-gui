@@ -76,9 +76,13 @@ class TestBuildViolationGraph5B1:
 
         # Proposal targets have correct shape and range.
         prop_tgt = targets["proposal_target"]
-        assert prop_tgt.shape == (data["constraint"].x.shape[0], 4)
-        assert prop_tgt.min() >= 0.0
-        assert prop_tgt.max() <= 1.0
+        assert prop_tgt.shape == (data["constraint"].x.shape[0], 5), \
+            f"expected (N_con, 5), got {prop_tgt.shape}"
+        assert prop_tgt[:, :4].min() >= 0.0
+        assert prop_tgt[:, :4].max() <= 1.0
+        # Type column (dim 4) should be in [0, N_TYPES)
+        assert prop_tgt[:, 4].min() >= 0
+        assert prop_tgt[:, 4].max() < 8
 
     def test_constraint_indices_are_valid(self) -> None:
         elems, _ = _make_minimal_layout()
@@ -178,9 +182,12 @@ class TestElementProposalHead5B3:
         head = ElementProposalHead(input_dim=32)
         x = torch.randn(10, 32)
         out = head(x)
-        assert out.shape == (10, 4), f"expected (10, 4), got {out.shape}"
-        assert out.min() >= 0.0, f"min {out.min().item()} < 0"
-        assert out.max() <= 1.0, f"max {out.max().item()} > 1"
+        assert out.shape == (10, 12), f"expected (10, 12), got {out.shape}"
+        # First 4 dims: sigmoided bbox in [0, 1]
+        assert out[:, :4].min() >= 0.0, f"min {out[:, :4].min().item()} < 0"
+        assert out[:, :4].max() <= 1.0, f"max {out[:, :4].max().item()} > 1"
+        # Last 8 dims: raw logits (unconstrained)
+        assert out[:, 4:].shape == (10, 8)
 
     def test_loss_on_violated_constraints(self) -> None:
         pred = torch.rand(8, 4)
