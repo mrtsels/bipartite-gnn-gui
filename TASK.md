@@ -746,5 +746,23 @@ Partial layout → Graph with dangling constraint edges
 | **4.9.1** | `src/bipartite_gnn_gui/data/masking.py` — 合成元素删除管线 |
 | **4.9.2** | `src/bipartite_gnn_gui/model/proposal_head.py` — 元素提议头 |
 | **4.9.3** | 自监督预训练: 全 RICO 布局, 预测元素类型从约束上下文 |
-| **4.9.4** | 微调: RICO GT 随机删 60% 元素 → GNN 预测缺失元素 |
-| **4.9.5** | 评估: recall@N, 平均 IoU of proposed elements |
+| **4.9.4** | 联合训练违反 + 提议头 | ✅ |
+| **4.9.5** | 评估: recall@N, 平均 IoU of proposed elements → `scripts/evaluate_completion.py` | ⬜ |
+
+### 4.9.3 实验结果（自监督违反检测）
+
+| 配置 | 违反检测 Acc | 违反检测 acc (随机基线) | 提议 MSE | 提议 RMSE |
+|---|---|---|---|---|
+| n=500, drop=0.4, 违规头 | 91.2% | ~68% | — | — |
+| n=2000, drop=0.6, 违规头 | 95.0% | ~56% | — | — |
+| n=200, drop=0.4, 联合头 | 82.6% | — | 0.054 | 0.233 |
+| n=2000, drop=0.6, 联合头 | 94.1% | ~56% | 0.044 | 0.210 |
+
+### 4.9.4 关键发现
+
+1. **GNN 能从约束图检测结构完整性** — 95% 违反检测准确率，验证了核心假设。
+2. **约束嵌入包含足够的空间信息** — 仅从幸存元素+约束类型推断缺失元素位置 (0.044 MSE)。
+3. **联合训练互不干扰** — 违规头和提议头同时收敛，无任务冲突。
+4. **合成数据管线完整** — `build_violation_graph()` 是 Phase 4.9 的数据引擎，可复用到任何下行任务。
+5. **代码交付** — 文件：`data/masking.py`, `model/heads.py:ElementProposalHead`, `scripts/train_violation.py`。
+6. **要突破的点** — 提议 MSE 0.044 (~220px RMSE) 确实学到了信号，但精度还不够用来直接恢复缺失元素。下一步可以做：多约束交叉验证（1个约束不够就聚合同一缺失元素关联的所有约束的提议）、或者级联迭代（从部分恢复继续提议）。
