@@ -284,8 +284,8 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 | # | Task | Status |
 |---|------|--------|
 | 9.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ✅ |
-| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ❌ Blocked — SMB mount at /Users/minimx/mnt/thinkpad/ empty; ThinkPad offline |
-| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ❌ Blocked — same reason as 9.2.2 |
+| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ✅ SMB mount available, loaded 610 images from ScreenSpot_combined.json |
+| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ✅ VLM Prec=0.028 Rec=0.383 F1=0.052, GNN Acc=0.972 AUROC=0.489 (581 graphs) |
 
 ### 9.3 类型预测 — 重新评估
 
@@ -303,7 +303,7 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 | # | Task | Status |
 |---|------|--------|
 | 9.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ✅ |
-| 9.4.2 | ScreenSpot 跨域验证置信度 | ❌ Blocked — same reason as 9.2.2 |
+| 9.4.2 | ScreenSpot 跨域验证置信度 | ✅ Confidence AUROC=0.554 (limited cross-domain), Acc@0.5=0.040 |
 
 ---
 
@@ -335,6 +335,20 @@ Qwen3-VL Flash on 196 RICO images (matched via center-distance Hungarian, thresh
 
 **Key finding:** VLM recall is very low (0.235) — only 23.5% of GT elements detected. GNN existence head (AUROC=0.703) shows meaningful separation: matched elements score 0.536 vs FPs at 0.398. The GNN can potentially correct ~50% of VLM errors via confidence filtering.
 
+#### ScreenSpot 结果 (600 images, Qwen3-VL Flash)
+
+| Metric | RICO (9.2.1) | ScreenSpot |
+|--------|:------------:|:----------:|
+| VLM Precision | 0.382 | 0.028 |
+| VLM Recall | 0.235 | 0.383 |
+| VLM F1 | 0.291 | 0.052 |
+| GNN Existence Acc | 0.665 | 0.972 |
+| GNN Existence AUROC | 0.703 | 0.489 |
+| GNN Pos Mean (TP) | 0.536 | 0.481 |
+| GNN Neg Mean (FP) | 0.398 | 0.481 |
+
+**Key finding:** ScreenSpot VLM produces massive FP (Prec=0.028, 17K VLM elements vs 1.2K GT). The GNN existence head collapses to trivial predictor (all ≈0.48), achieving Acc=0.972 by always predicting negative (since 97% of VLM elements are FP). AUROC=0.489 confirms no meaningful separation — confidence model does not transfer to ScreenSpot's very different FP pattern.
+
 ### 9.3 类型预测
 
 Single-element removal (n=5000, 288 graphs):
@@ -354,8 +368,19 @@ Real-data-trained confidence model (AUROC=0.780, vs synthetic 0.989):
 - AUROC 0.780 is still useful but lower than the synthetic model's 0.989
 - The synthetic model likely overestimates real-world performance
 
+#### ScreenSpot cross-domain (600 images)
+
+| Metric | RICO (9.2.1) | ScreenSpot (9.4.2) |
+|--------|:------------:|:------------------:|
+| Confidence AUROC | 0.703 | 0.554 |
+| Accuracy@0.5 | — | 0.040 |
+| Pos Mean (TP) | 0.536 | 0.900 |
+| Neg Mean (FP) | 0.398 | 0.906 |
+
+**Key finding:** Confidence model shows limited cross-domain transfer (AUROC=0.554 vs RICO 0.703). Both TP and FP elements receive very high confidence scores (≈0.90), indicating the model cannot distinguish ScreenSpot's FP patterns. The domain shift (RICO mobile → ScreenSpot mobile+pc+web) likely changes the FP distribution too much.
+
 ### Blocked Items
-- 9.2.2, 9.2.3, 9.4.2: ScreenSpot evaluation requires ThinkPad SMB mount which is currently empty (offline)
+- (none — all Phase 9 tasks complete)
 
 ---
 
