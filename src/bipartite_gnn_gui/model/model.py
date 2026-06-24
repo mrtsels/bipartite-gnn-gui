@@ -15,6 +15,7 @@ try:
 except ImportError:  # pragma: no cover - optional dependency fallback
     from bipartite_gnn_gui._compat import nn, Tensor, torch
 
+from .attention import SplitAndFuse
 from .encoder import BipartiteGraphSAGE
 from .heads import (
     CoordinateRefinementHead,
@@ -54,14 +55,31 @@ class BipartiteGNNCorrector(nn.Module):
         dropout: float = 0.1,
         coord_weight: float = 1.0,
         existence_weight: float = 1.0,
+        fusion_dim: int | None = None,
     ) -> None:
         super().__init__()
         self.element_dim = element_dim
         self.constraint_dim = constraint_dim
         self.hidden_dim = hidden_dim
+        self.fusion_dim = fusion_dim
+
+        # Optional cross-attention fusion of structural + visual features.
+        # When fusion_dim is set, the encoder receives fusion_dim-d vectors
+        # instead of raw element_dim-d vectors.  When None (default), the
+        # encoder receives element_dim-d vectors as before (backward compat).
+        self.fusion: SplitAndFuse | None = None
+        encoder_element_dim = element_dim
+        if fusion_dim is not None:
+            self.fusion = SplitAndFuse(
+                struct_dim=element_dim,
+                visual_dim=192,
+                fusion_dim=fusion_dim,
+                dropout=dropout,
+            )
+            encoder_element_dim = fusion_dim
 
         self.encoder = BipartiteGraphSAGE(
-            element_dim=element_dim,
+            element_dim=encoder_element_dim,
             constraint_dim=constraint_dim,
             hidden_dim=hidden_dim,
             num_layers=num_layers,
@@ -106,6 +124,13 @@ class BipartiteGNNCorrector(nn.Module):
                 - ``"proposal"``: ``(N_con, 4)`` proposed bbox for missing elements.
                 - ``"proposal_type"``: ``(N_con, N_TYPES)`` type logits for missing elements.
         """
+        # Optional cross-attention fusion of structural + visual features.
+        # When fusion is enabled, element features are projected through
+        # SplitAndFuse before the GNN encoder.  This handles both the
+        # concatenated (struct + visual) and pure-structural cases.
+        if self.fusion is not None:
+            data["element"].x = self.fusion(data["element"].x)
+
         encoded = self.encoder(data)
         outputs: dict[str, Tensor] = {}
         if "element" in encoded:
