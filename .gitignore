@@ -32,6 +32,8 @@ ENV/
 data/raw/
 data/raw
 data/raw_local/
+data/rico_local/
+data/vlm_predictions/
 data/processed/
 data/external/
 *.csv
@@ -71,4 +73,6 @@ htmlcov/
 # Personal scripts
 download_datasets.py
 .hermes/cost-tracking.json
+.env
+tmp/
 .gitignore
