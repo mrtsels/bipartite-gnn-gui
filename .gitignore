@@ -32,15 +32,11 @@ ENV/
 data/raw/
 data/raw
 data/raw_local/
-data/rico_local/
 data/processed/
 data/external/
 *.csv
 *.h5
 *.hdf5
-
-# Temp
-tmp/
 
 # Checkpoints & Logs
 checkpoints/
@@ -74,10 +70,5 @@ htmlcov/
 
 # Personal scripts
 download_datasets.py
-
-# AI agent config (personal, not project-level)
 .hermes/cost-tracking.json
-
-# VLM predictions (auto-generated, large volume)
-data/vlm_predictions/
-.env
+.gitignore
