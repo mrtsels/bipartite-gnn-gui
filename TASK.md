@@ -231,31 +231,92 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 ---
 
-## Phase 8: 方案 (Solution — 文档与资料更新)
+## Phase 8: Research — 方向决策
 
-**Goal:** Update product/technical documentation for usability and publication.
+**Status:** ✅ Complete
+**Date:** 2026-06-24
 
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 8.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
-| 8.2 | configs/default.yaml 示例 | ❌ 低优先级 | 现有 configs/experiment.yaml 可用 |
-| 8.3 | examples/ 目录 | ❌ 低优先级 | scripts/ 目录已有完整示例 |
-| 8.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
+经过 ABCD + 多 seed 实验 + 学术评审，最终结论：
+
+| Finding | 评级 | 依据 |
+|---------|:----:|------|
+| CONTAINMENT-only > full | WEAK KEEP | 5 seed 一致但比较同时变了两个变量（约束类型 + 约束数量） |
+| 两模型策略 | WEAK KEEP | 同上 confound。需跑 full types × 3 head configs 对照 |
+| 置信度打分 (真实数据) | STRONG KEEP | AUROC 0.876，负数置信度从 0.593→0.199，最 robust 发现 |
+| 类型预测不可能 | WEAK DROP | 评审发现训练目标有问题：多元素删除时 bbox 取平均但 type 取第一个，目标不一致 |
+| 跨域微调 28→72% | WEAK KEEP | 评审指出 72% 可能只说明 fine-tune 有效，不代表结构推理迁移 |
 
 ---
 
-## Phase 9: Web Demo (Web 演示) ⬜
+## Phase 11: Research — 受控实验
+
+**Goal:** 在 Phase 7 发现的基础上，用受控实验验证核心结论，建立统计显著性。
+
+### 11.1 受控两模型对比
+
+评审关键批评：两模型比较同时变了两个变量（约束类型 AND 头配置）。需增加全类型 × 3 头配置的对照实验：
+
+```
+对照组：全类型 × joint     → 已有数据
+实验 A：全类型 × violation-only  → 隔离违反检测效果
+实验 B：全类型 × proposal-only   → 隔离提议效果
+```
+
+如果全类型 violation-only 仍然比 joint 好，才说明是多任务干扰，而不只是 CONTAINMENT 更容易。
+
+| # | Task | Status |
+|---|------|--------|
+| 11.1.1 | 全类型 × violation-only (no coord loss) | ⬜ |
+| 11.1.2 | 全类型 × proposal-only (no violation loss) | ⬜ |
+| 11.1.3 | 5 seed 评估 + 置信区间 | ⬜ |
+
+### 11.2 Real VLM 端到端评估（非合成下采样）
+
+评审最关键的批评：**所有实验都用合成元素删除，唯一真实 VLM 测试 (Phase 4.9.7) 的 acc 只有 27.6%，IoU 0.000。**
+
+真实 VLM 错误模式与随机删除完全不同：
+- Type-dependent（icon 漏检率高）
+- 位置偏置（屏幕边缘更易错）
+- 结构相关（同行元素一个漏了相邻的也更容易漏）
+
+需要用人标注 GT 真实评估 GNN 的改善效果。
+
+| # | Task | Status |
+|---|------|--------|
+| 11.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ⬜ |
+| 11.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ⬜ |
+| 11.2.3 | ScreenSpot 真实 VLM 端到端评估 | ⬜ |
+
+### 11.3 类型预测 — 重新评估
+
+评审发现训练目标不一致：当一个约束涉及多个删除元素时，bbox 取平均但 type 取第一个。
+
+| # | Task | Status |
+|---|------|--------|
+| 11.3.1 | 单元素删除实验（只有一个缺失元素，目标一致） | ⬜ |
+| 11.3.2 | 增加 type loss weight 验证是否可训练 | ⬜ |
+
+### 11.4 置信度模型部署
+
+唯一 STRONG KEEP。可以直接用。
+
+| # | Task | Status |
+|---|------|--------|
+| 11.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ⬜ |
+| 11.4.2 | ScreenSpot 跨域验证置信度 | ⬜ |
+
+---
+
+## Phase 9: Web Demo ⬜
 
 **Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
 
-**Dependencies:** InferencePipeline + trained checkpoint.
-
 | # | Item | Status |
 |---|------|--------|
-| 9.1 | FastAPI 后端: `/api/correct`, `/api/health`, VLM 适配器, CLI 参数 | ⬜ |
-| 9.2 | 前端: 上传区 + Canvas bbox overlay + before/after 切换 + JSON 对比 | ⬜ |
-| 9.3 | 测试与文档: e2e 测试, Web README | ⬜ |
-| 9.4 | 部署: Dockerfile, docker-compose | ⬜ |
+| 9.1 | FastAPI 后端 | ⬜ |
+| 9.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
+| 9.3 | 测试与文档 | ⬜ |
+| 9.4 | 部署: Dockerfile | ⬜ |
 
 ---
 
@@ -263,14 +324,12 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 **Goal:** Convert corrected element JSON into a standalone HTML file.
 
-**Dependencies:** InferencePipeline, Phase 9 API.
-
 | # | Item | Status |
 |---|------|--------|
-| 10.1 | `web/codegen/html_generator.py`: bbox → absolute CSS, label → HTML tag 映射 | ⬜ |
-| 10.2 | `POST /api/generate-html` 端点 + ?download 支持 | ⬜ |
-| 10.3 | 前端: HTML 预览区, 下载/复制按钮 | ⬜ |
-| 10.4 | 单元测试: 空列表, 各类型, z-index 排序, 边界情况 | ⬜ |
+| 10.1 | `web/codegen/html_generator.py` | ⬜ |
+| 10.2 | `POST /api/generate-html` 端点 | ⬜ |
+| 10.3 | 前端: HTML 预览区 | ⬜ |
+| 10.4 | 单元测试 | ⬜ |
 
 ---
 
