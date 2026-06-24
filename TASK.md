@@ -231,42 +231,7 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 ---
 
-## Phase 8: 方案 (Solution — 文档与资料更新)
-
-**Goal:** Update product/technical documentation for usability and publication.
-
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 8.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
-| 8.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
-
----
-
-## Phase 9: Web Demo ⬜
-
-**Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
-
-| # | Item | Status |
-|---|------|--------|
-| 9.1 | FastAPI 后端 | ⬜ |
-| 9.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
-| 9.3 | 测试与文档 | ⬜ |
-| 9.4 | 部署: Dockerfile | ⬜ |
-
----
-
-## Phase 10: HTML/CSS 代码生成 ⬜
-
-| # | Item | Status |
-|---|------|--------|
-| 10.1 | `web/codegen/html_generator.py` | ⬜ |
-| 10.2 | `POST /api/generate-html` 端点 | ⬜ |
-| 10.3 | 前端: HTML 预览区 | ⬜ |
-| 10.4 | 单元测试 | ⬜ |
-
----
-
-## Phase 11: Research — 方向决策
+## Phase 8: Research — 方向决策
 
 **Status:** ✅ Complete
 **Date:** 2026-06-24
@@ -283,11 +248,11 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 ---
 
-## Phase 12: Research — 受控实验
+## Phase 9: Research — 受控实验
 
 **Goal:** 在 Phase 7 发现的基础上，用受控实验验证核心结论，建立统计显著性。
 
-### 12.1 受控两模型对比
+### 9.1 受控两模型对比
 
 评审关键批评：两模型比较同时变了两个变量（约束类型 AND 头配置）。需增加全类型 × 3 头配置的对照实验：
 
@@ -301,11 +266,11 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Task | Status |
 |---|------|--------|
-| 12.1.1 | 全类型 × violation-only (no coord loss) | ⬜ |
-| 12.1.2 | 全类型 × proposal-only (no violation loss) | ⬜ |
-| 12.1.3 | 5 seed 评估 + 置信区间 | ⬜ |
+| 9.1.1 | 全类型 × violation-only (no coord loss) | ⬜ |
+| 9.1.2 | 全类型 × proposal-only (no violation loss) | ⬜ |
+| 9.1.3 | 5 seed 评估 + 置信区间 | ⬜ |
 
-### 12.2 Real VLM 端到端评估（非合成下采样）
+### 9.2 Real VLM 端到端评估（非合成下采样）
 
 评审最关键的批评：**所有实验都用合成元素删除，唯一真实 VLM 测试 (Phase 4.9.7) 的 acc 只有 27.6%，IoU 0.000。**
 
@@ -318,27 +283,62 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Task | Status |
 |---|------|--------|
-| 12.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ⬜ |
-| 12.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ⬜ |
-| 12.2.3 | ScreenSpot 真实 VLM 端到端评估 | ⬜ |
+| 9.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ⬜ |
+| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ⬜ |
+| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ⬜ |
 
-### 12.3 类型预测 — 重新评估
+### 9.3 类型预测 — 重新评估
 
 评审发现训练目标不一致：当一个约束涉及多个删除元素时，bbox 取平均但 type 取第一个。
 
 | # | Task | Status |
 |---|------|--------|
-| 12.3.1 | 单元素删除实验（只有一个缺失元素，目标一致） | ⬜ |
-| 12.3.2 | 增加 type loss weight 验证是否可训练 | ⬜ |
+| 9.3.1 | 单元素删除实验（只有一个缺失元素，目标一致） | ⬜ |
+| 9.3.2 | 增加 type loss weight 验证是否可训练 | ⬜ |
 
-### 12.4 置信度模型部署
+### 9.4 置信度模型部署
 
 唯一 STRONG KEEP。可以直接用。
 
 | # | Task | Status |
 |---|------|--------|
-| 12.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ⬜ |
-| 12.4.2 | ScreenSpot 跨域验证置信度 | ⬜ |
+| 9.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ⬜ |
+| 9.4.2 | ScreenSpot 跨域验证置信度 | ⬜ |
+
+---
+
+## Phase 10: 方案 (Solution — 文档与资料更新)
+
+**Goal:** Update product/technical documentation for usability and publication.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 10.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
+| 10.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
+
+---
+
+## Phase 11: Web Demo ⬜
+
+**Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
+
+| # | Item | Status |
+|---|------|--------|
+| 11.1 | FastAPI 后端 | ⬜ |
+| 11.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
+| 11.3 | 测试与文档 | ⬜ |
+| 11.4 | 部署: Dockerfile | ⬜ |
+
+---
+
+## Phase 12: HTML/CSS 代码生成 ⬜
+
+| # | Item | Status |
+|---|------|--------|
+| 12.1 | `web/codegen/html_generator.py` | ⬜ |
+| 12.2 | `POST /api/generate-html` 端点 | ⬜ |
+| 12.3 | 前端: HTML 预览区 | ⬜ |
+| 12.4 | 单元测试 | ⬜ |
 
 ---
 
@@ -353,9 +353,6 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 | 集成测试 | Phase 5 | 942 tests pass |
 | 性能测试 | Phase 6 | Benchmark report |
 | 实施 | Phase 7 | Experiment scripts |
-| 方案 | Phase 8 | README, docs, examples |
-| Web 演示 | Phase 9 | `web/` (FastAPI + frontend) |
-| 代码生成 | Phase 10 | `web/codegen/` (JSON → HTML/CSS) |
 
 ---
 
