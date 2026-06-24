@@ -128,10 +128,15 @@ class BipartiteGNNCorrector(nn.Module):
         # When fusion is enabled, element features are projected through
         # SplitAndFuse before the GNN encoder.  This handles both the
         # concatenated (struct + visual) and pure-structural cases.
+        # We temporarily replace element features and restore afterwards
+        # to avoid mutating the data objects stored in the dataset.
         if self.fusion is not None:
-            data["element"].x = self.fusion(data["element"].x)
-
-        encoded = self.encoder(data)
+            saved = data["element"].x
+            data["element"].x = self.fusion(saved)
+            encoded = self.encoder(data)
+            data["element"].x = saved  # restore original features
+        else:
+            encoded = self.encoder(data)
         outputs: dict[str, Tensor] = {}
         if "element" in encoded:
             outputs["coord"] = self.coordinate_head(encoded["element"])
