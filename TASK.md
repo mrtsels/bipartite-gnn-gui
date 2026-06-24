@@ -379,8 +379,38 @@ Real-data-trained confidence model (AUROC=0.780, vs synthetic 0.989):
 
 **Key finding:** Confidence model shows limited cross-domain transfer (AUROC=0.554 vs RICO 0.703). Both TP and FP elements receive very high confidence scores (≈0.90), indicating the model cannot distinguish ScreenSpot's FP patterns. The domain shift (RICO mobile → ScreenSpot mobile+pc+web) likely changes the FP distribution too much.
 
-### Blocked Items
-- (none — all Phase 9 tasks complete)
+### 9.5 Real VLM Full Pipeline Comparison (Before vs After GNN Correction)
+
+**Script:** `experiments/eval_real_vlm_pipeline.py`
+
+Evaluates the full GNN correction pipeline on 200 real VLM images: build constraint graph from VLM detections → detect violated constraints → propose missing elements → compare detection quality before/after.
+
+**Model used:** `violation_detection/best_model.pt` (hidden_dim=128, trained on simulated dropping). The "joint" model's existence head collapses to ~0.48 on real data; the "completion" model's violation head outputs ~0 everywhere — only the dedicated violation detection model produces meaningful proposals.
+
+| Metric | Before (VLM only) | After (VLM+GNN) | Δ |
+|--------|:-----------------:|:---------------:|:-:|
+| Precision (pooled) | 0.3821 | 0.3686 | **−0.0135** |
+| Recall (pooled) | 0.2351 | 0.2823 | **+0.0472** |
+| F1 (pooled) | 0.2911 | 0.3197 | **+0.0286** |
+| Precision (per-img avg) | 0.4557 | 0.4334 | −0.0224 |
+| Recall (per-img avg) | 0.2743 | 0.3223 | +0.0480 |
+| F1 (per-img avg) | 0.2893 | 0.3120 | +0.0227 |
+| TP count | 1126 | 1352 | +226 |
+| FP count | 1821 | 2316 | +495 |
+| FN count | 3663 | 3437 | −226 |
+
+**Correction mechanics:**
+- VLM elements total: 2,947
+- Proposals added (after NMS): 721
+- Corrected element count: 3,668
+- GT elements total: 4,789
+
+**Key findings:**
+1. **Recall improves +4.7pp** (0.235 → 0.282) — GNN successfully recovers 226 missed elements via constraint-based proposals
+2. **Precision drops −1.4pp** — proposals introduce new FPs (many proposed bboxes don't match real GT elements)
+3. **Net F1 gain +2.9pp** — the recall improvement outweighs the precision cost
+4. **Existence head is useless on real VLM** — all checkpoints produce near-uniform scores (~0.48–0.54 for both TP and FP elements), so confidence filtering is currently not viable
+5. **The improvement is real but modest** — simulated dropping achieves IoU ~0.12 at drop=0.6, but on real VLM the matching quality is limited by the mismatch between VLM error patterns and the synthetic training distribution
 
 ---
 

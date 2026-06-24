@@ -1,0 +1,49 @@
+{
+  "checkpoint": "/Users/minimx/bipartite-gnn-gui/checkpoints/violation_detection/best_model.pt",
+  "n_images": 200,
+  "n_skipped": 0,
+  "model_config": {
+    "hidden_dim": 128,
+    "dropout": 0.0
+  },
+  "matching": {
+    "metric": "center_distance",
+    "threshold": 0.1
+  },
+  "before": {
+    "precision": 0.3820834747200543,
+    "recall": 0.2351221549384005,
+    "f1": 0.29110651499482937,
+    "precision_per_img_avg": 0.45573532343842693,
+    "recall_per_img_avg": 0.2742696936974042,
+    "f1_per_img_avg": 0.28930848722033864,
+    "tp": 1126,
+    "fp": 1821,
+    "fn": 3663,
+    "n_pred": 2947,
+    "n_gt": 4789
+  },
+  "after": {
+    "precision": 0.3685932388222465,
+    "recall": 0.28231363541449156,
+    "f1": 0.3197351306609909,
+    "precision_per_img_avg": 0.4333668624931585,
+    "recall_per_img_avg": 0.32230503621045337,
+    "f1_per_img_avg": 0.3119676175115739,
+    "tp": 1352,
+    "fp": 2316,
+    "fn": 3437,
+    "n_pred": 3668,
+    "n_gt": 4789
+  },
+  "delta": {
+    "precision": -0.01349023589780779,
+    "recall": 0.04719148047609106,
+    "f1": 0.02862861566616154
+  },
+  "correction_mechanics": {
+    "total_vlm_elements": 2947,
+    "proposals_added_nms": 721,
+    "corrected_total": 3668
+  }
+}
