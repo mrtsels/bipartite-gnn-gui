@@ -65,6 +65,7 @@ def build_violation_graph(
     drop_ratio: float = 0.3,
     seed: int | None = None,
     allowed_constraint_types: set[ConstraintType] | None = None,
+    single_element_removal: bool = False,
 ) -> Tuple[Any, Dict[str, torch.Tensor]] | None:
     """Build a graph from a *partial* layout and label violated constraints.
 
@@ -109,6 +110,11 @@ def build_violation_graph(
     survivor_mask = torch.rand(N, generator=rng) >= drop_ratio
 
     if survivor_mask.sum() < 2:
+        return None
+
+    # Single-element-removal: skip if more than 1 element would be removed.
+    removed_indices_all = torch.where(~survivor_mask)[0].tolist()
+    if single_element_removal and len(removed_indices_all) > 1:
         return None
 
     survivor_indices_old = torch.where(survivor_mask)[0].tolist()
@@ -291,6 +297,17 @@ def main() -> None:
                         default="checkpoints/violation_detection")
     parser.add_argument("--rico-dir", type=str,
                         default="data/rico_local/combined")
+    parser.add_argument("--violation-weight", type=float, default=1.0,
+                        help="Weight for violation detection loss (default 1.0)")
+    parser.add_argument("--coord-weight", type=float, default=0.0,
+                        help="Weight for coordinate regression loss (default 0.0)")
+    parser.add_argument("--proposal-weight", type=float, default=1.0,
+                        help="Weight for proposal bbox loss (default 1.0)")
+    parser.add_argument("--proposal-type-weight", type=float, default=0.5,
+                        help="Weight for proposal type prediction loss (default 0.5)")
+    parser.add_argument("--single-element-removal", action="store_true",
+                        help="Ensure at most ONE element is removed per graph. "
+                             "Skip graphs where multiple elements would be removed.")
     parser.add_argument("--log-level", type=str, default="INFO")
     args = parser.parse_args()
 
@@ -344,6 +361,7 @@ def main() -> None:
         result = build_violation_graph(
             gt_elements, builder, drop_ratio=args.drop_ratio, seed=args.seed,
             allowed_constraint_types=allowed_constraint_types,
+            single_element_removal=args.single_element_removal,
         )
         if result is None:
             n_skipped += 1
@@ -382,12 +400,13 @@ def main() -> None:
         hidden_dim=args.hidden, dropout=0.1,
         coord_weight=0.0, existence_weight=0.0,
     ).to(DEVICE)
-    model.loss_fn.violation_weight = 1.0
-    model.loss_fn.coord_weight = 0.0
+    model.loss_fn.violation_weight = args.violation_weight
+    model.loss_fn.coord_weight = args.coord_weight
     model.loss_fn.existence_weight = 0.0
     model.loss_fn.alignment_weight = 0.0
-    model.proposal_weight = 1.0  # enable proposal loss
-    model.proposal_type_weight = 0.5  # enable type prediction loss
+    # Only enable proposal head if violation_weight > 0 or proposal_type_weight > 0
+    model.proposal_weight = args.proposal_weight  # enable proposal loss
+    model.proposal_type_weight = args.proposal_type_weight  # type prediction loss weight
 
     n_params = sum(p.numel() for p in model.parameters())
     logger.info("Model: %d params", n_params)
@@ -434,9 +453,9 @@ def main() -> None:
         metrics = evaluate_violation(model, val_dataset, DEVICE)
         prop_metrics = evaluate_proposal(model, val_dataset, DEVICE)
         logger.info(
-            "Epoch %2d/%d — train: %.4f | val: %.4f | acc: %.3f | prop_mse: %.4f | n_con: %.0f",
+            "Epoch %2d/%d — train: %.4f | val: %.4f | acc: %.3f | prop_mse: %.4f | type_acc: %.3f | n_con: %.0f",
             epoch, args.epochs, avg_train_loss, avg_val_loss,
-            metrics["acc"], prop_metrics["proposal_mse"], metrics["n"],
+            metrics["acc"], prop_metrics["proposal_mse"], prop_metrics["type_acc"], metrics["n"],
         )
 
         if avg_val_loss < best_val_loss - 1e-6:

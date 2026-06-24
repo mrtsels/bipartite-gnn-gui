@@ -1,0 +1,77 @@
+{
+  "Full \u00d7 joint seed=42": {
+    "val_acc": 0.9062,
+    "prop_mse": 0.0614,
+    "best_loss": 0.910469
+  },
+  "Full \u00d7 joint seed=73": {
+    "val_acc": 0.8612,
+    "prop_mse": 0.0446,
+    "best_loss": 0.911447
+  },
+  "Full \u00d7 joint seed=99": {
+    "val_acc": 0.8568,
+    "prop_mse": 0.0494,
+    "best_loss": 0.878178
+  },
+  "Full \u00d7 joint seed=123": {
+    "val_acc": 0.8747,
+    "prop_mse": 0.0405,
+    "best_loss": 0.958941
+  },
+  "Full \u00d7 joint seed=256": {
+    "val_acc": 0.8803,
+    "prop_mse": 0.0569,
+    "best_loss": 0.943014
+  },
+  "Full \u00d7 violation-only seed=42": {
+    "val_acc": 0.9263,
+    "prop_mse": 0.1094,
+    "best_loss": 0.147328
+  },
+  "Full \u00d7 violation-only seed=73": {
+    "val_acc": 0.9003,
+    "prop_mse": 0.1202,
+    "best_loss": 0.206507
+  },
+  "Full \u00d7 violation-only seed=99": {
+    "val_acc": 0.8799,
+    "prop_mse": 0.128,
+    "best_loss": 0.218532
+  },
+  "Full \u00d7 violation-only seed=123": {
+    "val_acc": 0.8871,
+    "prop_mse": 0.1183,
+    "best_loss": 0.211638
+  },
+  "Full \u00d7 violation-only seed=256": {
+    "val_acc": 0.8974,
+    "prop_mse": 0.1061,
+    "best_loss": 0.214407
+  },
+  "Full \u00d7 proposal-only seed=42": {
+    "val_acc": 0.4802,
+    "prop_mse": 0.062,
+    "best_loss": 0.691469
+  },
+  "Full \u00d7 proposal-only seed=73": {
+    "val_acc": 0.4521,
+    "prop_mse": 0.0436,
+    "best_loss": 0.608246
+  },
+  "Full \u00d7 proposal-only seed=99": {
+    "val_acc": 0.5149,
+    "prop_mse": 0.0499,
+    "best_loss": 0.640814
+  },
+  "Full \u00d7 proposal-only seed=123": {
+    "val_acc": 0.5927,
+    "prop_mse": 0.0402,
+    "best_loss": 0.658526
+  },
+  "Full \u00d7 proposal-only seed=256": {
+    "val_acc": 0.4029,
+    "prop_mse": 0.0597,
+    "best_loss": 0.655995
+  }
+}
