@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Visual feature fusion experiment: compare GNN accuracy with vs without ViT visual features.
+"""Visual feature fusion experiment: compare GNN accuracy with ViT vs DINOv2 visual features.
 
 Architecture:
   - Element node features: 5-d spatial [x1,y1,x2,y2,confidence]
-    → with visual: + 192-d ViT embedding = 197-d total
+    → with visual: + visual_dim-d embedding = (5 + visual_dim)-d total
   - Constraint node features: 11-d (one-hot type + first param)
   - BipartiteGraphSAGE encoder (element_dim adjusts accordingly)
   - Violation + Proposal + Type prediction heads
 
 Comparison:
   - "Without visual": existing checkpoint evaluated on test set
-  - "With visual": newly trained model with visual features on same test split
+  - "With visual (vit_tiny)": newly trained model with vit_tiny features (192-dim)
+  - "With visual (DINOv2)": newly trained model with DINOv2 features (768-dim)
 
 Usage:
-    python experiments/train_with_visual.py --n 500 --epochs 50
+    python experiments/train_with_visual.py                         # vit_tiny (192)
+    python experiments/train_with_visual.py --visual-dim 768 --feat-dir data/rico_local/visual_features_dinov2  # DINOv2
 """
 
 from __future__ import annotations
@@ -52,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 _RICO_DIR = Path("/Users/minimx/bipartite-gnn-gui/data/rico_local/combined")
 _VISUAL_FEAT_DIR = Path("/Users/minimx/bipartite-gnn-gui/data/rico_local/visual_features")
+_DINOV2_FEAT_DIR = Path("/Users/minimx/bipartite-gnn-gui/data/rico_local/visual_features_dinov2")
 _CHECKPOINT_DIR = Path("/Users/minimx/bipartite-gnn-gui/checkpoints/violation_detection")
 _BEST_MODEL_PATH = _CHECKPOINT_DIR / "best_model.pt"
 _VISUAL_CONCAT_PATH = _CHECKPOINT_DIR / "visual_fusion_model.pt"
@@ -77,25 +80,28 @@ def _type_idx(label: str) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _load_visual_features(uid: str, n_elements: int) -> torch.Tensor | None:
+def _load_visual_features(uid: str, n_elements: int, feat_dir: Path,
+                          visual_dim: int) -> torch.Tensor | None:
     """Load precomputed visual features for a single RICO image.
 
     Args:
         uid: Image filename stem (e.g. ``"0"``).
         n_elements: Expected number of elements (for validation).
+        feat_dir: Directory containing ``.pt`` feature files.
+        visual_dim: Expected feature dimension (192 for vit_tiny, 768 for DINOv2).
 
     Returns:
-        ``(N_elements, 192)`` tensor, or ``None`` if not found or
+        ``(N_elements, visual_dim)`` tensor, or ``None`` if not found or
         dimension mismatch.
     """
-    path = _VISUAL_FEAT_DIR / f"{uid}.pt"
+    path = feat_dir / f"{uid}.pt"
     if not path.exists():
         return None
     try:
         feats = torch.load(path, map_location="cpu")
     except Exception:
         return None
-    if not isinstance(feats, torch.Tensor) or feats.dim() != 2 or feats.shape[1] != 192:
+    if not isinstance(feats, torch.Tensor) or feats.dim() != 2 or feats.shape[1] != visual_dim:
         return None
     if feats.shape[0] != n_elements:
         logger.debug(
@@ -139,7 +145,7 @@ def build_violation_graph(
         allowed_constraint_types: Optional constraint type filter.
         single_element_removal: If True, only graphs with ≤1 removed
             element are kept.
-        visual_features: Optional ``(N_gt, 192)`` tensor.  The builder
+        visual_features: Optional ``(N_gt, visual_dim)`` tensor.  The builder
             will concatenate it to element spatial features.
 
     Returns:
@@ -183,7 +189,7 @@ def build_violation_graph(
     # Filter visual features to survivors if provided.
     survivor_visual = None
     if visual_features is not None:
-        survivor_visual = visual_features[survivor_indices_old]  # (N_surv, 192)
+        survivor_visual = visual_features[survivor_indices_old]
 
     kept_constraints = []
     violation_labels = []
@@ -346,6 +352,8 @@ def load_rico_data(
     seed: int,
     use_visual: bool,
     builder: BipartiteGraphBuilder,
+    feat_dir: Path = _VISUAL_FEAT_DIR,
+    visual_dim: int = 192,
     allowed_constraint_types: set[ConstraintType] | None = None,
 ) -> list[Tuple[Any, Dict[str, torch.Tensor]]]:
     """Load RICO graphs with or without visual features.
@@ -354,15 +362,18 @@ def load_rico_data(
         n_samples: Number of JSONs to process.
         drop_ratio: Fraction of elements to drop per graph.
         seed: RNG seed for element dropping.
-        use_visual: Whether to load and attach ViT visual features.
+        use_visual: Whether to load and attach visual features.
         builder: Graph builder instance.
+        feat_dir: Directory containing precomputed ``.pt`` visual features.
+        visual_dim: Dimension of visual features (192 for vit_tiny, 768 for DINOv2).
         allowed_constraint_types: Optional constraint type filter.
 
     Returns:
         List of ``(hetero_data, targets)`` pairs.
     """
     all_jsons = sorted(_RICO_DIR.glob("*.json"))[:n_samples]
-    logger.info("Loading %d RICO graphs (use_visual=%s) ...", len(all_jsons), use_visual)
+    logger.info("Loading %d RICO graphs (use_visual=%s, visual_dim=%d) ...",
+                len(all_jsons), use_visual, visual_dim)
 
     all_graphs: list[Tuple[Any, Dict[str, torch.Tensor]]] = []
     n_skipped = 0
@@ -386,7 +397,8 @@ def load_rico_data(
         visual_feats = None
         if use_visual:
             uid = path.stem
-            visual_feats = _load_visual_features(uid, len(gt_elements))
+            visual_feats = _load_visual_features(uid, len(gt_elements),
+                                                  feat_dir, visual_dim)
             if visual_feats is None:
                 n_skipped += 1
                 continue
@@ -436,9 +448,7 @@ def train_model(
     Args:
         train_dataset: Training dataset.
         val_dataset: Validation dataset.
-        element_dim: Element feature dimension (5 without visual, 197 with).
-            When fusion_dim is set, this should be the structural dimension
-            (5) — SplitAndFuse handles visual concatenation internally.
+        element_dim: Element feature dimension (5 without visual, 5+visual_dim with).
         hidden_dim: Hidden dimension for encoder and heads.
         lr: Learning rate.
         epochs: Number of training epochs.
@@ -570,19 +580,22 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Visual feature fusion experiment"
+        description="Visual feature fusion experiment (ViT-tiny vs DINOv2)"
     )
     parser.add_argument("--n", type=int, default=500,
                         help="Number of RICO images to use (default 500)")
-    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--drop-ratio", type=float, default=0.4)
     parser.add_argument("--val-split", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--fusion-dim", type=int, default=64,
-                        help="Cross-attention fusion dimension (default 64). "
-                             "Set to 0 to disable fusion (simple-concat only).")
+    parser.add_argument("--visual-dim", type=int, default=192,
+                        help="Visual feature dimension (192 for vit_tiny, 768 for DINOv2)")
+    parser.add_argument("--feat-dir", type=str, default=None,
+                        help="Directory with precomputed .pt visual features. "
+                             "Default: data/rico_local/visual_features for 192-dim, "
+                             "data/rico_local/visual_features_dinov2 for 768-dim.")
     parser.add_argument("--log-level", type=str, default="INFO")
     args = parser.parse_args()
 
@@ -592,21 +605,30 @@ def main() -> None:
         stream=sys.stdout,
     )
 
+    # Determine feat dir based on visual_dim if not explicitly set.
+    if args.feat_dir is not None:
+        feat_dir = Path(args.feat_dir)
+    elif args.visual_dim == 768:
+        feat_dir = _DINOV2_FEAT_DIR
+    else:
+        feat_dir = _VISUAL_FEAT_DIR
+
+    visual_dim = args.visual_dim
+    element_dim = 5 + visual_dim
+
     logger.info("=" * 60)
-    logger.info("CROSS-ATTENTION FUSION EXPERIMENT")
+    logger.info("VISUAL FEATURE EXPERIMENT")
     logger.info("=" * 60)
     logger.info("Device: %s | n=%d | epochs=%d | hidden=%d | drop=%.2f",
                 DEVICE, args.n, args.epochs, args.hidden, args.drop_ratio)
+    logger.info("Visual dim: %d | element_dim: %d", visual_dim, element_dim)
     logger.info("RICO dir: %s", _RICO_DIR)
-    logger.info("Visual features dir: %s", _VISUAL_FEAT_DIR)
-    logger.info("Fusion dim: %s", args.fusion_dim)
+    logger.info("Feat dir: %s", feat_dir)
 
     # ------------------------------------------------------------------
-    # 1. Load data — only need visual data for both conditions
-    #    (simple-concat uses 197-d features, cross-attention uses SplitAndFuse)
+    # 1. Load data with visual features
     # ------------------------------------------------------------------
     builder = BipartiteGraphBuilder()
-    rng = torch.Generator().manual_seed(args.seed)
 
     all_graphs_vis = load_rico_data(
         n_samples=args.n,
@@ -614,6 +636,8 @@ def main() -> None:
         seed=args.seed,
         use_visual=True,
         builder=builder,
+        feat_dir=feat_dir,
+        visual_dim=visual_dim,
     )
     if len(all_graphs_vis) < 10:
         logger.error("Not enough visual graphs: %d", len(all_graphs_vis))
@@ -627,109 +651,40 @@ def main() -> None:
     logger.info("Visual data: %d train / %d val", len(train_vis), len(val_vis))
 
     # ------------------------------------------------------------------
-    # 2. Baseline: Simple Concat (PR#30) — load visual_fusion_model.pt
+    # 2. Train with visual features (simple concat)
     # ------------------------------------------------------------------
     logger.info("-" * 60)
-    logger.info("BASELINE: Simple Concat (PR#30) — 197-d concat features")
+    logger.info("TRAINING: Simple Concat — %d-d visual features", visual_dim)
     logger.info("-" * 60)
 
-    concat_model = None
-    if _VISUAL_CONCAT_PATH.exists():
-        try:
-            sd = torch.load(_VISUAL_CONCAT_PATH, map_location=DEVICE)
-            base_hidden_ = sd["encoder.element_proj.weight"].shape[0]
-            logger.info("Loaded simple-concat checkpoint from %s (hidden=%d)",
-                        _VISUAL_CONCAT_PATH, base_hidden_)
-
-            concat_model = BipartiteGNNCorrector(
-                element_dim=197,
-                constraint_dim=11,
-                hidden_dim=base_hidden_,
-                dropout=0.1,
-                coord_weight=0.0,
-                existence_weight=0.0,
-            ).to(DEVICE)
-            concat_model.loss_fn.violation_weight = 1.0
-            concat_model.loss_fn.coord_weight = 0.0
-            concat_model.loss_fn.existence_weight = 0.0
-            concat_model.loss_fn.alignment_weight = 0.0
-            concat_model.proposal_weight = 1.0
-            concat_model.proposal_type_weight = 0.5
-            concat_model.load_state_dict(sd, strict=False)
-        except Exception as e:
-            logger.warning("Failed to load simple-concat checkpoint: %s", e)
-            concat_model = None
-
-    if concat_model is None:
-        logger.info("Training simple-concat baseline from scratch...")
-        concat_model = train_model(
-            train_dataset=train_vis,
-            val_dataset=val_vis,
-            element_dim=197,
-            hidden_dim=args.hidden,
-            lr=args.lr,
-            epochs=args.epochs,
-            checkpoint_path=_CHECKPOINT_DIR / "simple_concat_baseline.pt",
-        )
-
-    concat_metrics = evaluate_model(concat_model, val_vis)
-    logger.info("Simple Concat baseline results: %s", concat_metrics)
-
-    # ------------------------------------------------------------------
-    # 3. Train with Cross-Attention Fusion
-    # ------------------------------------------------------------------
-    logger.info("-" * 60)
-    logger.info("TRAINING: Cross-Attention Fusion (fusion_dim=%s)", args.fusion_dim)
-    logger.info("-" * 60)
-
-    # When using fusion, element_dim is the structural dimension (5).
-    # SplitAndFuse in the model will split the 197-d features into
-    # 5-d structural + 192-d visual and fuse via cross-attention.
-    fusion_checkpoint = _CHECKPOINT_DIR / "cross_attention_fusion.pt"
-    fusion_model = train_model(
+    checkpoint_path = _CHECKPOINT_DIR / f"visual_fusion_model_dim{visual_dim}.pt"
+    model = train_model(
         train_dataset=train_vis,
         val_dataset=val_vis,
-        element_dim=5,  # structural dimension only; SplitAndFuse handles visual
+        element_dim=element_dim,
         hidden_dim=args.hidden,
         lr=args.lr,
         epochs=args.epochs,
-        checkpoint_path=fusion_checkpoint,
-        fusion_dim=args.fusion_dim,
+        checkpoint_path=checkpoint_path,
     )
 
-    fusion_metrics = evaluate_model(fusion_model, val_vis)
-    logger.info("Cross-Attention Fusion results: %s", fusion_metrics)
+    metrics = evaluate_model(model, val_vis)
+    logger.info("Results: %s", metrics)
 
     # ------------------------------------------------------------------
-    # 4. Comparison table
+    # 3. Report
     # ------------------------------------------------------------------
     print()
-    print("=" * 70)
-    print(f"{'Metric':<25s} | {'Simple Concat':>14s} | {'Cross-Attn':>12s} | {'Δ':>8s}")
-    print("-" * 70)
-
-    metrics_to_report = [
-        ("Violation Acc",
-         concat_metrics["violation_acc"],
-         fusion_metrics["violation_acc"]),
-        ("Proposal MSE",
-         concat_metrics["proposal_mse"],
-         fusion_metrics["proposal_mse"]),
-        ("Type Acc",
-         concat_metrics["type_acc"],
-         fusion_metrics["type_acc"]),
-    ]
-
-    for name, base_val, vis_val in metrics_to_report:
-        delta = vis_val - base_val
-        print(f"{name:<25s} | {base_val:>14.4f} | {vis_val:>12.4f} | {delta:>+8.4f}")
-
-    print("=" * 70)
+    print("=" * 60)
+    print(f"{'Metric':<25s} | {'Value':>14s}")
+    print("-" * 60)
+    for k, v in metrics.items():
+        print(f"{k:<25s} | {v:>14.4f}")
+    print("=" * 60)
 
     print()
     logger.info("Experiment complete.")
-    print(f"Simple Concat checkpoint: {_VISUAL_CONCAT_PATH}")
-    print(f"Cross-Attention Fusion checkpoint: {fusion_checkpoint}")
+    print(f"Checkpoint: {checkpoint_path}")
 
 
 if __name__ == "__main__":
