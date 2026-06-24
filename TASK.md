@@ -333,6 +333,8 @@ Qwen3-VL Flash on 196 RICO images (matched via center-distance Hungarian, thresh
 | VLM error rate | 0.765 |
 | GNN correction ceiling | ~0.508 (66.5% of errors addressable) |
 
+**Pipeline before/after (PR #28):** F1 0.291→0.320 (+2.9pp), Recall +4.7pp, Precision −1.4pp. GNN genuinely recovers missing elements but impact is modest relative to VLM's 76.5% FN rate.
+
 **Key finding:** VLM recall is very low (0.235) — only 23.5% of GT elements detected. GNN existence head (AUROC=0.703) shows meaningful separation: matched elements score 0.536 vs FPs at 0.398. The GNN can potentially correct ~50% of VLM errors via confidence filtering.
 
 #### ScreenSpot 结果 (600 images, Qwen3-VL Flash)
