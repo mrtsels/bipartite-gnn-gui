@@ -266,9 +266,9 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Task | Status |
 |---|------|--------|
-| 9.1.1 | 全类型 × violation-only (no coord loss) | ⬜ |
-| 9.1.2 | 全类型 × proposal-only (no violation loss) | ⬜ |
-| 9.1.3 | 5 seed 评估 + 置信区间 | ⬜ |
+| 9.1.1 | 全类型 × violation-only (no coord loss) | ✅ |
+| 9.1.2 | 全类型 × proposal-only (no violation loss) | ✅ |
+| 9.1.3 | 5 seed 评估 + 置信区间 | ✅ |
 
 ### 9.2 Real VLM 端到端评估（非合成下采样）
 
@@ -283,9 +283,9 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Task | Status |
 |---|------|--------|
-| 9.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ⬜ |
-| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ⬜ |
-| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ⬜ |
+| 9.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ✅ |
+| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ❌ Blocked — SMB mount at /Users/minimx/mnt/thinkpad/ empty; ThinkPad offline |
+| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ❌ Blocked — same reason as 9.2.2 |
 
 ### 9.3 类型预测 — 重新评估
 
@@ -293,8 +293,8 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Task | Status |
 |---|------|--------|
-| 9.3.1 | 单元素删除实验（只有一个缺失元素，目标一致） | ⬜ |
-| 9.3.2 | 增加 type loss weight 验证是否可训练 | ⬜ |
+| 9.3.1 | 单元素删除实验（只有一个缺失元素，目标一致） | ✅ |
+| 9.3.2 | 增加 type loss weight 验证是否可训练 | ✅ |
 
 ### 9.4 置信度模型部署
 
@@ -302,8 +302,60 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 
 | # | Task | Status |
 |---|------|--------|
-| 9.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ⬜ |
-| 9.4.2 | ScreenSpot 跨域验证置信度 | ⬜ |
+| 9.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ✅ |
+| 9.4.2 | ScreenSpot 跨域验证置信度 | ❌ Blocked — same reason as 9.2.2 |
+
+---
+
+## Phase 9 Results Summary
+
+### 9.1 受控两模型对比 — 5-Seed Results
+
+| Config | seed 42 | seed 73 | seed 99 | seed 123 | seed 256 | mean ± std |
+|--------|:-------:|:-------:|:-------:|:--------:|:--------:|:----------:|
+| Full × joint | 0.9062 | 0.8612 | 0.8568 | 0.8747 | 0.8803 | **0.8758 ± 0.0195** |
+| Full × violation-only | 0.9263 | 0.9003 | 0.8799 | 0.8871 | 0.8974 | **0.8982 ± 0.0177** |
+| Full × proposal-only | 0.4802 | 0.4521 | 0.5149 | 0.5927 | 0.4029 | **0.4886 ± 0.0712** |
+
+**Key finding:** Violation-only (0.898 ± 0.018) is **notably better** than joint (0.876 ± 0.020) — the reviewer's suspicion is confirmed. The multi-task joint training **hurts** violation detection. Pure violation-only training achieves higher accuracy with lower variance.
+
+### 9.2 Real VLM 端到端评估
+
+Qwen3-VL Flash on 196 RICO images (matched via center-distance Hungarian, threshold=0.1):
+
+| Metric | Value |
+|--------|-------|
+| VLM Precision | 0.382 |
+| VLM Recall | 0.235 |
+| VLM F1 | 0.291 |
+| GNN Existence Acc | 0.665 |
+| GNN Existence AUROC | 0.703 |
+| VLM error rate | 0.765 |
+| GNN correction ceiling | ~0.508 (66.5% of errors addressable) |
+
+**Key finding:** VLM recall is very low (0.235) — only 23.5% of GT elements detected. GNN existence head (AUROC=0.703) shows meaningful separation: matched elements score 0.536 vs FPs at 0.398. The GNN can potentially correct ~50% of VLM errors via confidence filtering.
+
+### 9.3 类型预测
+
+Single-element removal (n=5000, 288 graphs):
+
+| Metric | type_weight=0.5 | type_weight=2.0 |
+|--------|:---------------:|:---------------:|
+| Val Acc | 0.917 | 0.889 |
+| Prop MSE | 0.087 | 0.087 |
+| Type Acc | **0.618** | **0.618** |
+
+**Key finding:** Type accuracy caps at ~62% even with single-element removal (clean targets). Increasing type loss weight from 0.5→2.0 doesn't improve type accuracy. Type prediction from constraint context alone is fundamentally limited — constraint features carry spatial/structural info but are weak for semantic type disambiguation.
+
+### 9.4 置信度模型 (Real VLM Data)
+
+Real-data-trained confidence model (AUROC=0.780, vs synthetic 0.989):
+- Real VLM FPs are harder to distinguish from TPs than random imposters
+- AUROC 0.780 is still useful but lower than the synthetic model's 0.989
+- The synthetic model likely overestimates real-world performance
+
+### Blocked Items
+- 9.2.2, 9.2.3, 9.4.2: ScreenSpot evaluation requires ThinkPad SMB mount which is currently empty (offline)
 
 ---
 

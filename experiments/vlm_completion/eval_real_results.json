@@ -1,0 +1,22 @@
+{
+  "checkpoint": "checkpoints/confidence_scoring/best_model.pt",
+  "n_images": 196,
+  "n_graphs": 196,
+  "n_skipped": 0,
+  "total_gt": 4789,
+  "total_vlm": 2947,
+  "total_matched": 1126,
+  "total_fp": 1821,
+  "total_fn": 3663,
+  "vlm_precision": 0.3820834747200543,
+  "vlm_recall": 0.2351221549384005,
+  "vlm_f1": 0.29110651499482937,
+  "vlm_fp_rate": 0.6179165252799457,
+  "vlm_fn_rate": 0.7648778450615995,
+  "gnn_existence_acc": 0.6646258234977722,
+  "gnn_existence_auroc": 0.7030016779899597,
+  "gnn_pos_mean": 0.5359847545623779,
+  "gnn_neg_mean": 0.39807480573654175,
+  "vlm_error_rate": 0.7648778450615995,
+  "correction_ceiling": 0.508357567649267
+}
