@@ -34,11 +34,13 @@ class BipartiteGraphBuilder:
         self,
         elements: Sequence[ElementNode],
         constraints: Sequence[ConstraintNode],
+        visual_features: torch.Tensor | None = None,
     ) -> HeteroData:
         """Build a heterogeneous bipartite graph.
 
         Constructs element nodes (5-d features from bbox + confidence),
-        constraint nodes (11-d features from one-hot type + first param),
+        optionally augmented with visual features (192-d ViT embeddings).
+        Constraint nodes (11-d features from one-hot type + first param),
         and bipartite edges from each element involved in a constraint to
         that constraint node.  Edges carry 4-d spatial features computed
         via ``EdgeFeatures.compute`` between paired elements.
@@ -46,6 +48,10 @@ class BipartiteGraphBuilder:
         Args:
             elements: ElementNode list (N_elem).
             constraints: ConstraintNode list (N_con).
+            visual_features: Optional ``(N_elem, 192)`` tensor of ViT
+                visual embeddings.  When provided, element node features
+                become 197-d (5-d spatial + 192-d visual).  When absent,
+                element features remain 5-d.
 
         Returns:
             HeteroData with keys for "element", "constraint",
@@ -59,6 +65,17 @@ class BipartiteGraphBuilder:
         # ---- Element node features ----
         if elements:
             elem_feats = torch.stack([e.to_tensor() for e in elements])
+            if visual_features is not None:
+                if visual_features.shape[0] != num_elements:
+                    raise ValueError(
+                        f"visual_features shape[0] ({visual_features.shape[0]}) "
+                        f"must equal number of elements ({num_elements})"
+                    )
+                # Concatenate 5-d spatial features + 192-d visual features.
+                elem_feats = torch.cat(
+                    [elem_feats, visual_features.to(elem_feats.dtype)],
+                    dim=1,
+                )  # (N_elem, 197)
         else:
             elem_feats = torch.zeros((0, 5), dtype=torch.float32)
         data["element"].x = elem_feats

@@ -463,6 +463,34 @@ The model learns to identify which elements are real (TP) vs spurious (FP) using
 
 ---
 
+## Phase 11: Visual Feature Fusion ⬜
+
+**Goal:** Add visual features (ViT-Tiny embeddings) to element nodes and compare GNN performance with vs without vision.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 11.1 | `scripts/precompute_visual_features.py` | ✅ Done | Pre-compute ViT-Tiny 192-d embeddings for all RICO elements |
+| 11.2 | `builder.build()` accepts `visual_features` | ✅ Done | Concatenates 192-d visual → 197-d element features |
+| 11.3 | `experiments/train_with_visual.py` | ✅ Done | Compare with vs without visual features |
+
+**Experiment Results (500 RICO, hidden=128, drop=0.4):**
+
+```
+                    | Without Visual | With Visual | Δ
+Violation Acc        | 0.5928         | 0.8468      | +0.2540
+Proposal MSE         | 0.0880         | 0.0791      | -0.0089
+Type Acc             | 0.3115         | 0.4502      | +0.1387
+```
+
+**Key findings:**
+1. **Violation Acc +25.4 pp** — visual features dramatically improve the GNN's ability to detect violated constraints
+2. **Type Acc +13.9 pp** — ViT embeddings help disambiguate element types (consistent with Phase 9.3 finding that type prediction from constraints alone caps at ~62% under ideal conditions)
+3. **Proposal MSE -0.009** — modest improvement in bbox proposal quality
+
+The largest gains are in violation detection and type prediction — exactly where structural context alone was known to be weak (cf. Phase 9.3). Visual features provide semantic grounding that complements the constraint graph structure.
+
+---
+
 ## Phase 11: Web Demo ⬜
 
 **Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
