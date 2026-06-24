@@ -281,6 +281,10 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--drop-ratio", type=float, default=0.4,
                         help="Fraction of elements to remove")
+    parser.add_argument("--constraint-types", type=str, nargs="*", default=None,
+                        help="Space-separated list of constraint types to use. "
+                             "Omitting means all types. "
+                             "Example: --constraint-types containment spacing")
     parser.add_argument("--val-split", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--checkpoint-dir", type=str,
@@ -290,10 +294,26 @@ def main() -> None:
     parser.add_argument("--log-level", type=str, default="INFO")
     args = parser.parse_args()
 
+    # Parse constraint types filter.
+    constraint_types_str = args.constraint_types
+    if constraint_types_str is not None:
+        allowed_constraint_types: set[ConstraintType] | None = {
+            ConstraintType[name.upper()] for name in constraint_types_str
+        }
+    else:
+        allowed_constraint_types = None
+
     logging.basicConfig(
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(levelname)s | %(message)s", stream=sys.stdout,
     )
+
+    if allowed_constraint_types is not None:
+        logger.info("Constraint types: %s",
+                     ", ".join(t.value for t in sorted(allowed_constraint_types,
+                                                       key=lambda t: t.value)))
+    else:
+        logger.info("Constraint types: ALL (10 types)")
 
     logger.info("=" * 55)
     logger.info("VIOLATION DETECTION — Structural Completeness Proxy")
@@ -322,7 +342,8 @@ def main() -> None:
                        if e.bbox[2] > e.bbox[0] and e.bbox[3] > e.bbox[1]]
 
         result = build_violation_graph(
-            gt_elements, builder, drop_ratio=args.drop_ratio, seed=args.seed
+            gt_elements, builder, drop_ratio=args.drop_ratio, seed=args.seed,
+            allowed_constraint_types=allowed_constraint_types,
         )
         if result is None:
             n_skipped += 1
