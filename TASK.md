@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ⬜ → P11 ⬜ → P12 ⬜**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ⬜ → P11 ⬜ → P12 ⬜ → P13 ⬜ → P14 ⬜**
 
 ---
 
@@ -517,27 +517,64 @@ These values confirm the PR#30 results are robust — very low seed-to-seed vari
 
 ---
 
-## Phase 11: Web Demo ⬜
+## Phase 10: Research — DINOv2 视觉特征升级
+
+**Goal:** Replace vit_tiny with DINOv2-base for stronger visual features. Compare and document the delta.
+
+| # | Item | Status |
+|---|------|--------|
+| 10.1 | 下载/缓存 DINOv2-base (~170MB) | ⬜ |
+| 10.2 | 预计算 500 RICO DINOv2 特征 | ⬜ |
+| 10.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ⬜ |
+| 10.4 | 关键对比：Type Acc 能从 45% 到多少? | ⬜ |
+
+---
+
+## Phase 11: 论文写作
+
+**Goal:** Write and publish a paper documenting the project's findings.
+
+| # | Item | Status |
+|---|------|--------|
+| 11.1 | 实验图生成（violation acc bar chart, type acc bar chart, 混淆矩阵, 消融表） | ⬜ |
+| 11.2 | 论文草稿（introduction, method, experiments, results, conclusion） | ⬜ |
+| 11.3 | 引用管理 + bibtex | ⬜ |
+| 11.4 | 终稿 + 提交 | ⬜ |
+
+---
+
+## Phase 12: 方案 (Solution — 文档与资料更新)
+
+**Goal:** Update product/technical documentation for usability and publication.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 12.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
+| 12.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
+
+---
+
+## Phase 13: Web Demo ⬜
 
 **Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
 
 | # | Item | Status |
 |---|------|--------|
-| 11.1 | FastAPI 后端 | ⬜ |
-| 11.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
-| 11.3 | 测试与文档 | ⬜ |
-| 11.4 | 部署: Dockerfile | ⬜ |
+| 13.1 | FastAPI 后端 | ⬜ |
+| 13.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
+| 13.3 | 测试与文档 | ⬜ |
+| 13.4 | 部署: Dockerfile | ⬜ |
 
 ---
 
-## Phase 12: HTML/CSS 代码生成 ⬜
+## Phase 14: HTML/CSS 代码生成 ⬜
 
 | # | Item | Status |
 |---|------|--------|
-| 12.1 | `web/codegen/html_generator.py` | ⬜ |
-| 12.2 | `POST /api/generate-html` 端点 | ⬜ |
-| 12.3 | 前端: HTML 预览区 | ⬜ |
-| 12.4 | 单元测试 | ⬜ |
+| 14.1 | `web/codegen/html_generator.py` | ⬜ |
+| 14.2 | `POST /api/generate-html` 端点 | ⬜ |
+| 14.3 | 前端: HTML 预览区 | ⬜ |
+| 14.4 | 单元测试 | ⬜ |
 
 ---
 
