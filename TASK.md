@@ -523,10 +523,32 @@ These values confirm the PR#30 results are robust — very low seed-to-seed vari
 
 | # | Item | Status |
 |---|------|--------|
-| 10.1 | 下载/缓存 DINOv2-base (~170MB) | ⬜ |
-| 10.2 | 预计算 500 RICO DINOv2 特征 | ⬜ |
-| 10.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ⬜ |
-| 10.4 | 关键对比：Type Acc 能从 45% 到多少? | ⬜ |
+| 10.1 | 下载/缓存 DINOv2-base (~346MB) | ✅ Done |
+| 10.2 | 预计算 500 RICO DINOv2 特征 (scripts/precompute_dinov2_features.py) | ✅ Done |
+| 10.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ✅ Done |
+| 10.4 | 关键对比：Type Acc 能从 45% 到多少? | ✅ Done (见下方) |
+
+### Comparison: vit_tiny (192-dim) vs DINOv2 (768-dim), 500 RICO, seed=42, hidden=128, drop=0.4
+
+```
+                    | +vit_tiny (192) | +DINOv2 (768) | Δ
+Violation Acc        | 0.846           | 0.854         | +0.008
+Proposal MSE         | 0.081           | 0.085         | -0.005 (worse)
+Type Acc             | 0.405           | 0.403         | -0.002 (worse)
+```
+
+**Key findings:**
+
+1. **DINOv2 没有明显优势。** 虽然有更大的参数容量 (86M vs 5.7M) 和更丰富的特征维度 (768 vs 192)，但在三个评估指标上几乎与 vit_tiny 持平。
+2. **Violation Acc 轻微提升 (+0.8pp)**：从 0.846 到 0.854。这可能来自 DINOv2 更丰富的视觉表征帮助区分相似元素（如不同功能的按钮）。
+3. **Proposal MSE 和 Type Acc 基本持平**：DINOv2 没有改善提案质量或类型分类。这可能是因为：① 简单的拼接方式限制了高位特征的表达；② 视觉特征对类型预测和位置回归的边际收益已经饱和。
+4. **参数量只增加了 30%**：由于拼接，模型参数从 vit_tiny 的 245K 增加到 DINOv2 的 319K。但这主要是因为第一层线性投影变大了（197→128 vs 773→128），实际 GNN encoder 和 heads 的参数量不变。
+5. **预计算成本高 6 倍**：vit_tiny 约 30 秒处理 500 张图，DINOv2 约 173 秒，且 GPU 内存需求更高。
+
+**结论：** DINOv2 带来的收益不足以抵消其计算成本和模型复杂度的增加。**vit_tiny 仍然是视觉特征融合的推荐选择**，在保持良好性能的同时效率更高。如果未来需要更好的视觉表征，应考虑：
+   - 使用 DINOv2 特征 + cross-attention fusion 组合（目前未测试）
+   - 在更大规模的数据集（完整 RICO 65K）上验证
+   - 使用更轻量的蒸馏版 DINOv2（如 dinov2-small）
 
 ---
 
