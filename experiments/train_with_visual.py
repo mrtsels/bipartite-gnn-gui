@@ -54,6 +54,7 @@ _RICO_DIR = Path("/Users/minimx/bipartite-gnn-gui/data/rico_local/combined")
 _VISUAL_FEAT_DIR = Path("/Users/minimx/bipartite-gnn-gui/data/rico_local/visual_features")
 _CHECKPOINT_DIR = Path("/Users/minimx/bipartite-gnn-gui/checkpoints/violation_detection")
 _BEST_MODEL_PATH = _CHECKPOINT_DIR / "best_model.pt"
+_VISUAL_CONCAT_PATH = _CHECKPOINT_DIR / "visual_fusion_model.pt"
 
 # RICO semantic type → index (matching train_violation.py).
 TYPE_TO_IDX: dict[str, int] = {
@@ -428,6 +429,7 @@ def train_model(
     existence_weight: float = 0.0,
     proposal_weight: float = 1.0,
     proposal_type_weight: float = 0.5,
+    fusion_dim: int | None = None,
 ) -> BipartiteGNNCorrector:
     """Train a BipartiteGNNCorrector on violation + proposal tasks.
 
@@ -435,6 +437,8 @@ def train_model(
         train_dataset: Training dataset.
         val_dataset: Validation dataset.
         element_dim: Element feature dimension (5 without visual, 197 with).
+            When fusion_dim is set, this should be the structural dimension
+            (5) — SplitAndFuse handles visual concatenation internally.
         hidden_dim: Hidden dimension for encoder and heads.
         lr: Learning rate.
         epochs: Number of training epochs.
@@ -444,6 +448,9 @@ def train_model(
         existence_weight: Existence prediction loss weight.
         proposal_weight: Proposal bbox loss weight.
         proposal_type_weight: Proposal type prediction loss weight.
+        fusion_dim: If set, enables cross-attention fusion (SplitAndFuse)
+            before the GNN encoder.  The encoder receives fusion_dim-d
+            vectors instead of element_dim-d vectors.
 
     Returns:
         Trained model (best checkpoint loaded).
@@ -458,6 +465,7 @@ def train_model(
         dropout=0.1,
         coord_weight=coord_weight,
         existence_weight=existence_weight,
+        fusion_dim=fusion_dim,
     ).to(DEVICE)
 
     model.loss_fn.violation_weight = violation_weight
@@ -572,6 +580,9 @@ def main() -> None:
     parser.add_argument("--drop-ratio", type=float, default=0.4)
     parser.add_argument("--val-split", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--fusion-dim", type=int, default=64,
+                        help="Cross-attention fusion dimension (default 64). "
+                             "Set to 0 to disable fusion (simple-concat only).")
     parser.add_argument("--log-level", type=str, default="INFO")
     args = parser.parse_args()
 
@@ -582,32 +593,21 @@ def main() -> None:
     )
 
     logger.info("=" * 60)
-    logger.info("VISUAL FEATURE FUSION EXPERIMENT")
+    logger.info("CROSS-ATTENTION FUSION EXPERIMENT")
     logger.info("=" * 60)
     logger.info("Device: %s | n=%d | epochs=%d | hidden=%d | drop=%.2f",
                 DEVICE, args.n, args.epochs, args.hidden, args.drop_ratio)
     logger.info("RICO dir: %s", _RICO_DIR)
     logger.info("Visual features dir: %s", _VISUAL_FEAT_DIR)
+    logger.info("Fusion dim: %s", args.fusion_dim)
 
     # ------------------------------------------------------------------
-    # 1. Load data — same split for both conditions
+    # 1. Load data — only need visual data for both conditions
+    #    (simple-concat uses 197-d features, cross-attention uses SplitAndFuse)
     # ------------------------------------------------------------------
     builder = BipartiteGraphBuilder()
     rng = torch.Generator().manual_seed(args.seed)
 
-    # Without visual features: 5-d element features.
-    all_graphs_base = load_rico_data(
-        n_samples=args.n,
-        drop_ratio=args.drop_ratio,
-        seed=args.seed,
-        use_visual=False,
-        builder=builder,
-    )
-    if len(all_graphs_base) < 10:
-        logger.error("Not enough base graphs: %d", len(all_graphs_base))
-        return
-
-    # With visual features: 197-d element features.
     all_graphs_vis = load_rico_data(
         n_samples=args.n,
         drop_ratio=args.drop_ratio,
@@ -619,108 +619,105 @@ def main() -> None:
         logger.error("Not enough visual graphs: %d", len(all_graphs_vis))
         return
 
-    # Use the same split index (based on overlap of image IDs).
-    # Since we loaded them in the same order from the same JSONs, the
-    # element counts may differ (some images lack visual features).
-    # Use the smaller set's split for a conservative comparison.
-    n_val_base = max(1, int(len(all_graphs_base) * args.val_split))
-    n_val_vis = max(1, int(len(all_graphs_vis) * args.val_split))
-    # We'll evaluate on the last N_val of each set respectively.
-    split_base = len(all_graphs_base) - n_val_base
-    split_vis = len(all_graphs_vis) - n_val_vis
+    n_val = max(1, int(len(all_graphs_vis) * args.val_split))
+    split = len(all_graphs_vis) - n_val
+    train_vis = GraphListDataset(all_graphs_vis[:split])
+    val_vis = GraphListDataset(all_graphs_vis[split:])
 
-    train_base = GraphListDataset(all_graphs_base[:split_base])
-    val_base = GraphListDataset(all_graphs_base[split_base:])
-    train_vis = GraphListDataset(all_graphs_vis[:split_vis])
-    val_vis = GraphListDataset(all_graphs_vis[split_vis:])
-
-    logger.info("Base: %d train / %d val", len(train_base), len(val_base))
-    logger.info("Visual: %d train / %d val", len(train_vis), len(val_vis))
+    logger.info("Visual data: %d train / %d val", len(train_vis), len(val_vis))
 
     # ------------------------------------------------------------------
-    # 2. Baseline: use existing checkpoint (hidden_dim=128)
+    # 2. Baseline: Simple Concat (PR#30) — load visual_fusion_model.pt
     # ------------------------------------------------------------------
     logger.info("-" * 60)
-    logger.info("BASELINE: Existing checkpoint (no visual features)")
+    logger.info("BASELINE: Simple Concat (PR#30) — 197-d concat features")
     logger.info("-" * 60)
 
-    # Load the existing checkpoint to determine its actual hidden_dim.
-    base_model = None
-    base_hidden = args.hidden
-    if _BEST_MODEL_PATH.exists():
+    concat_model = None
+    if _VISUAL_CONCAT_PATH.exists():
         try:
-            sd = torch.load(_BEST_MODEL_PATH, map_location=DEVICE)
-            # Infer hidden_dim from encoder.element_proj output size.
-            base_hidden = sd["encoder.element_proj.weight"].shape[0]
-            logger.info("Checkpoint hidden_dim=%d from %s", base_hidden, _BEST_MODEL_PATH)
+            sd = torch.load(_VISUAL_CONCAT_PATH, map_location=DEVICE)
+            base_hidden_ = sd["encoder.element_proj.weight"].shape[0]
+            logger.info("Loaded simple-concat checkpoint from %s (hidden=%d)",
+                        _VISUAL_CONCAT_PATH, base_hidden_)
 
-            base_model = BipartiteGNNCorrector(
-                element_dim=5,
+            concat_model = BipartiteGNNCorrector(
+                element_dim=197,
                 constraint_dim=11,
-                hidden_dim=base_hidden,
+                hidden_dim=base_hidden_,
                 dropout=0.1,
                 coord_weight=0.0,
                 existence_weight=0.0,
             ).to(DEVICE)
-            base_model.loss_fn.violation_weight = 1.0
-            base_model.loss_fn.coord_weight = 0.0
-            base_model.loss_fn.existence_weight = 0.0
-            base_model.loss_fn.alignment_weight = 0.0
-            base_model.proposal_weight = 1.0
-            base_model.proposal_type_weight = 0.5
-            base_model.load_state_dict(sd, strict=False)
-            logger.info("Loaded existing checkpoint successfully")
+            concat_model.loss_fn.violation_weight = 1.0
+            concat_model.loss_fn.coord_weight = 0.0
+            concat_model.loss_fn.existence_weight = 0.0
+            concat_model.loss_fn.alignment_weight = 0.0
+            concat_model.proposal_weight = 1.0
+            concat_model.proposal_type_weight = 0.5
+            concat_model.load_state_dict(sd, strict=False)
         except Exception as e:
-            logger.warning("Failed to load checkpoint: %s — training from scratch", e)
-            base_model = None
+            logger.warning("Failed to load simple-concat checkpoint: %s", e)
+            concat_model = None
 
-    if base_model is None:
-        base_model = train_model(
-            train_dataset=train_base,
-            val_dataset=val_base,
-            element_dim=5,
+    if concat_model is None:
+        logger.info("Training simple-concat baseline from scratch...")
+        concat_model = train_model(
+            train_dataset=train_vis,
+            val_dataset=val_vis,
+            element_dim=197,
             hidden_dim=args.hidden,
             lr=args.lr,
             epochs=args.epochs,
-            checkpoint_path=_CHECKPOINT_DIR / "base_no_visual.pt",
+            checkpoint_path=_CHECKPOINT_DIR / "simple_concat_baseline.pt",
         )
 
-    base_metrics = evaluate_model(base_model, val_base)
-    logger.info("Baseline results (no visual): %s", base_metrics)
+    concat_metrics = evaluate_model(concat_model, val_vis)
+    logger.info("Simple Concat baseline results: %s", concat_metrics)
 
     # ------------------------------------------------------------------
-    # 3. Train with visual features
+    # 3. Train with Cross-Attention Fusion
     # ------------------------------------------------------------------
     logger.info("-" * 60)
-    logger.info("TRAINING: With visual features (197-d element features)")
+    logger.info("TRAINING: Cross-Attention Fusion (fusion_dim=%s)", args.fusion_dim)
     logger.info("-" * 60)
 
-    vis_checkpoint = _CHECKPOINT_DIR / "visual_fusion_model.pt"
-    vis_model = train_model(
+    # When using fusion, element_dim is the structural dimension (5).
+    # SplitAndFuse in the model will split the 197-d features into
+    # 5-d structural + 192-d visual and fuse via cross-attention.
+    fusion_checkpoint = _CHECKPOINT_DIR / "cross_attention_fusion.pt"
+    fusion_model = train_model(
         train_dataset=train_vis,
         val_dataset=val_vis,
-        element_dim=197,  # 5-d spatial + 192-d visual
+        element_dim=5,  # structural dimension only; SplitAndFuse handles visual
         hidden_dim=args.hidden,
         lr=args.lr,
         epochs=args.epochs,
-        checkpoint_path=vis_checkpoint,
+        checkpoint_path=fusion_checkpoint,
+        fusion_dim=args.fusion_dim,
     )
 
-    vis_metrics = evaluate_model(vis_model, val_vis)
-    logger.info("Visual model results: %s", vis_metrics)
+    fusion_metrics = evaluate_model(fusion_model, val_vis)
+    logger.info("Cross-Attention Fusion results: %s", fusion_metrics)
 
     # ------------------------------------------------------------------
     # 4. Comparison table
     # ------------------------------------------------------------------
     print()
     print("=" * 70)
-    print(f"{'Metric':<25s} | {'Without Visual':>14s} | {'With Visual':>12s} | {'Δ':>8s}")
+    print(f"{'Metric':<25s} | {'Simple Concat':>14s} | {'Cross-Attn':>12s} | {'Δ':>8s}")
     print("-" * 70)
 
     metrics_to_report = [
-        ("Violation Acc", base_metrics["violation_acc"], vis_metrics["violation_acc"]),
-        ("Proposal MSE", base_metrics["proposal_mse"], vis_metrics["proposal_mse"]),
-        ("Type Acc", base_metrics["type_acc"], vis_metrics["type_acc"]),
+        ("Violation Acc",
+         concat_metrics["violation_acc"],
+         fusion_metrics["violation_acc"]),
+        ("Proposal MSE",
+         concat_metrics["proposal_mse"],
+         fusion_metrics["proposal_mse"]),
+        ("Type Acc",
+         concat_metrics["type_acc"],
+         fusion_metrics["type_acc"]),
     ]
 
     for name, base_val, vis_val in metrics_to_report:
@@ -729,26 +726,10 @@ def main() -> None:
 
     print("=" * 70)
 
-    # Interpretation
-    print()
-    type_improvement = vis_metrics["type_acc"] - base_metrics["type_acc"]
-    if type_improvement > 0.02:
-        print(f"✅ Visual features improve type accuracy by {type_improvement*100:.1f}% — "
-              "the ViT embeddings help disambiguate element types.")
-    elif type_improvement > 0.005:
-        print(f"📊 Visual features show modest type accuracy improvement "
-              f"({type_improvement*100:.1f}%).")
-    elif type_improvement > -0.005:
-        print("➖ Visual features have negligible effect on type accuracy.")
-    else:
-        print(f"⚠️  Visual features slightly reduce type accuracy "
-              f"({type_improvement*100:.1f}%) — possible overfitting or "
-              f"feature noise.")
-
     print()
     logger.info("Experiment complete.")
-    print(f"Baseline checkpoint: {_BEST_MODEL_PATH}")
-    print(f"Visual model checkpoint: {vis_checkpoint}")
+    print(f"Simple Concat checkpoint: {_VISUAL_CONCAT_PATH}")
+    print(f"Cross-Attention Fusion checkpoint: {fusion_checkpoint}")
 
 
 if __name__ == "__main__":

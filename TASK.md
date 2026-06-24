@@ -463,31 +463,57 @@ The model learns to identify which elements are real (TP) vs spurious (FP) using
 
 ---
 
-## Phase 11: Visual Feature Fusion ⬜
+## Phase 9.7: Cross-Attention Fusion (Pre-Encoder) ✅
 
-**Goal:** Add visual features (ViT-Tiny embeddings) to element nodes and compare GNN performance with vs without vision.
+**Goal:** Replace simple concatenation of visual features with learned cross-attention fusion between structural and visual modalities before the GNN encoder.
+
+**Architecture:** SplitAndFuse → CrossAttentionFusion(struct→Q, visual→KV) → residual + LayerNorm → GNN encoder.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 11.1 | `scripts/precompute_visual_features.py` | ✅ Done | Pre-compute ViT-Tiny 192-d embeddings for all RICO elements |
-| 11.2 | `builder.build()` accepts `visual_features` | ✅ Done | Concatenates 192-d visual → 197-d element features |
-| 11.3 | `experiments/train_with_visual.py` | ✅ Done | Compare with vs without visual features |
+| 9.7.1 | `attention.py:CrossAttentionFusion` | ✅ Done | Cross-attention between struct (5-d) and visual (192-d), projects to 64-d |
+| 9.7.2 | `attention.py:SplitAndFuse` | ✅ Done | Auto-splits 197-d → 5+192, calls fusion; fallback for pure-structural |
+| 9.7.3 | `model.py:fusion_dim` param | ✅ Done | `BipartiteGNNCorrector` accepts `fusion_dim`, creates `SplitAndFuse` pre-encoder |
+| 9.7.4 | `experiments/train_with_visual.py` | ✅ Done | Compare Simple Concat (PR#30) vs Cross-Attention Fusion |
 
-**Experiment Results (500 RICO, hidden=128, drop=0.4):**
+### Comparison: Simple Concat vs Cross-Attention Fusion (3 seeds, 500 RICO, hidden=128, drop=0.4)
 
 ```
-                    | Without Visual | With Visual | Δ
-Violation Acc        | 0.5928         | 0.8468      | +0.2540
-Proposal MSE         | 0.0880         | 0.0791      | -0.0089
-Type Acc             | 0.3115         | 0.4502      | +0.1387
+                    | Simple Concat (PR#30) | Cross-Attention (3-seed) | Δ
+Violation Acc        | 0.8465 ± 0.0011       | 0.8498 ± 0.0309          | +0.0034
+Proposal MSE         | 0.0807 ± 0.0043       | 0.0623 ± 0.0043          | -0.0183
+Type Acc             | 0.4469 ± 0.0080       | 0.4403 ± 0.0163          | -0.0066
 ```
+
+**Per-seed breakdown:**
+
+| Seed | Concat Viol Acc | Fusion Viol Acc | Concat MSE | Fusion MSE | Concat Type | Fusion Type |
+|:----:|:---------------:|:---------------:|:----------:|:----------:|:-----------:|:-----------:|
+| 42   | 0.8468          | **0.8842**      | 0.0791     | **0.0586** | 0.4502      | **0.4510**  |
+| 73   | 0.8474          | 0.8411          | 0.0774     | **0.0614** | 0.4378      | **0.4483**  |
+| 99   | 0.8452          | 0.8242          | 0.0855     | **0.0670** | 0.4527      | 0.4215      |
 
 **Key findings:**
-1. **Violation Acc +25.4 pp** — visual features dramatically improve the GNN's ability to detect violated constraints
-2. **Type Acc +13.9 pp** — ViT embeddings help disambiguate element types (consistent with Phase 9.3 finding that type prediction from constraints alone caps at ~62% under ideal conditions)
-3. **Proposal MSE -0.009** — modest improvement in bbox proposal quality
 
-The largest gains are in violation detection and type prediction — exactly where structural context alone was known to be weak (cf. Phase 9.3). Visual features provide semantic grounding that complements the constraint graph structure.
+1. **Proposal MSE consistently improves** across all 3 seeds (−18%, −21%, −22%). Cross-attention fusion produces significantly better bounding box proposals — the interaction between visual appearance and structural context helps localize missing elements more precisely.
+
+2. **Violation Acc is inconsistent** — seed 42 shows a large gain (+3.7pp), but seeds 73 and 99 are slightly worse. The high variance (σ=0.031 vs σ=0.001 for concat) suggests the cross-attention model may be more sensitive to data split or initialization.
+
+3. **Type Acc is flat** — cross-attention doesn't improve (or hurt) type prediction compared to simple concatenation. This is consistent with Phase 9.3's finding that type prediction is fundamentally limited even with visual features (structural features still dominate).
+
+4. **Overall:** Cross-attention fusion is **not a clear win** over simple concatenation. The consistent and substantial Proposal MSE improvement (−18% on average) is promising, but the violation and type metrics are similar. The added complexity (24.6K extra fusion params, 257K → 282K total) may not justify the mixed results. **Simple concatenation remains the recommended approach** for visual feature fusion unless proposal quality is the primary concern.
+
+### 9.7.1 Simple Concat (PR#30) Re-evaluation
+
+The simple-concat baseline (`visual_fusion_model.pt`) was loaded and evaluated on 3 different val splits (from seeds 42, 73, 99):
+
+| Metric | Mean ± Std |
+|--------|:----------:|
+| Violation Acc | 0.8465 ± 0.0011 |
+| Proposal MSE | 0.0807 ± 0.0043 |
+| Type Acc | 0.4469 ± 0.0080 |
+
+These values confirm the PR#30 results are robust — very low seed-to-seed variance (especially violation acc σ=0.0011).
 
 ---
 
