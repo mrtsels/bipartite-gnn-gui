@@ -1,8 +1,18 @@
 # Heterogeneous Bipartite GNN for GUI Structure Error Correction
 
-**XIE Licheng** — Supervised by Prof. LAU Wing Cheong
-Department of Information Engineering, The Chinese University of Hong Kong
-UG Summer Research Internship 2026 — Interim Report (July 6, 2026)
+**XIE Licheng**
+
+Supervised by Prof. LAU Wing Cheong
+
+Department of Information Engineering,
+
+The Chinese University of Hong Kong
+
+UG Summer Research Internship 2026
+
+Interim Report
+
+June 30, 2026
 
 ---
 
@@ -32,6 +42,7 @@ The heterogeneous bipartite graph is then:
 $$G = (\mathcal{V}, \mathcal{E}_{\text{edge}}, \phi, \psi)$$
 
 Where:
+
 - $\mathcal{V} = \mathcal{E} \cup \mathcal{C}$ is the node set, partitioned into $V_e$ (element nodes, $|V_e| = N$) and $V_c$ (constraint nodes, $|V_c| = M$).
 - $\phi: \mathcal{V} \to \{0,1\}$ maps each node to its type (0 for element, 1 for constraint).
 - $\mathcal{E}_{\text{edge}}$ is the edge set. Edges only cross partitions: $\mathcal{E}_{\text{edge}} \subseteq V_e \times V_c$. An edge $(e_i, c_j)$ exists iff $i \in S_j \cup T_j$. There are no element-element or constraint-constraint edges.
@@ -55,7 +66,7 @@ This two-hop design enforces a strong inductive bias: elements communicate only 
 
 #### 2.1.3 Initial Node Features
 
-Each element's initial feature vector $\mathbf{h}_{e_i}^{(0)}$ is 5-dimensional: the four normalized bbox coordinates plus a normalized area $a_i = (x_2 - x_1)(y_2 - y_1)$. An optional visual feature $\mathbf{v}_i \in \mathbb{R}^{d_v}$ from a frozen ViT encoder (192-d vit_tiny or 768-d DINOv2) can be concatenated to form $\mathbf{h}_{e_i}^{(0)} \in \mathbb{R}^{5 + d_v}$.
+Each element's initial feature vector $\mathbf{h}_{e_i}^{(0)}$ is 5-dimensional: the four normalized bbox coordinates plus a normalized area $a_i = (x_2 - x_1)(y_2 - y_1)$. An optional visual feature $\mathbf{v}_i \in \mathbb{R}^{d_v}$ from a frozen ViT encoder (192-d vit*tiny or 768-d DINOv2) can be concatenated to form $\mathbf{h}*{e_i}^{(0)} \in \mathbb{R}^{5 + d_v}$.
 
 Constraint node features $\mathbf{h}_{c_j}^{(0)}$ embed the constraint type $\tau_j$ as a one-hot vector (10-d) and encode spatial statistics of the participant elements (mean pairwise distance, mean containment overlap ratio, alignment residual).
 
@@ -120,17 +131,17 @@ The pipeline takes a noisy VLM output JSON, constructs a bipartite constraint gr
 
 The input is a set of $N$ noisy element predictions from a VLM. Each element carries a normalized bounding box $(x_1, y_1, x_2, y_2)$ and type label. From these, we extract **spatial constraints** — typed relationships between elements that encode GUI design priors:
 
-| Constraint Type | Predicate | Example |
-|:---------------:|-----------|---------|
-| `ALIGN_LEFT` | $\|x_1 - x_1'\| < \varepsilon$ | Buttons share left edge |
-| `ALIGN_RIGHT` | $\|x_2 - x_2'\| < \varepsilon$ | Right edges aligned |
-| `ALIGN_TOP` | $\|y_1 - y_1'\| < \varepsilon$ | Top edges aligned |
-| `ALIGN_BOTTOM` | $\|y_2 - y_2'\| < \varepsilon$ | Bottom edges aligned |
+|     Constraint Type     | Predicate                       | Example                          |
+| :---------------------: | ------------------------------- | -------------------------------- |
+|      `ALIGN_LEFT`       | $\|x_1 - x_1'\| < \varepsilon$  | Buttons share left edge          |
+|      `ALIGN_RIGHT`      | $\|x_2 - x_2'\| < \varepsilon$  | Right edges aligned              |
+|       `ALIGN_TOP`       | $\|y_1 - y_1'\| < \varepsilon$  | Top edges aligned                |
+|     `ALIGN_BOTTOM`      | $\|y_2 - y_2'\| < \varepsilon$  | Bottom edges aligned             |
 | `CENTER_X` / `CENTER_Y` | Center-distance < $\varepsilon$ | Horizontally/vertically centered |
-| `SPACING` | Consistent inter-element gaps | Evenly spaced list items |
-| `CONTAINMENT` | Element fully inside another | Icon inside a container |
-| `GRID` | Row/column membership | Grid layout detection |
-| `SAME_SIZE` | Relative size difference | Uniform card sizes |
+|        `SPACING`        | Consistent inter-element gaps   | Evenly spaced list items         |
+|      `CONTAINMENT`      | Element fully inside another    | Icon inside a container          |
+|         `GRID`          | Row/column membership           | Grid layout detection            |
+|       `SAME_SIZE`       | Relative size difference        | Uniform card sizes               |
 
 The graph is heterogeneous bipartite: $G = (V_e \cup V_c, E)$ where $V_e$ are element nodes, $V_c$ are constraint nodes, and edges $E \subseteq V_e \times V_c$ only connect elements to constraints. This enforces an inductive bias: elements communicate only through shared constraints, and each constraint aggregates evidence from all participant elements.
 
@@ -157,7 +168,7 @@ The loss function combines coordinate MSE, violation BCE, and existence BCE: $\m
 #### GNN Architecture and Training
 
 | Parameter | Default | Swept Values |
-|:----------|:-------:|:------------:|
+| :--- | :---: | :---: |
 | Encoder | BipartiteGraphSAGE (2-layer) | — |
 | Hidden dimension | 128 | 64, 128, 256 |
 | Dropout | 0.1 | — |
@@ -175,7 +186,7 @@ The loss function combines coordinate MSE, violation BCE, and existence BCE: $\m
 #### Data Augmentation
 
 | Parameter | Default | Swept Values |
-|:----------|:-------:|:------------:|
+| :--- | :---: | :---: |
 | Gaussian noise $\sigma$ (coord jitter) | 0.12 | 0.08, 0.12, 0.20 |
 | Element drop ratio (completion task) | 0.6 | 0.2, 0.4, 0.6, 0.8 |
 | Imposter ratio (confidence task) | 0.5 | — |
@@ -185,7 +196,7 @@ The loss function combines coordinate MSE, violation BCE, and existence BCE: $\m
 #### VLM Models (Prediction Source)
 
 | Model | Backend | Temperature | Elements/200 img |
-|:------|:-------:|:-----------:|:----------------:|
+| :--- | :---: | :---: | :---: |
 | **Qwen3-VL Flash** (primary) | DashScope API | 0.1 | 2,947 |
 | Qwen3-VL Plus | DashScope API | 0.1 | 7,312 |
 | LLaVA | Ollama (local) | — | 61 |
@@ -194,14 +205,14 @@ The loss function combines coordinate MSE, violation BCE, and existence BCE: $\m
 #### Visual Feature Extractors (Frozen)
 
 | Model | Library | Dimension | Params | Speed (500 img) |
-|:------|:-------:|:---------:|:------:|:---------------:|
+| :--- | :---: | :---: | :---: | :---: |
 | **ViT-Tiny** (primary) | `timm` | 192 | 5.7M | ~30s |
 | DINOv2-base | `transformers` | 768 | 86M | ~173s |
 
 #### Trained Checkpoints
 
 | Checkpoint | Purpose |
-|:-----------|:--------|
+| :--- | :--- |
 | `violation_detection/best_model.pt` | Base violation detection (hd=128) |
 | `violation_detection/visual_fusion_model.pt` | +ViT-Tiny concatenation |
 | `violation_detection/cross_attention_fusion.pt` | Cross-attention visual fusion |
@@ -223,12 +234,12 @@ We evaluate on the RICO dataset (500 screenshots, ~12K GUI elements) and ScreenS
 
 A GNN-trained confidence head predicts each VLM detection's reliability based on spatial context. The model learns to identify false positives from structural inconsistencies alone.
 
-| Metric | Value |
-|--------|:-----:|
-| AUROC | **0.989** |
-| Accuracy | **93.2%** |
-| Precision | 99.1% |
-| Recall | 90.7% |
+| Metric    |   Value   |
+| --------- | :-------: |
+| AUROC     | **0.989** |
+| Accuracy  | **93.2%** |
+| Precision |   99.1%   |
+| Recall    |   90.7%   |
 
 The near-perfect AUROC demonstrates that spatial context alone is sufficient to distinguish real GUI elements from random imposters.
 
@@ -236,10 +247,10 @@ The near-perfect AUROC demonstrates that spatial context alone is sufficient to 
 
 The GNN detects "holes" in the constraint graph — missing elements that leave incomplete spatial relationships — and proposes their positions and types. Training is self-supervised: randomly drop 60–80% of GT elements, then train GNN to predict the missing ones.
 
-| Drop Ratio | GNN IoU | NN Baseline IoU | GNN > NN? |
-|:----------:|:-------:|:---------------:|:---------:|
-| 0.6 | **0.123** | 0.088 | ✅ +40% |
-| 0.8 | **0.097** | 0.062 | ✅ +56% |
+| Drop Ratio |  GNN IoU  | NN Baseline IoU | GNN > NN? |
+| :--------: | :-------: | :-------------: | :-------: |
+|    0.6     | **0.123** |      0.088      |  ✅ +40%  |
+|    0.8     | **0.097** |      0.062      |  ✅ +56%  |
 
 The GNN significantly outperforms a nearest-neighbor baseline when substantial structure is missing, confirming it learns genuine structural priors rather than simple interpolation.
 
@@ -247,11 +258,11 @@ The GNN significantly outperforms a nearest-neighbor baseline when substantial s
 
 We deploy the trained model behind Qwen3-VL Flash on 200 real screenshots and measure detection quality before/after GNN correction:
 
-| Metric | Before (VLM only) | After (VLM + GNN) | Δ |
-|--------|:-----------------:|:-----------------:|:-:|
-| Recall (pooled) | 0.235 | **0.282** | **+4.7pp** |
-| F1 (pooled) | 0.291 | **0.320** | **+2.9pp** |
-| Precision (pooled) | 0.382 | 0.369 | −1.4pp |
+| Metric             | Before (VLM only) | After (VLM + GNN) |     Δ      |
+| ------------------ | :---------------: | :---------------: | :--------: |
+| Recall (pooled)    |       0.235       |     **0.282**     | **+4.7pp** |
+| F1 (pooled)        |       0.291       |     **0.320**     | **+2.9pp** |
+| Precision (pooled) |       0.382       |       0.369       |   −1.4pp   |
 
 The GNN recovers 226 missed elements via constraint-based proposals (+226 TP, −226 FN), with a modest precision cost of 1.4pp. Fine-tuning on real VLM data further improves F1 by +2.1pp.
 
@@ -262,13 +273,13 @@ The GNN recovers 226 missed elements via constraint-based proposals (+226 TP, �
 
 Constraint type ablation reveals which spatial priors contribute most:
 
-| Constraint Set | Violation Acc | Drop |
-|:--------------:|:-------------:|:----:|
-| Full (10 types) | 0.908 | — |
-| No CONTAINMENT | 0.889 | **−1.9pp** |
-| No ALIGNMENT | 0.903 | −0.5pp |
-| No SPACING | 0.906 | −0.2pp |
-| CONTAINMENT only | 0.904 | — |
+|  Constraint Set  | Violation Acc |    Drop    |
+| :--------------: | :-----------: | :--------: |
+| Full (10 types)  |     0.908     |     —      |
+|  No CONTAINMENT  |     0.889     | **−1.9pp** |
+|   No ALIGNMENT   |     0.903     |   −0.5pp   |
+|    No SPACING    |     0.906     |   −0.2pp   |
+| CONTAINMENT only |     0.904     |     —      |
 
 CONTAINMENT is the most critical constraint type — removing it causes the largest accuracy drop (−1.9pp). This aligns with the intuition that parent-child containment relationships provide the strongest structural signal.
 
@@ -292,11 +303,9 @@ All core modules are implemented and verified (942 tests pass). Key achievements
 
 Planned for the remaining 7 weeks:
 
-| Phase | Focus | Timeline |
-|:-----:|-------|:--------:|
-| Report | Final report and poster preparation | Weeks 8–10 |
-| Paper | Academic paper documenting findings | Weeks 5–9 |
-| Demo | Web demo: upload → VLM + GNN → side-by-side | Weeks 3–8 |
+- Final report and poster preparation
+- Academic paper documenting findings
+- Web demo: upload → VLM + GNN → side-by-side
 
 ---
 
