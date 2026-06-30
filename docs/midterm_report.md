@@ -1,18 +1,11 @@
 # Heterogeneous Bipartite GNN for GUI Structure Error Correction
 
 **XIE Licheng**
-
 Supervised by Prof. LAU Wing Cheong
-
 Department of Information Engineering,
-
 The Chinese University of Hong Kong
-
 UG Summer Research Internship 2026
-
-Interim Report
-
-June 30, 2026
+Interim Report — June 30, 2026
 
 ---
 
