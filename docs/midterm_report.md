@@ -152,6 +152,67 @@ After encoding, three independent MLP heads operate on the refined embeddings:
 
 The loss function combines coordinate MSE, violation BCE, and existence BCE: $\mathcal{L} = w_c\mathcal{L}_{\text{coord}} + w_v\mathcal{L}_{\text{vio}} + w_e\mathcal{L}_{\text{exist}}$.
 
+### 2.5 Model Configuration
+
+#### GNN Architecture and Training
+
+| Parameter | Default | Swept Values |
+|:----------|:-------:|:------------:|
+| Encoder | BipartiteGraphSAGE (2-layer) | — |
+| Hidden dimension | 128 | 64, 128, 256 |
+| Dropout | 0.1 | — |
+| Optimizer | AdamW | — |
+| Learning rate | $1 \times 10^{-3}$ | $5 \times 10^{-4}$ |
+| Weight decay | $1 \times 10^{-5}$ | 0.0 |
+| Epochs | 50 | 10, 30, 50 |
+| Batch size | 8 (per-graph) | — |
+| Linear warmup | 50 steps | 0 |
+| Gradient clipping | 1.0 | — |
+| Early stopping patience | 10 epochs | — |
+| Mixed precision (AMP) | Off | — |
+| Random seed | 42 | 42, 73, 99, 123, 256 |
+
+#### Data Augmentation
+
+| Parameter | Default | Swept Values |
+|:----------|:-------:|:------------:|
+| Gaussian noise $\sigma$ (coord jitter) | 0.12 | 0.08, 0.12, 0.20 |
+| Element drop ratio (completion task) | 0.6 | 0.2, 0.4, 0.6, 0.8 |
+| Imposter ratio (confidence task) | 0.5 | — |
+| Validation split | 0.2 | 0.1, 0.2 |
+| Loss weights $(w_c, w_v, w_e)$ | (1.0, 0.5, 0.5) | — |
+
+#### VLM Models (Prediction Source)
+
+| Model | Backend | Temperature | Elements/200 img |
+|:------|:-------:|:-----------:|:----------------:|
+| **Qwen3-VL Flash** (primary) | DashScope API | 0.1 | 2,947 |
+| Qwen3-VL Plus | DashScope API | 0.1 | 7,312 |
+| LLaVA | Ollama (local) | — | 61 |
+| Moondream | Ollama (local) | — | < 10 |
+
+#### Visual Feature Extractors (Frozen)
+
+| Model | Library | Dimension | Params | Speed (500 img) |
+|:------|:-------:|:---------:|:------:|:---------------:|
+| **ViT-Tiny** (primary) | `timm` | 192 | 5.7M | ~30s |
+| DINOv2-base | `transformers` | 768 | 86M | ~173s |
+
+#### Trained Checkpoints
+
+| Checkpoint | Purpose |
+|:-----------|:--------|
+| `violation_detection/best_model.pt` | Base violation detection (hd=128) |
+| `violation_detection/visual_fusion_model.pt` | +ViT-Tiny concatenation |
+| `violation_detection/cross_attention_fusion.pt` | Cross-attention visual fusion |
+| `violation_detection/screenspot_finetuned.pt` | RICO → ScreenSpot fine-tune |
+| `violation_detection/real_vlm_finetuned.pt` | Real VLM data fine-tune |
+| `violation_detection_joint/best_model.pt` | Joint violation + proposal |
+| `violation_detection_violation_only/best_model.pt` | Violation head only |
+| `violation_detection_proposal_only/best_model.pt` | Proposal head only |
+| `confidence_scoring/best_model.pt` | Confidence scoring |
+| `completion/best_model.pt` | Element completion |
+
 ---
 
 ## 4. Experimental Results
