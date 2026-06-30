@@ -27,10 +27,8 @@ Screenshot → Lightweight VLM → Noisy JSON → [Bipartite Graph] → GraphSAG
 
 The pipeline takes a noisy VLM output JSON, constructs a bipartite constraint graph from the detected elements, applies GraphSAGE message passing over this structure, and predicts per-element coordinate corrections.
 
-**Figure 1 — 建议插图位置**
->
-> **GPT Image 2 提示词:**
-> A clean, publication-style system architecture diagram for a machine learning pipeline. The flow goes left to right: leftmost is a "GUI Screenshot" icon showing a mobile app screen, then an arrow to a "Lightweight VLM" box, then an arrow to a "Noisy JSON" box with some misaligned coordinate data, then an arrow to a "Heterogeneous Bipartite Graph" shown as two columns of nodes — left column labeled "Element Nodes" (small colored circles representing GUI buttons, text, icons) and right column labeled "Constraint Nodes" (larger squares labeled ALIGN_LEFT, CONTAINMENT, SPACING, GRID) with edges crossing between them, then an arrow through a "GraphSAGE" box, then an arrow to a "Corrected JSON" box with properly aligned coordinates. Use a clean academic style with dark blue (#1a365d) and light blue (#4299e1) color scheme on white background. Flat 2D style, no 3D effects. Label each box clearly. Resolution 1200×400.
+**Figure 1: System architecture pipeline.**
+![Figure 1: System architecture pipeline](figures/fig%201.png)
 
 ### 2.2 Bipartite Graph Construction
 
@@ -50,10 +48,8 @@ The input is a set of $N$ noisy element predictions from a VLM. Each element car
 
 The graph is heterogeneous bipartite: $G = (V_e \cup V_c, E)$ where $V_e$ are element nodes, $V_c$ are constraint nodes, and edges $E \subseteq V_e \times V_c$ only connect elements to constraints. This enforces an inductive bias: elements communicate only through shared constraints, and each constraint aggregates evidence from all participant elements.
 
-**Figure 2 — 建议插图位置**
->
-> **GPT Image 2 提示词:**
-> A clean technical illustration showing the bipartite graph message passing flow. On the left, 5 small colored circular nodes (labeled "Element Nodes": a red button, a blue text label, a green icon, a purple input field, an orange image) each with a 2D bounding box drawn around them. On the right, 4 larger rectangular nodes (labeled "Constraint Nodes": ALIGN_LEFT, CONTAINMENT, SPACING, SAME_SIZE). Gray connecting lines form a bipartite linkage between left and right columns. Two curved arrows illustrate the message passing flow: one labeled "Hop 1: Element → Constraint" going left-to-right, one labeled "Hop 2: Constraint → Element" going right-to-left. The style should be clean academic diagram, white background, flat design, muted blue/gray color palette (#2c5282 for main elements, #718096 for edges). No 3D effects. Include a small inset in bottom-right corner showing the HeteroData structure formula: G = (V_e ∪ V_c, E). Resolution 1200×500.
+**Figure 2: Bipartite message passing flow.**
+![Figure 2: Bipartite message passing flow](figures/fig%202.png)
 
 ### 2.3 GraphSAGE Encoder and Prediction Heads
 
@@ -112,18 +108,8 @@ We deploy the trained model behind Qwen3-VL Flash on 200 real screenshots and me
 
 The GNN recovers 226 missed elements via constraint-based proposals (+226 TP, −226 FN), with a modest precision cost of 1.4pp. Fine-tuning on real VLM data further improves F1 by +2.1pp.
 
-**Figure 3 — 建议插图位置**
->
-> **GPT Image 2 提示词:**
-> A three-panel results figure for an academic ML paper, clean publication style, white background.
->
-> Panel A (left): "Confidence Scoring" — a bar chart showing AUROC=0.989, Accuracy=93.2%, Precision=99.1%, Recall=90.7%. Four blue bars (#4299e1) of slightly different heights, with exact values labeled on top of each bar.
->
-> Panel B (center): "Element Completion IoU" — grouped bar chart comparing GNN (dark blue #2b6cb0) vs NN baseline (light gray #a0aec0) at drop ratios 0.2, 0.4, 0.6, 0.8. Highlight the 0.6 and 0.8 bars where GNN exceeds NN with "+40%" and "+56%" annotations.
->
-> Panel C (right): "Real VLM Pipeline" — before/after comparison with three pairs of columns: Recall (0.235→0.282), Precision (0.382→0.369), F1 (0.291→0.320). Before in light blue (#63b3ed), After in dark blue (#2b6cb0). Arrow annotations showing "+4.7pp" and "+2.9pp".
->
-> All three panels should share consistent fonts (Helvetica or Arial), rounded bar corners, subtle grid lines. Include (a), (b), (c) labels above each panel. No 3D effects. Resolution 1600×500.
+**Figure 3: Experimental results.**
+![Figure 3: Experimental results](figures/fig%203.png)
 
 ### 3.4 Ablation Studies
 
