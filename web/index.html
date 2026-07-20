@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GUI-GNN Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; color: #2c3e50; min-height: 100vh; padding: 20px; }
+  .app { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 1.4em; margin-bottom: 16px; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
+  h1 small { font-size: 0.55em; color: #888; font-weight: normal; }
+
+  /* Config bar */
+  .config { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .config label { font-size: 0.85em; color: #666; }
+  .config select, .config input { padding: 6px 10px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 0.85em; background: #fafafa; }
+  .config input[type="password"] { width: 200px; font-family: monospace; }
+  .config .note { font-size: 0.78em; color: #999; margin-left: 4px; }
+
+  /* Upload area */
+  .upload-zone { border: 2px dashed #c0c5ce; border-radius: 12px; padding: 40px; text-align: center; background: #fff; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 16px; }
+  .upload-zone.dragover { border-color: #3498db; background: #ebf5ff; }
+  .upload-zone.has-image { padding: 12px; }
+  .upload-zone .icon { font-size: 2em; color: #b0b8c4; margin-bottom: 8px; }
+  .upload-zone .text { font-size: 0.9em; color: #888; }
+  .upload-zone.has-image .icon, .upload-zone.has-image .text { display: none; }
+  .upload-zone img { max-width: 100%; max-height: 300px; border-radius: 6px; display: block; margin: 0 auto; }
+
+  /* Action bar */
+  .action-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .action-bar .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 0.95em; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .action-bar .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: #2c3e50; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #1a252f; }
+  .btn-secondary { background: #e8eaef; color: #555; }
+  .btn-secondary:hover:not(:disabled) { background: #d0d5dd; }
+
+  /* Results: dual canvas */
+  .results { display: none; gap: 16px; grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
+  .results.visible { display: grid; }
+  .pane { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
+  .pane-header { padding: 10px 14px; font-size: 0.85em; font-weight: 600; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+  .pane-header .badge { font-size: 0.8em; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .badge-red { background: #fde8e8; color: #c0392b; }
+  .badge-blue { background: #e8f0fd; color: #2980b9; }
+  .pane canvas { width: 100%; display: block; }
+
+  /* Stats bar */
+  .stats { display: none; padding: 14px 18px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; font-size: 0.88em; }
+  .stats.visible { display: block; }
+  .stats-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+  .stat-item { display: flex; flex-direction: column; }
+  .stat-value { font-size: 1.3em; font-weight: 700; }
+  .stat-label { font-size: 0.78em; color: #888; }
+  .stat-item.vlm .stat-value { color: #c0392b; }
+  .stat-item.gnn .stat-value { color: #2980b9; }
+  .stat-item.time .stat-value { color: #27ae60; }
+
+  /* Loading */
+  .loader { display: none; align-items: center; gap: 12px; padding: 16px 20px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; }
+  .loader.visible { display: flex; }
+  .spinner { width: 20px; height: 20px; border: 3px solid #e0e0e0; border-top-color: #3498db; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader .status { font-size: 0.9em; color: #666; }
+
+  /* Error */
+  .error { display: none; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #c0392b; font-size: 0.88em; margin-bottom: 16px; }
+  .error.visible { display: block; }
+
+  /* Legend */
+  .legend { display: flex; gap: 20px; margin-bottom: 16px; font-size: 0.82em; color: #666; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 16px; height: 4px; border-radius: 2px; }
+  .legend-swatch.red { background: #c0392b; }
+  .legend-swatch.blue { background: #2980b9; border: none; border-top: 2px dashed #2980b9; height: 4px; }
+
+  /* Footer help */
+  .help-text { font-size: 0.82em; color: #999; text-align: center; margin-top: 20px; }
+  .help-text code { background: #eee; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .results.visible { grid-template-columns: 1fr; }
+    .config { flex-direction: column; align-items: stretch; }
+    .config input[type="password"] { width: 100%; }
+    .stats-grid { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🧪 GUI-GNN Demo <small>VLM → Graph → GNN → Overlay</small></h1>
+
+  <!-- Config bar -->
+  <div class="config">
+    <label>VLM Model</label>
+    <select id="vlmModel">
+      <option value="qwen3-vl-flash" selected>Qwen3-VL Flash (fast)</option>
+      <option value="qwen3-vl-plus">Qwen3-VL Plus (accurate)</option>
+    </select>
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+    <span class="note">or <code>DASHSCOPE_API_KEY</code> env</span>
+  </div>
+
+  <!-- Upload zone -->
+  <div class="upload-zone" id="uploadZone">
+    <div class="icon">📁</div>
+    <div class="text">Drop screenshot here, or click to select</div>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+  </div>
+
+  <!-- Action bar -->
+  <div class="action-bar">
+    <button class="btn btn-primary" id="runBtn" disabled>▶ Run Pipeline</button>
+    <button class="btn btn-secondary" id="clearBtn" style="display:none">✕ Clear</button>
+    <span style="font-size:0.82em;color:#999" id="fileLabel"></span>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <span class="status" id="loaderStatus">Running VLM detection...</span>
+  </div>
+
+  <!-- Error -->
+  <div class="error" id="error"></div>
+
+  <!-- Legend -->
+  <div class="legend" id="legend" style="display:none">
+    <div class="legend-item"><span class="legend-swatch red"></span> VLM detection</div>
+    <div class="legend-item"><span class="legend-swatch blue"></span> GNN proposal</div>
+  </div>
+
+  <!-- Results: dual canvas -->
+  <div class="results" id="results">
+    <div class="pane">
+      <div class="pane-header">
+        <span>Before (VLM only)</span>
+        <span class="badge badge-red" id="vlmCount">0 elements</span>
+      </div>
+      <canvas id="canvasBefore"></canvas>
+    </div>
+    <div class="pane">
+      <div class="pane-header">
+        <span>After (VLM + GNN)</span>
+        <span class="badge badge-blue" id="gnnCount">0 proposals</span>
+      </div>
+      <canvas id="canvasAfter"></canvas>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="stats">
+    <div class="stats-grid">
+      <div class="stat-item vlm">
+        <span class="stat-value" id="statVlmCount">0</span>
+        <span class="stat-label">VLM elements</span>
+      </div>
+      <div class="stat-item gnn">
+        <span class="stat-value" id="statGnnCon">0</span>
+        <span class="stat-label">constraints</span>
+      </div>
+      <div class="stat-item gnn">
+        <span class="stat-value" id="statGnnViol">0</span>
+        <span class="stat-label">violations</span>
+      </div>
+      <div class="stat-item gnn">
+        <span class="stat-value" id="statGnnProp">0</span>
+        <span class="stat-label">proposals</span>
+      </div>
+      <div class="stat-item time">
+        <span class="stat-value" id="statVlmTime">—</span>
+        <span class="stat-label">VLM time</span>
+      </div>
+      <div class="stat-item time">
+        <span class="stat-value" id="statGnnTime">—</span>
+        <span class="stat-label">GNN time</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="help-text">
+    💡 No API key? Use <strong>/api/gnn-only</strong> endpoint with pre-detected VLM JSON.
+    Source: <a href="https://github.com/mrtsels/bipartite-gnn-gui" target="_blank">github.com/mrtsels/bipartite-gnn-gui</a>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const state = {
+  imageFile: null,
+  imageUrl: null,
+  vlmElements: null,
+  result: null,
+  loading: false,
+};
+
+const API_BASE = window.location.origin;
+
+// ---------------------------------------------------------------------------
+// DOM refs
+// ---------------------------------------------------------------------------
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const runBtn = document.getElementById('runBtn');
+const clearBtn = document.getElementById('clearBtn');
+const fileLabel = document.getElementById('fileLabel');
+const loader = document.getElementById('loader');
+const loaderStatus = document.getElementById('loaderStatus');
+const error = document.getElementById('error');
+const legend = document.getElementById('legend');
+const results = document.getElementById('results');
+const stats = document.getElementById('stats');
+const canvasBefore = document.getElementById('canvasBefore');
+const canvasAfter = document.getElementById('canvasAfter');
+const vlmCount = document.getElementById('vlmCount');
+const gnnCount = document.getElementById('gnnCount');
+const statVlmCount = document.getElementById('statVlmCount');
+const statGnnCon = document.getElementById('statGnnCon');
+const statGnnViol = document.getElementById('statGnnViol');
+const statGnnProp = document.getElementById('statGnnProp');
+const statVlmTime = document.getElementById('statVlmTime');
+const statGnnTime = document.getElementById('statGnnTime');
+
+// ---------------------------------------------------------------------------
+// API key persistence
+// ---------------------------------------------------------------------------
+const apiKeyInput = document.getElementById('apiKey');
+const savedKey = localStorage.getItem('gui_gnn_api_key');
+if (savedKey) apiKeyInput.value = savedKey;
+
+// ---------------------------------------------------------------------------
+// Upload zone handlers
+// ---------------------------------------------------------------------------
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  state.imageFile = file;
+  fileLabel.textContent = file.name;
+
+  // Preview
+  if (state.imageUrl) URL.revokeObjectURL(state.imageUrl);
+  state.imageUrl = URL.createObjectURL(file);
+  uploadZone.classList.add('has-image');
+
+  // Remove old preview img
+  const oldImg = uploadZone.querySelector('img');
+  if (oldImg) oldImg.remove();
+
+  const img = document.createElement('img');
+  img.src = state.imageUrl;
+  img.alt = file.name;
+  uploadZone.appendChild(img);
+
+  runBtn.disabled = false;
+  clearBtn.style.display = 'inline-block';
+  hideResults();
+  hideError();
+}
+
+// ---------------------------------------------------------------------------
+// Clear
+// ---------------------------------------------------------------------------
+clearBtn.addEventListener('click', () => {
+  state.imageFile = null;
+  if (state.imageUrl) URL.revokeObjectURL(state.imageUrl);
+  state.imageUrl = null;
+  state.result = null;
+  uploadZone.classList.remove('has-image');
+  const img = uploadZone.querySelector('img');
+  if (img) img.remove();
+  fileLabel.textContent = '';
+  runBtn.disabled = true;
+  clearBtn.style.display = 'none';
+  hideResults();
+  hideError();
+});
+
+// ---------------------------------------------------------------------------
+// Run pipeline
+// ---------------------------------------------------------------------------
+runBtn.addEventListener('click', runPipeline);
+
+async function runPipeline() {
+  if (!state.imageFile || state.loading) return;
+  state.loading = true;
+  runBtn.disabled = true;
+  hideError();
+
+  const apiKey = apiKeyInput.value.trim();
+  if (apiKey) localStorage.setItem('gui_gnn_api_key', apiKey);
+
+  showLoader('Running VLM detection...');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', state.imageFile);
+    formData.append('vlm_model', document.getElementById('vlmModel').value);
+    if (apiKey) formData.append('api_key', apiKey);
+
+    setLoaderStatus('Waiting for VLM API response...');
+
+    const resp = await fetch(`${API_BASE}/api/predict`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${resp.status}: ${resp.statusText}`);
+    }
+
+    const data = await resp.json();
+    state.result = data;
+    state.vlmElements = data.vlm?.elements || [];
+
+    setLoaderStatus('Rendering overlay...');
+    // Small yield for UI update
+    await new Promise(r => setTimeout(r, 50));
+
+    renderResults(data);
+    hideLoader();
+  } catch (err) {
+    showError(err.message || 'An unexpected error occurred');
+    hideLoader();
+  } finally {
+    state.loading = false;
+    runBtn.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Render results
+// ---------------------------------------------------------------------------
+function renderResults(data) {
+  const vlm = data.vlm || {};
+  const gnn = data.gnn || {};
+  const overlayB64 = data.overlay_b64 || '';
+
+  if (!state.imageUrl) return;
+
+  // Stats
+  statVlmCount.textContent = vlm.count || 0;
+  statGnnCon.textContent = gnn.constraints_count || 0;
+  statGnnViol.textContent = gnn.violations_count || 0;
+  statGnnProp.textContent = gnn.proposals_count || 0;
+  statVlmTime.textContent = vlm.time_ms ? `${vlm.time_ms} ms` : '—';
+  statGnnTime.textContent = gnn.time_ms ? `${gnn.time_ms} ms` : '—';
+
+  // Badge counts
+  vlmCount.textContent = `${vlm.count || 0} elements`;
+  gnnCount.textContent = `${gnn.proposals_count || 0} proposals`;
+
+  // Show panels
+  legend.style.display = 'flex';
+  results.classList.add('visible');
+  stats.classList.add('visible');
+
+  // Draw canvases
+  const srcImg = new Image();
+  srcImg.onload = () => {
+    drawCanvas(canvasBefore, srcImg, vlm.elements || [], [], data.dimensions || {});
+    drawCanvas(canvasAfter, srcImg, vlm.elements || [], gnn.proposals || [], data.dimensions || {});
+  };
+  srcImg.src = state.imageUrl;
+
+  // Also show overlay (the server-rendered version) — optional
+}
+
+// ---------------------------------------------------------------------------
+// Canvas drawing
+// ---------------------------------------------------------------------------
+function drawCanvas(canvas, srcImg, vlmElems, gnnProps, dims) {
+  const maxW = Math.min(window.innerWidth * 0.48, 600);
+  const scale = Math.min(maxW / srcImg.width, 500 / srcImg.height, 1);
+  const w = Math.round(srcImg.width * scale);
+  const h = Math.round(srcImg.height * scale);
+
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  // Draw background image
+  ctx.drawImage(srcImg, 0, 0, w, h);
+
+  // Draw VLM bboxes (red)
+  for (const elem of vlmElems) {
+    const bbox = elem.bbox_xyxy || elem.bbox;
+    if (!bbox || bbox.length < 4) continue;
+    let [x1, y1, x2, y2] = bbox.map(Number);
+    // Normalised to pixel if needed
+    if (Math.max(x1, y1, x2, y2) <= 1.0 && dims.width && dims.height) {
+      x1 *= dims.width; y1 *= dims.height;
+      x2 *= dims.width; y2 *= dims.height;
+    }
+    // Scale to canvas
+    x1 *= scale; y1 *= scale; x2 *= scale; y2 *= scale;
+    const bw = x2 - x1, bh = y2 - y1;
+
+    // Fill
+    ctx.fillStyle = 'rgba(255, 50, 50, 0.15)';
+    ctx.fillRect(x1, y1, bw, bh);
+    // Stroke
+    ctx.strokeStyle = 'rgba(255, 50, 50, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1, y1, bw, bh);
+    // Label
+    const label = elem.label || elem.category || '';
+    const conf = elem.confidence || 0;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.font = '11px monospace';
+    ctx.fillText(`${label} ${conf.toFixed(2)}`, x1 + 2, Math.max(y1 - 4, 10));
+  }
+
+  // Draw GNN proposals (blue dashed)
+  ctx.setLineDash([6, 4]);
+  for (const prop of gnnProps) {
+    const bbox = prop.bbox;
+    if (!bbox || bbox.length < 4) continue;
+    let [x1, y1, x2, y2] = bbox.map(Number);
+    if (Math.max(x1, y1, x2, y2) <= 1.0 && dims.width && dims.height) {
+      x1 *= dims.width; y1 *= dims.height;
+      x2 *= dims.width; y2 *= dims.height;
+    }
+    x1 *= scale; y1 *= scale; x2 *= scale; y2 *= scale;
+    const bw = x2 - x1, bh = y2 - y1;
+
+    ctx.fillStyle = 'rgba(50, 130, 255, 0.12)';
+    ctx.fillRect(x1, y1, bw, bh);
+    ctx.strokeStyle = 'rgba(50, 130, 255, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1, y1, bw, bh);
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(50, 130, 255, 0.95)';
+    ctx.font = '11px monospace';
+    ctx.fillText(`⚡ ${prop.predicted_type || '?'} (${(prop.violation_score || 0).toFixed(2)})`, x1 + 2, Math.max(y1 - 4, 10));
+    ctx.setLineDash([6, 4]);
+  }
+  ctx.setLineDash([]);
+}
+
+// ---------------------------------------------------------------------------
+// UI helpers
+// ---------------------------------------------------------------------------
+function showLoader(msg) {
+  loader.classList.add('visible');
+  loaderStatus.textContent = msg || 'Processing...';
+}
+function setLoaderStatus(msg) {
+  const el = document.getElementById('loaderStatus');
+  if (el) el.textContent = msg;
+}
+function hideLoader() { loader.classList.remove('visible'); }
+function showError(msg) {
+  error.textContent = msg;
+  error.classList.add('visible');
+}
+function hideError() { error.classList.remove('visible'); }
+function hideResults() {
+  results.classList.remove('visible');
+  stats.classList.remove('visible');
+  legend.style.display = 'none';
+}
+
+// ---------------------------------------------------------------------------
+// Handle window resize for canvas
+// ---------------------------------------------------------------------------
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (state.result && state.imageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        drawCanvas(canvasBefore, img, state.result.vlm?.elements || [], [], state.result.dimensions || {});
+        drawCanvas(canvasAfter, img, state.result.vlm?.elements || [], state.result.gnn?.proposals || [], state.result.dimensions || {});
+      };
+      img.src = state.imageUrl;
+    }
+  }, 300);
+});
+</script>
+</body>
+</html>
