@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from PIL import Image
 
 from pipeline import DemoPipeline
@@ -32,6 +32,18 @@ app.add_middleware(
 
 # Lazy-init pipeline (avoids import-time GPU init)
 _pipeline: Optional[DemoPipeline] = None
+
+_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "web")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index() -> HTMLResponse:
+    """Serve the frontend single-page app."""
+    index_path = os.path.join(_frontend_dir, "index.html")
+    if os.path.isfile(index_path):
+        with open(index_path, "r") as f:
+            return HTMLResponse(f.read())
+    return HTMLResponse("<h1>GUI-GNN Demo</h1><p>Frontend not found.</p>", status_code=404)
 
 
 def get_pipeline() -> DemoPipeline:
