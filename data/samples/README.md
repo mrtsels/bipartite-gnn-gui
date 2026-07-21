@@ -1,7 +1,7 @@
 # VLM Output Sample Data
 
 This directory contains sample VLM JSON output files for testing and
-documentation.  The JSON format follows the conventions defined in
+documentation. The JSON format follows the conventions in
 `docs/requirements/vlm_format.md`.
 
 ## Qwen3.5-2B Format
@@ -38,13 +38,13 @@ Qwen3.5-2B outputs **normalized** bounding-box coordinates in `[0, 1]`.
 - The bounding-box field name is `bbox_xyxy` (older versions may use `bbox`).
 - The element type field is `label`.
 - The OCR text field is `text`.
-- `confidence` is optional; defaults to `1.0` when missing.
-- Empty string `""` in `text` is treated as `None`.
+- `confidence` is optional; it defaults to `1.0` when missing.
+- An empty string `""` in `text` is the same as `None`.
 
 ## MiniMax-VL-01 Format
 
-MiniMax-VL-01 outputs **pixel-value** bounding-box coordinates that require
-normalization by dividing by `image_width` / `image_height`.
+MiniMax-VL-01 outputs **pixel-value** bounding-box coordinates. You must
+normalize them by dividing by `image_width` or `image_height`.
 
 ```json
 {
@@ -84,12 +84,12 @@ normalization by dividing by `image_width` / `image_height`.
 
 ### Key points
 
-- Coordinates are pixel values (absolute); divide by `image_width`/`image_height`
+- Coordinates are pixel values (absolute). Divide by `image_width` or `image_height`
   to normalize to `[0, 1]`.
 - The bounding-box field name is `bbox` (in `xyxy` order).
-- The element type field is `category` (may include compound strings like
-  `"button-primary"` — the parser extracts the prefix before the `-`).
-- `attributes` is a free-form dict for metadata (role, disabled, placeholder, etc.).
+- The element type field is `category`. It may include compound strings
+  such as `"button-primary"`. The parser extracts the prefix before the `-`.
+- `attributes` is a free-form dict for metadata (role, disabled, placeholder).
 - `confidence` is always present in MiniMax output.
 
 ## Shared Element Types
@@ -117,15 +117,15 @@ The canonical element type taxonomy (case-insensitive):
 | `modal`       | `dialog`, `overlay`                         |
 | `toast`       | `snackbar`, `notification`                  |
 | `banner`      | `announcement`, `alertbar`                  |
-| `other`       | Fallback for unrecognised types.            |
+| `other`       | Fallback for unrecognized types.            |
 
 ## Coordinate Convention
 
-All parsed coordinates are stored internally in **normalized xyxy** format:
+The parser stores all coordinates internally in **normalized xyxy** format:
 
 ```
-(x1, y1) — top-left corner, ∈ [0, 1]
-(x2, y2) — bottom-right corner, ∈ [0, 1]
+(x1, y1) — top-left corner, in [0, 1]
+(x2, y2) — bottom-right corner, in [0, 1]
 ```
 
-Origin is top-left of the image.  Values are clamped to `[0.0, 1.0]`.
+The origin is top-left of the image. The parser clamps values to `[0.0, 1.0]`.
