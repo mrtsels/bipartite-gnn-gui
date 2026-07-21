@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ⬜ → P11 ⬜ → P12 ⬜ → P13 ⬜ → P14 ⬜**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ⬜ → P12 ⬜ → P13 ⬜ → P14 ✅ → P15 ⬜**
 
 ---
 
@@ -552,51 +552,64 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 
 ---
 
-## Phase 11: 论文写作
-
-**Goal:** Write and publish a paper documenting the project's findings.
-
-| # | Item | Status |
-|---|------|--------|
-| 11.1 | 实验图生成（violation acc bar chart, type acc bar chart, 混淆矩阵, 消融表） | ⬜ |
-| 11.2 | 论文草稿（introduction, method, experiments, results, conclusion） | ⬜ |
-| 11.3 | 引用管理 + bibtex | ⬜ |
-| 11.4 | 终稿 + 提交 | ⬜ |
-
----
-
-## Phase 12: 方案 (Solution — 文档与资料更新)
-
-**Goal:** Update product/technical documentation for usability and publication.
-
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 12.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
-| 12.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
-
----
-
-## Phase 13: Web Demo ⬜
+## Phase 11: Web Demo ⬜ [优先级 1] (开发文档 ✅)
 
 **Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
 
 | # | Item | Status |
 |---|------|--------|
-| 13.1 | FastAPI 后端 | ⬜ |
-| 13.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
-| 13.3 | 测试与文档 | ⬜ |
-| 13.4 | 部署: Dockerfile | ⬜ |
+|| 11.0 | 开发文档 → [`docs/development/web_demo.md`](docs/development/web_demo.md) | ✅ |
+|| 11.1 | FastAPI 后端 | ⬜ |
+|| 11.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
+|| 11.3 | 测试与文档 | ⬜ |
+|| 11.4 | 部署: Dockerfile | ⬜ |
 
 ---
 
-## Phase 14: HTML/CSS 代码生成 ⬜
+## Phase 12: 论文写作 ⬜ [优先级 2]
+
+**Goal:** Write and publish a paper documenting the project's findings.
 
 | # | Item | Status |
 |---|------|--------|
-| 14.1 | `web/codegen/html_generator.py` | ⬜ |
-| 14.2 | `POST /api/generate-html` 端点 | ⬜ |
-| 14.3 | 前端: HTML 预览区 | ⬜ |
-| 14.4 | 单元测试 | ⬜ |
+|| 12.1 | 实验图生成（violation acc bar chart, type acc bar chart, 混淆矩阵, 消融表） | ⬜ |
+|| 12.2 | 论文草稿（introduction, method, experiments, results, conclusion） | ⬜ |
+|| 12.3 | 引用管理 + bibtex | ⬜ |
+|| 12.4 | 终稿 + 提交 | ⬜ |
+
+---
+
+## Phase 13: Poster ⬜ [优先级 3]
+
+**Goal:** Design and produce a research poster for internship final presentation.
+
+| # | Item | Status |
+|---|------|--------|
+|| 13.1 | Poster 草稿（核心发现 + 流程图 + 实验结果） | ⬜ |
+|| 13.2 | 版式与视觉设计 | ⬜ |
+|| 13.3 | 打印版本 (PDF) | ⬜ |
+
+---
+
+## Phase 14: 方案 (Solution — 文档与资料更新)
+
+**Goal:** Update product/technical documentation for usability and publication.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+|| 14.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
+|| 14.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
+
+---
+
+## Phase 15: HTML/CSS 代码生成 ⬜ [优先级 4]
+
+| # | Item | Status |
+|---|------|--------|
+|| 15.1 | `web/codegen/html_generator.py` | ⬜ |
+|| 15.2 | `POST /api/generate-html` 端点 | ⬜ |
+|| 15.3 | 前端: HTML 预览区 | ⬜ |
+|| 15.4 | 单元测试 | ⬜ |
 
 ---
 
