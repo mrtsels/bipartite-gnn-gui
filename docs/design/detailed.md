@@ -7,7 +7,7 @@
 > This document specifies the class interfaces, algorithm logic, and data flow for the
 > data preprocessing pipeline (§1) and graph construction layer (§2). All signatures
 > match the **actual code** in `src/bipartite_gnn_gui/`. Stub implementations are
-> clearly labelled; planned enhancements are noted separately.
+> clearly labelled; the document notes planned enhancements separately.
 >
 > 本文档详细定义了数据预处理管线 (§1) 和图构建层 (§2) 的类接口、算法逻辑和数据流。
 > 所有签名均与 `src/bipartite_gnn_gui/` 中的**实际代码**一致。Stub 实现已明确标注；
@@ -89,7 +89,7 @@ class VLMOutputLoader:
 > **Planned enhancement (design intent):** The requirements doc (`vlm_format.md`) specifies
 > model-aware parsers (`parse_qwen_output`, `parse_minimax_output`), a shared 20-type
 > taxonomy, and xyxy normalised coordinate convention. The current implementation is a
-> simpler, format-agnostic loader that defers these concerns. Phase 4.2.1 will reconcile
+> simpler, format-agnostic loader that defers these concerns. Phase 4.2.1 reconciles
 > the loader with the full requirements spec.
 
 ---
@@ -190,7 +190,7 @@ would be more principled for production use.
 
 > **⚠️ Planned upgrade (design intent):** The requirements doc (`gt_format.md` §6) specifies
 > IoU-based Hungarian matching with type-conditioned filtering and explicit FP/FN output.
-> The current `match_elements` uses a simple greedy assignment. Phase 4.2.2 will replace
+> The current `match_elements` uses a simple greedy assignment. Phase 4.2.2 replaces
 > this with `scipy.optimize.linear_sum_assignment`.
 
 ---
@@ -222,7 +222,7 @@ def normalize_coordinates(
 
 **Coordinate convention — xywh:**
 The function treats the input as `(x, y, w, h)` where `(x, y)` is the **top-left corner**
-and `(w, h)` is the **width and height**. Each value is normalised independently by its
+and `(w, h)` is the **width and height**. The function normalises each value independently by its
 corresponding image dimension.
 
 **What the function does NOT do (current limitations):**
@@ -544,7 +544,7 @@ sample is moderate (≤ 100, as is typical for GUI screens).
 >
 > PyTorch Geometric supports mini-batching of `HeteroData` objects via
 > `torch_geometric.loader.DataLoader`, which concatenates adjacency matrices
-> diagonally to form a single large disconnected graph. A future iteration will:
+> diagonally to form a single large disconnected graph. A future iteration:
 >
 > 1. Move graph construction into the dataset's `__getitem__`:
 >    `GUIDataset.__getitem__(idx) -> HeteroData`
@@ -829,7 +829,7 @@ def extract_alignment_constraints(
 
 #### Planned Full Algorithms (Design Intent)
 
-Each sub-extractor will implement element-pair comparison with tolerance thresholds.
+Each sub-extractor implements element-pair comparison with tolerance thresholds.
 The key design consideration is the O(N²) pairwise comparison cost for alignment,
 containment, and same-size checks (tractable for N ≤ 100).
 
@@ -922,8 +922,7 @@ The design intent (from the schema doc) is:
 | Tolerance (ε) | 0.02 (tight) | 0.05 (loose) |
 | Constraint filter | Keep all | Drop low-confidence (weight < 0.3) |
 
-This distinction will be implemented by adding a `mode` parameter or by providing
-separate extraction functions for train and inference contexts.
+This distinction uses a `mode` parameter or separate extraction functions for train and inference contexts.
 
 ---
 
@@ -1276,8 +1275,8 @@ class GraphAugmenter:
 
 #### Planned Augmentation Pipeline (Design Intent)
 
-The augmenter will apply three stochastic transformations in sequence when the
-respective parameters are non-zero. The augmentation is applied to the training
+The augmenter applies three stochastic transformations in sequence when the
+respective parameters are non-zero. The augmenter applies the augmentation to the training
 data to simulate VLM-like errors; the original (unaugmented) data serves as the
 ground truth for loss computation.
 
@@ -1317,7 +1316,7 @@ For each constraint c:
 ```
 
 The augmentation is only applied during training, not validation or testing.
-The `GraphAugmenter` is designed to be called between constraint extraction and
+The design calls `GraphAugmenter` between constraint extraction and
 graph building:
 
 ```
@@ -1507,7 +1506,7 @@ Planned architecture:
             "constraint": (N_con, hidden_dim)}
 ```
 
-The planned encoder will also include `reset_parameters()` for weight
+The planned encoder also includes `reset_parameters()` for weight
 initialisation — a method absent from the current stub.
 
 **Key gaps between current stub and planned implementation:**
@@ -1523,7 +1522,7 @@ initialisation — a method absent from the current stub.
 > **⚠️ Stub note:** The current `BipartiteGraphSAGE` processes element and
 > constraint features through **independent MLP stacks** without graph
 > convolution. It serves as a functional placeholder enabling end-to-end
-> pipeline testing with simpler architectures. Phase 4.4.1 will replace the
+> pipeline testing with simpler architectures. Phase 4.4.1 replaces the
 > MLP stacks with true `SAGEConv` layers wrapped by `to_hetero()`.
 
 ---
@@ -1958,7 +1957,7 @@ It stores a model reference and a loss function but performs no optimisation.
 
 #### Planned Full Implementation (Design Intent)
 
-The Phase 4.4.5 implementation will expand the `Trainer` to include the full
+The Phase 4.4.5 implementation expands the `Trainer` to include the full
 training lifecycle:
 
 **Planned class structure:**
@@ -2088,7 +2087,7 @@ torch.save(checkpoint, f"{checkpoint_dir}/model_epoch_{epoch:03d}.pt")
 
 > **⚠️ Stub note:** The current `Trainer` is a no-op dataclass. All training
 > logic — `train_epoch`, `validate`, checkpointing, optimizer/scheduler setup,
-> AMP, early stopping, metrics logging — will be implemented in Phase 4.4.5.
+> AMP, early stopping, metrics logging — Phase 4.4.5 implements this.
 
 #### Key Gaps Between Current Stub and Planned Implementation
 
@@ -2135,7 +2134,7 @@ or produce corrected JSON output.
 
 #### Planned Full Implementation (Design Intent)
 
-The Phase 4.4.6 implementation will expand this into a full `InferencePipeline`
+The Phase 4.4.6 implementation expands this into a full `InferencePipeline`
 class supporting the complete correction workflow.
 
 **Planned class structure:**
@@ -2316,8 +2315,7 @@ def correct_batch(
 
 > **⚠️ Stub note:** The current `correct_layout` is a one-liner that wraps
 > `model(data)`. The full `InferencePipeline` with VLM parsing, graph
-> construction, delta application, clamping, and filtering will be
-> implemented in Phase 4.4.6.
+> construction, delta application, clamping, and filtering — Phase 4.4.6 implements this.
 
 #### Key Gaps Between Current Stub and Planned Implementation
 
@@ -2553,10 +2551,9 @@ is more faithful — see the planned upgrade note below.
 
 > **⚠️ Planned upgrade — Hungarian matching:** The requirements doc (`metrics.md` §4–5)
 > specifies greedy bipartite matching with one-to-one assignment. The current max-pooled
-> approach will be supplemented with a Hungarian-based matching layer (via
+> approach — the implementation supplements this with a Hungarian-based matching layer (via
 > `scipy.optimize.linear_sum_assignment`) for evaluation-mode metrics. The max-pooled
-> versions will remain available for training-time loss computation where gradient flow
-> is required.
+> versions remain available for training-time loss computation where gradient flow is required.
 
 #### 5.1.3 Metric Aggregation
 
@@ -2705,7 +2702,7 @@ dataclass for future extensibility.
 >
 > The current `Evaluator` provides only the single-pair `evaluate()` method.
 > Multi-sample aggregation, per-category breakdown, and bootstrap confidence
-> intervals will be added in Phase 4.5.2.
+> intervals — Phase 4.5.2 adds this.
 
 ---
 
@@ -2781,7 +2778,7 @@ functionally equivalent in intent (the stubs are all identity).
 > **⚠️ Stub note:** All three baselines currently perform zero correction.
 > They exist as placeholders to establish the interface and enable pipeline
 > integration testing (Phase 5.5). Full implementations — rule-based NMS
-> correction and MLP-only refinement — will be added in Phase 4.5.3.
+> correction and MLP-only refinement — Phase 4.5.3 adds this.
 
 ---
 

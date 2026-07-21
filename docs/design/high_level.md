@@ -14,11 +14,11 @@
 ### 1.1 Design Principles
 
 - **Single source of truth**: all hyperparameters and paths live in a single YAML file,
-  loaded at runtime into pydantic-validated dataclass objects.
+  the system loads it at runtime into pydantic-validated dataclass objects.
 - **Separation of concerns**: three sub-configs (`DataConfig`, `ModelConfig`,
   `TrainingConfig`) group related parameters. A composite `Config` wraps them all.
 - **Validation at startup**: pydantic `BaseModel` (strict mode) catches type errors and
-  invalid values before any GPU compute is wasted.
+  invalid values before the system wastes any GPU compute.
 - **Overridable at CLI**: the experiment runner (`experiments/run.py`) accepts
   `--overrides key=value` to modify any leaf parameter without editing YAML files.
 
@@ -36,7 +36,7 @@ Controls data sourcing, preprocessing paths, and train/val/test split ratios.
 
 **Validation rules:**
 - `val_split + test_split < 1.0` (residual is training).
-- `raw_dir` must exist or be creatable.
+- `raw_dir` must exist or the system must be able to create it.
 - `dataset_names` must be non-empty and contain only known dataset keys.
 
 ```python
@@ -145,11 +145,11 @@ class Config(BaseModel):
 1. Read YAML file with `pyyaml`.
 2. Pass the raw `dict` to `Config(**raw)`.
 3. Pydantic validates all fields, nested models, and constraints.
-4. If validation fails, raise a descriptive `ValidationError` listing all issues.
+4. If validation fails, raise a descriptive `ValidationError` that lists all issues.
 
 **Overrides flow (CLI):**
-1. Parse `--overrides` as `key=value` pairs (e.g., `training.lr=5e-4`).
-2. Merge into the raw config dict using dotted-key traversal before pydantic
+1. Parse `--overrides` as `key=value` pairs (for example, `training.lr=5e-4`).
+2. Merge into the raw config dict with dotted-key traversal before pydantic
    validation.
 3. Validate the merged dict.
 
@@ -385,8 +385,7 @@ class MetricsLogger(ABC):
 
 ### 2.3 NoopMetricsLogger (Fallback)
 
-Always available, zero-dependency logger that silently discards all metrics. Used when
-no external tracking service is configured.
+Always available, zero-dependency logger that silently discards all metrics. The system uses this logger when no external tracking service is available.
 
 ```python
 class NoopMetricsLogger(MetricsLogger):
