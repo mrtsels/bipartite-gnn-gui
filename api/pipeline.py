@@ -348,7 +348,7 @@ class DemoPipeline:
         if not checkpoint_path:
             # Auto-detect relative to this file
             here = Path(__file__).parent.parent
-            default = here / "checkpoints" / "violation_detection" / "screenspot_finetuned.pt"
+            default = here / "checkpoints" / "violation_detection_violation_only" / "best_model.pt"
             checkpoint_path = str(default)
 
         logger.info("Loading checkpoint: %s", checkpoint_path)
@@ -496,6 +496,50 @@ class DemoPipeline:
                 "num_proposals": len(proposals_list),
             },
             "time_ms": round(elapsed, 1),
+        }
+
+    def build_corrected_json(
+        self,
+        vlm_elements: List[Dict[str, Any]],
+        gnn_result: Dict[str, Any],
+        img_w: int = 0,
+        img_h: int = 0,
+    ) -> Dict[str, Any]:
+        """Merge VLM elements with GNN analysis into a corrected element list.
+
+        Args:
+            vlm_elements: Raw VLM-detected elements.
+            gnn_result: Output from gnn_analyse().
+            img_w: Original image pixel width (for bbox denormalisation).
+            img_h: Original image pixel height.
+
+        Returns:
+            Dict with ``elements`` (the merged list), ``stats``.
+        """
+        corrected = []
+
+        # Original VLM elements annotated with GNN existence scores
+        existence_scores = gnn_result.get("existence_scores", [])
+        for i, elem in enumerate(vlm_elements):
+            cleaned = {
+                "bbox": elem.get("bbox_xyxy") or elem.get("bbox", []),
+                "label": elem.get("label", elem.get("category", "unknown")),
+                "text": elem.get("text", ""),
+                "confidence": elem.get("confidence", 0.0),
+                "source": "vlm",
+                "existence_score": existence_scores[i] if i < len(existence_scores) else None,
+            }
+            corrected.append(cleaned)
+
+        # GNN proposals — suppressed in corrected JSON (research artifacts, not useful
+        # for real VLM output where no elements are artificially masked). Existence
+        # scores on VLM elements above are the valuable GNN signal for the demo.
+
+        return {
+            "elements": corrected,
+            "total_count": len(corrected),
+            "vlm_count": len(vlm_elements),
+            "gnn_proposals_count": len(gnn_result.get("proposals", [])),
         }
 
     def render_overlay(self, img_bytes: bytes, vlm_elements: List[Dict[str, Any]],
