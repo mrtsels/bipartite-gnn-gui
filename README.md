@@ -10,7 +10,7 @@
 
 **English**
 
-Bipartite-GNN-GUI is a research project that addresses the problem of GUI element parsing errors produced by lightweight Vision-Language Models (VLMs). When lightweight VLMs (e.g., Qwen3.5-2B, MiniMax-VL-01) parse GUI screenshots into structured JSON, they commonly suffer from **element omission** (missing UI elements) and **misalignment** (incorrect bounding box coordinates). This project proposes a post-correction framework that:
+Bipartite-GNN-GUI is a research project that addresses errors in GUI element parsing from lightweight Vision-Language Models (VLMs). When lightweight VLMs (Qwen3.5-2B, MiniMax-VL-01) parse GUI screenshots into structured JSON, they suffer from **element omission** (missing UI elements) and **misalignment** (incorrect bounding box coordinates). This project proposes a post-correction framework that:
 
 1. Takes the initial (noisy) JSON output from a lightweight VLM.
 2. Constructs a **heterogeneous bipartite graph** with two node types:
@@ -39,7 +39,7 @@ Bipartite-GNN-GUI 是一个研究项目，旨在解决轻量级视觉语言模�
 Lightweight VLMs (under 3B parameters) are attractive for on-device GUI understanding due to their low latency and memory footprint. However, our empirical analysis shows that:
 
 - **Element omission**: Models frequently miss 10–30% of visible GUI elements, especially small icons, dividers, and nested containers.
-- **Misalignment**: Even when elements are detected, bounding box coordinates can be off by 10–50+ pixels, leading to broken layout trees and incorrect downstream action prediction.
+- **Misalignment**: Even when the model detects elements, bounding box coordinates can be off by 10–50+ pixels, leading to broken layout trees and incorrect downstream action prediction.
 - **Structural inconsistencies**: Detected layouts often violate basic GUI design principles (misaligned groups, inconsistent spacing, overlapping elements).
 
 Existing approaches rely on fine-tuning larger VLMs (7B+) or cascading object detectors, both of which are computationally expensive. Our method instead treats GUI correction as a **structured prediction on a bipartite graph**, leveraging spatial constraints without requiring additional detection models or VLM fine-tuning.
