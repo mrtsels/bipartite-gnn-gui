@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
 from io import BytesIO
+from pathlib import Path
+
+from dotenv import load_dotenv
+from PIL import Image
+import pillow_heif
+
+# Register HEIF/HEIC support with PIL
+pillow_heif.register_heif_opener()
+
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -21,6 +31,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
+
+# Load .env from project root
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env_path)
 
 app = FastAPI(title="GUI-GNN Demo", version="0.1.0")
 app.add_middleware(
@@ -83,14 +97,12 @@ async def health() -> Dict[str, Any]:
 async def predict(
     file: UploadFile = File(...),
     vlm_model: str = Form("qwen3-vl-flash"),
-    api_key: str = Form(None),
 ) -> JSONResponse:
     """Upload screenshot → VLM detection → GNN analysis → overlay.
 
     Args:
         file: Screenshot image (JPEG/PNG).
         vlm_model: Qwen3-VL model name.
-        api_key: DashScope API key. Falls back to DASHSCOPE_API_KEY env var.
 
     Returns:
         JSON with vlm, gnn, overlay_b64 fields.
@@ -107,11 +119,11 @@ async def predict(
     except Exception as e:
         return JSONResponse({"error": f"Invalid image: {e}"}, status_code=400)
 
-    # Resolve API key
-    key = api_key or os.environ.get("DASHSCOPE_API_KEY", "")
+    # Resolve API key from environment
+    key = os.environ.get("DASHSCOPE_API_KEY", "")
     if not key:
         return JSONResponse(
-            {"error": "API key required. Pass api_key or set DASHSCOPE_API_KEY env var."},
+            {"error": "API key required. Set DASHSCOPE_API_KEY env var."},
             status_code=400,
         )
 
@@ -131,14 +143,24 @@ async def predict(
     # Step 2: GNN analysis
     gnn_result = p.gnn_analyse(vlm_elements, img_w=img_w, img_h=img_h)
 
+    # Build corrected JSON
+    corrected = p.build_corrected_json(vlm_elements, gnn_result, img_w=img_w, img_h=img_h)
+
     # Step 3: Render overlay
     try:
         overlay_bytes = p.render_overlay(img_bytes, vlm_elements, gnn_result["proposals"])
-        import base64
         overlay_b64 = base64.b64encode(overlay_bytes).decode("utf-8")
     except Exception as e:
         logger.error("Overlay rendering failed: %s", e)
         overlay_b64 = ""
+
+    # Convert source image to JPEG base64 (handles HEIC → canvas-safe format)
+    try:
+        jpeg_buf = BytesIO()
+        pil_img.convert("RGB").save(jpeg_buf, format="JPEG", quality=85)
+        image_b64 = base64.b64encode(jpeg_buf.getvalue()).decode("utf-8")
+    except Exception:
+        image_b64 = ""
 
     # Build response
     response = {
@@ -155,6 +177,8 @@ async def predict(
             "time_ms": gnn_result["time_ms"],
         },
         "overlay_b64": f"data:image/png;base64,{overlay_b64}",
+        "image_b64": f"data:image/jpeg;base64,{image_b64}",
+        "corrected_json": corrected,
         "dimensions": {"width": img_w, "height": img_h},
     }
 
@@ -212,14 +236,24 @@ async def gnn_only(
     # GNN analysis
     gnn_result = p.gnn_analyse(vlm_elements, img_w=img_w, img_h=img_h)
 
+    # Build corrected JSON
+    corrected = p.build_corrected_json(vlm_elements, gnn_result, img_w=img_w, img_h=img_h)
+
     # Render overlay
     try:
         overlay_bytes = p.render_overlay(img_bytes, vlm_elements, gnn_result["proposals"])
-        import base64
         overlay_b64 = base64.b64encode(overlay_bytes).decode("utf-8")
     except Exception as e:
         logger.error("Overlay rendering failed: %s", e)
         overlay_b64 = ""
+
+    # Convert source image to JPEG base64 (handles HEIC → canvas-safe format)
+    try:
+        jpeg_buf = BytesIO()
+        pil_img.convert("RGB").save(jpeg_buf, format="JPEG", quality=85)
+        image_b64 = base64.b64encode(jpeg_buf.getvalue()).decode("utf-8")
+    except Exception:
+        image_b64 = ""
 
     response = {
         "gnn": {
@@ -230,6 +264,8 @@ async def gnn_only(
             "time_ms": gnn_result["time_ms"],
         },
         "overlay_b64": f"data:image/png;base64,{overlay_b64}",
+        "image_b64": f"data:image/jpeg;base64,{image_b64}",
+        "corrected_json": corrected,
         "dimensions": {"width": img_w, "height": img_h},
         "vlm": {"elements": vlm_elements, "count": len(vlm_elements)},
     }
