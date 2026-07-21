@@ -70,8 +70,11 @@ htmlcov/
 .coverage
 *.log
 
+# Build artifacts (generated from source)
+docs/_build/
+
 # Personal scripts
-download_datasets.py
+scripts/download_datasets.py
 .hermes/cost-tracking.json
 .env
 tmp/
