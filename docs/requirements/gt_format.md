@@ -11,7 +11,7 @@
 > benchmark datasets used in this project, how they are unified into an internal data
 > structure, the prediction-to-ground-truth matching strategy, and FP/FN semantics.
 > It does **not** contain implementation code; it provides the contract that
-> Phase 4 will implement in `src/bipartite_gnn_gui/data/ground_truth.py`.
+> Phase 4 implements in `src/bipartite_gnn_gui/data/ground_truth.py`.
 
 ---
 
@@ -126,9 +126,9 @@ class GUI360Record:
     annotations: list[GUI360Annotation]
 ```
 
-> **Note:** GUI-360° bboxes are already normalised; no coordinate conversion is needed
-> at load time.  The `type` field is case-normalised and mapped to the shared taxonomy
-> during unification (§4).
+> **Note:** GUI-360° bboxes are already normalised; the loader does not need coordinate
+> conversion at load time.  The loader case-normalises the `type` field and maps it to
+> the shared taxonomy during unification (§4).
 
 ---
 
@@ -153,8 +153,9 @@ ScreenSpot 是一个面向 Visual Grounding 任务的 GUI 截屏 benchmark，
 ScreenSpot 使用绝对像素坐标，加载时需要归一化。标注体量较小但每条标注都
 经过人工验证，grounding 精度高。
 
-ScreenSpot uses absolute pixel coordinates that must be normalised at load time.
-Annotations are sparser but each one is manually verified with high grounding accuracy.
+ScreenSpot uses absolute pixel coordinates that the loader must normalise at load time.
+Annotations are sparser but each one passes manual verification with high grounding
+accuracy.
 
 ```json
 {
@@ -202,7 +203,7 @@ Annotations are sparser but each one is manually verified with high grounding ac
 
 ScreenSpot 的 bbox 为绝对像素值，必须在加载时转换：
 
-ScreenSpot bboxes are in absolute pixels and must be converted at load time:
+ScreenSpot bboxes are in absolute pixels and the loader must convert them at load time:
 
 ```python
 x1_norm = x1_px / image_width
@@ -445,10 +446,11 @@ class GTElement:
 - 未识别的类型标签映射到 `"other"` 并记录警告。
 - GUI-360° 的类型体系与共享分类体系高度兼容；ScreenSpot 可能使用少量非标准标签。
 
-During loading, the `type` field is processed identically to VLM output (§4 `vlm_format.md`):
+During loading, the parser processes the `type` field identically to VLM output
+(§4 `vlm_format.md`):
 
-- Case-insensitive matching (`"Button"` → `"button"`).
-- Unrecognised type labels are mapped to `"other"` with a logged warning.
+- The parser performs case-insensitive matching (`"Button"` → `"button"`).
+- The parser maps unrecognised type labels to `"other"` and logs a warning.
 - GUI-360° types are highly compatible with the shared taxonomy; ScreenSpot may use a
   small number of non-standard labels.
 

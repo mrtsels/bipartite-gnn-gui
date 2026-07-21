@@ -9,7 +9,7 @@
 > This document defines the canonical data structures, coordinate conventions, element
 > taxonomy, per-model expected JSON schemas, and parsing / error-handling strategy for
 > VLM outputs.  It does **not** contain implementation code; it provides the contract
-> that Phase 4 will implement in `src/bipartite_gnn_gui/data/vlm_output.py`.
+> that Phase 4 implements in `src/bipartite_gnn_gui/data/vlm_output.py`.
 
 ---
 
@@ -21,8 +21,8 @@
 
 This project uses lightweight VLMs (Qwen3.5-2B, MiniMax-VL-01) to parse GUI screenshots
 into structured JSON.  The models emit detection results in slightly different JSON
-shapes; this document unifies those differences and defines the canonical in-memory data
-structures used by downstream graph-construction and training pipelines.
+shapes.  This document unifies those differences and defines the canonical in-memory data
+structures that downstream graph-construction and training pipelines use.
 
 ### 设计目标 (Design Goals)
 
@@ -106,8 +106,8 @@ class VLMOutput:
 未识别类型映射到 `other`。
 
 18 element types organised into four interaction categories.  Both ground-truth
-annotations and VLM predictions use the same taxonomy.  Matching is case-insensitive;
-unrecognised types are mapped to `other` with a logged warning.
+annotations and VLM predictions use the same taxonomy.  The parser performs
+case-insensitive matching; it maps unrecognised types to `other` and logs a warning.
 
 ### 4.1 Interactive — 可交互元素
 
@@ -220,10 +220,10 @@ All bounding boxes are stored internally as **normalised xyxy**:
 - `x2 <= x1` 或 `y2 <= y1` 的 bbox 被标记为**退化 (degenerate)**，丢弃并在 `parse_errors` 中记录警告。
 - 略超出 `[0, 1]` 范围的值（如 `1.02`、`-0.01`）先 clamp 再记录。
 
-After normalisation, all values are clamped to `[0.0, 1.0]`.  A bbox with
-`x2 <= x1` or `y2 <= y1` is flagged as degenerate, dropped, and logged as a
-warning in `parse_errors`.  Values slightly outside `[0, 1]` (e.g. `1.02`,
-`-0.01`) are clamped and logged.
+After normalisation, the parser clamps all values to `[0.0, 1.0]`.  The parser flags a
+bbox with `x2 <= x1` or `y2 <= y1` as degenerate, drops it, and logs a warning in
+`parse_errors`.  The parser clamps and logs values slightly outside `[0, 1]` (for
+example `1.02`, `-0.01`).
 
 ---
 
@@ -304,12 +304,13 @@ Rules:
 - 旧版 Qwen 可能返回像素级坐标；若 bbox 各值 > 1.0 且存在 `image_width`/`image_height`，
   则认为需要归一化。
 
-- Qwen typically outputs normalised xyxy directly; if `image_width`/`image_height` fields
-  are present in the JSON, verify consistency.
-- Some older Qwen versions use `bbox` instead of `bbox_xyxy`; the parser should support both.
-- An empty string `""` in the `text` field should be treated as `None`.
-- If bbox values are all > 1.0 and `image_width`/`image_height` are present, pixel-level
-  coordinates are assumed and normalisation is applied.
+- Qwen typically outputs normalised xyxy directly; if the JSON contains
+  `image_width`/`image_height` fields, verify consistency.
+- Some older Qwen versions use `bbox` instead of `bbox_xyxy`; the parser must support
+  both.
+- The parser must treat an empty string `""` in the `text` field as `None`.
+- If bbox values are all > 1.0 and the JSON includes `image_width`/`image_height`, the
+  parser assumes pixel-level coordinates and applies normalisation.
 
 ---
 
@@ -328,7 +329,7 @@ Key differences compared to Qwen3.5-2B:
 
 - **Absolute pixel coordinates**: bboxes are in pixels by default; normalisation requires
   `image_width`/`image_height`.
-- **Richer metadata**: supports free-form `attributes` (role, disabled, alt_text, etc.).
+- **Richer metadata**: supports free-form `attributes` (role, disabled, alt_text).
 - **Confidence always present**: the `confidence` field is always a float in `[0, 1]`.
 - **Different field names**: element type uses `category` instead of `label`; OCR text uses
   `text_content`.
@@ -389,10 +390,10 @@ Key differences compared to Qwen3.5-2B:
 - `attributes` 为 `null` 时转为空字典 `{}`。
 
 - Validate that `image_width` and `image_height` are positive integers before normalisation.
-- The `category` field may contain compound strings like `"button-primary"`; parsers
-  should first attempt exact match, then fall back to prefix match (extracting the part
+- The `category` field may contain compound strings like "button-primary"; parsers
+  must first attempt exact match, then fall back to prefix match (extracting the part
   before `-`), and finally map to `other`.
-- `null` in `attributes` is converted to an empty dict `{}`.
+- The parser converts `null` in `attributes` to an empty dict `{}`.
 
 ---
 
@@ -402,7 +403,7 @@ Key differences compared to Qwen3.5-2B:
 
 以下函数将在 Phase 4 中实现：
 
-The following functions will be implemented in Phase 4:
+The following functions are implemented in Phase 4:
 
 ```python
 def parse_qwen_output(raw: dict | str) -> VLMOutput:
@@ -500,7 +501,7 @@ Input string
 4. 所有 element 的 `element_id` 从 0 开始连续递增。
 5. `confidence` 在 `[0, 1]` 范围内。
 
-A parsed `VLMOutput` is considered **valid** when:
+The system considers a parsed `VLMOutput` **valid** when:
 
 1. `elements` is non-empty (at least one element).
 2. All `element_type` values belong to the §4 taxonomy or `"other"`.
