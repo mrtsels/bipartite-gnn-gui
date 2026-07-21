@@ -317,7 +317,7 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 | Full × violation-only | 0.9263 | 0.9003 | 0.8799 | 0.8871 | 0.8974 | **0.8982 ± 0.0177** |
 | Full × proposal-only | 0.4802 | 0.4521 | 0.5149 | 0.5927 | 0.4029 | **0.4886 ± 0.0712** |
 
-**Key finding:** Violation-only (0.898 ± 0.018) is **notably better** than joint (0.876 ± 0.020) — the reviewer's suspicion is confirmed. The multi-task joint training **hurts** violation detection. Pure violation-only training achieves higher accuracy with lower variance.
+**Key finding:** Violation-only (0.898 ± 0.018) is **notably better** than joint (0.876 ± 0.020) — this confirms the reviewer's suspicion. The multi-task joint training **hurts** violation detection. Pure violation-only training achieves higher accuracy with lower variance.
 
 ### 9.2 Real VLM 端到端评估
 
@@ -412,7 +412,7 @@ Evaluates the full GNN correction pipeline on 200 real VLM images: build constra
 2. **Precision drops −1.4pp** — proposals introduce new FPs (many proposed bboxes don't match real GT elements)
 3. **Net F1 gain +2.9pp** — the recall improvement outweighs the precision cost
 4. **Existence head is useless on real VLM** — all checkpoints produce near-uniform scores (~0.48–0.54 for both TP and FP elements), so confidence filtering is currently not viable
-5. **The improvement is real but modest** — simulated dropping achieves IoU ~0.12 at drop=0.6, but on real VLM the matching quality is limited by the mismatch between VLM error patterns and the synthetic training distribution
+5. **The improvement is real but modest** — simulated dropping achieves IoU ~0.12 at drop=0.6, but on real VLM the mismatch between VLM error patterns and the synthetic training distribution limits the matching quality
 
 ### 9.6 Fine-tune GNN on Real RICO VLM Data
 
@@ -505,7 +505,7 @@ Type Acc             | 0.4469 ± 0.0080       | 0.4403 ± 0.0163          | -0.0
 
 ### 9.7.1 Simple Concat (PR#30) Re-evaluation
 
-The simple-concat baseline (`visual_fusion_model.pt`) was loaded and evaluated on 3 different val splits (from seeds 42, 73, 99):
+We loaded and evaluated the simple-concat baseline (`visual_fusion_model.pt`) on 3 different val splits (from seeds 42, 73, 99):
 
 | Metric | Mean ± Std |
 |--------|:----------:|
