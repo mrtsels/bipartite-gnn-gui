@@ -19,7 +19,7 @@ Lightweight Vision-Language Models (VLMs) under 3B parameters are attractive for
 - **Element omission**: 10–30% of visible GUI elements are missed, especially small icons, dividers, and nested containers.
 - **Misalignment**: Detected bounding boxes can deviate by 10–50+ pixels from ground truth, breaking downstream layout reasoning.
 
-Existing approaches address this by fine-tuning larger VLMs (7B+) or cascading object detectors — both computationally expensive. We propose an alternative: treat GUI correction as **structured prediction on a heterogeneous bipartite graph**, leveraging spatial constraints inherent to GUI design without requiring additional detection models or VLM fine-tuning.
+Existing approaches address this by fine-tuning larger VLMs (7B+) or cascading object detectors — both computationally expensive. We propose an alternative: treat GUI correction as **structured prediction on a heterogeneous bipartite graph**. Our method leverages spatial constraints inherent to GUI design without requiring additional detection models or VLM fine-tuning.
 
 ---
 
@@ -29,9 +29,9 @@ Existing approaches address this by fine-tuning larger VLMs (7B+) or cascading o
 
 #### 2.1.1 Heterogeneous Bipartite Graph
 
-We formalize GUI structure as a heterogeneous bipartite graph. Let a screenshot yield $N$ detected elements $\mathcal{E} = \{e_i\}_{i=1}^N$, each with a normalized bounding box $\mathbf{b}_i = (x_1^{(i)}, y_1^{(i)}, x_2^{(i)}, y_2^{(i)}) \in [0,1]^4$ and a type label $t_i \in \mathcal{T}$ where $\mathcal{T}$ is the set of GUI element types (button, text, icon, etc.).
+We formalize GUI structure as a heterogeneous bipartite graph. Let a screenshot yield $N$ detected elements $\mathcal{E} = \{e_i\}_{i=1}^N$, each with a normalized bounding box $\mathbf{b}_i = (x_1^{(i)}, y_1^{(i)}, x_2^{(i)}, y_2^{(i)}) \in [0,1]^4$ and a type label $t_i \in \mathcal{T}$ where $\mathcal{T}$ is the set of GUI element types (button, text, icon).
 
-From these elements, we extract $M$ spatial constraints $\mathcal{C} = \{c_j\}_{j=1}^M$. Each constraint $c_j$ is defined by a type $\tau_j \in \{\texttt{ALIGN\_LEFT}, \texttt{CONTAINMENT}, \dots\}$, a source index set $S_j \subseteq \{1,\dots,N\}$, and a target index set $T_j \subseteq \{1,\dots,N\}$. A constraint exists when its predicate $P_{\tau}(\mathbf{b}_{S_j}, \mathbf{b}_{T_j})$ evaluates to true under a tolerance $\varepsilon$.
+From these elements, we extract $M$ spatial constraints $\mathcal{C} = \{c_j\}_{j=1}^M$. Each constraint $c_j$ has a type $\tau_j \in \{\texttt{ALIGN\_LEFT}, \texttt{CONTAINMENT}, \dots\}$, a source index set $S_j \subseteq \{1,\dots,N\}$, and a target index set $T_j \subseteq \{1,\dots,N\}$. A constraint exists when its predicate $P_{\tau}(\mathbf{b}_{S_j}, \mathbf{b}_{T_j})$ evaluates to true under a tolerance $\varepsilon$.
 
 The heterogeneous bipartite graph is then:
 
@@ -48,7 +48,7 @@ Where:
 
 #### 2.1.2 Bipartite Message Passing
 
-Message passing on this graph proceeds in two alternating hops, each implemented as a SAGEConv layer (Hamilton et al., 2017).
+Message passing on this graph proceeds in two alternating hops. Each hop uses a SAGEConv layer (Hamilton et al., 2017).
 
 **Hop 1 — Element to Constraint.** Each constraint node $c_j$ aggregates features from its incident elements:
 
@@ -64,11 +64,11 @@ $$
 \mathbf{h}_{e_i}^{(2)} = \sigma\!\left( \mathbf{W}_2 \cdot \text{MEAN}\!\left(\left\{\mathbf{h}_{c_j}^{(1)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\}\right) + \mathbf{b}_2 \right)
 $$
 
-This two-hop design enforces a strong inductive bias: elements communicate only through shared spatial relationships. If two elements participate in the same constraint (e.g., both are left-aligned), their information is fused at the constraint node and propagated back. Elements that share no constraints never exchange messages.
+This two-hop design enforces a strong inductive bias: elements communicate only through shared spatial relationships. If two elements participate in the same constraint (for example, both left-aligned), the constraint node fuses their information and propagates it back. Elements that share no constraints never exchange messages.
 
 #### 2.1.3 Initial Node Features
 
-Each element's initial feature vector $\mathbf{h}_{e_i}^{(0)}$ is 5-dimensional: the four normalized bbox coordinates plus a normalized area $a_i = (x_2 - x_1)(y_2 - y_1)$. An optional visual feature $\mathbf{v}_i \in \mathbb{R}^{d_v}$ from a frozen ViT encoder (192-d vit*tiny or 768-d DINOv2) can be concatenated to form $\mathbf{h}*{e_i}^{(0)} \in \mathbb{R}^{5 + d_v}$.
+Each element's initial feature vector $\mathbf{h}_{e_i}^{(0)}$ is 5-dimensional: the four normalized bbox coordinates plus a normalized area $a_i = (x_2 - x_1)(y_2 - y_1)$. We can concatenate an optional visual feature $\mathbf{v}_i \in \mathbb{R}^{d_v}$ from a frozen ViT encoder (192-d vit_tiny or 768-d DINOv2) to form $\mathbf{h}_{e_i}^{(0)} \in \mathbb{R}^{5 + d_v}$.
 
 Constraint node features $\mathbf{h}_{c_j}^{(0)}$ embed the constraint type $\tau_j$ as a one-hot vector (10-d) and encode spatial statistics of the participant elements (mean pairwise distance, mean containment overlap ratio, alignment residual).
 
@@ -118,11 +118,11 @@ $$
 \mathcal{L} = w_c \mathcal{L}_{\text{coord}} + w_v \mathcal{L}_{\text{vio}} + w_e \mathcal{L}_{\text{exist}}
 $$
 
-with default weights $w_c = 1.0$, $w_v = 0.5$, $w_e = 0.5$, tuned via hyperparameter sweep.
+with default weights $w_c = 1.0$, $w_v = 0.5$, $w_e = 0.5$, which we tune via hyperparameter sweep.
 
 #### 2.1.5 Structural Element Completion
 
-For the element completion task (Phase 4.9), we introduce a fourth head that proposes missing elements from structural context. A random subset of GT elements is dropped during training (drop ratio $\rho \in [0.2, 0.8]$). Each surviving constraint that references a dropped element becomes a "violated" signal. The GNN must learn to detect these structural holes and predict:
+For the element completion task (Phase 4.9), we introduce a fourth head that proposes missing elements from structural context. During training, we drop a random subset of GT elements (drop ratio $\rho \in [0.2, 0.8]$). Each surviving constraint that references a dropped element becomes a "violated" signal. The GNN must learn to detect these structural holes and predict:
 
 $$
 \hat{\mathbf{b}}_k, \hat{t}_k = \text{MLP}_{\text{proposal}}(\mathbf{h}_{c_j}^{(1)})
@@ -134,7 +134,7 @@ $$
 \mathcal{L}_{\text{prop}} = \frac{1}{K} \sum_{k=1}^K \left[ \mathcal{L}_{\text{IoU}}(\hat{\mathbf{b}}_k, \mathbf{b}_k^*) + \alpha \cdot \text{CE}(\hat{t}_k, t_k^*) \right]
 $$
 
-The training is self-supervised: no human annotation is needed beyond the existing GT layout, since the target is derived by masking.
+The training is self-supervised: it requires no human annotation beyond the existing GT layout. We derive the target by masking.
 
 ### 2.2 Pipeline Overview
 
@@ -142,7 +142,7 @@ The training is self-supervised: no human annotation is needed beyond the existi
 Screenshot → Lightweight VLM → Noisy JSON → [Bipartite Graph] → GraphSAGE → Δ𝐱 → Corrected JSON
 ```
 
-The pipeline takes a noisy VLM output JSON, constructs a bipartite constraint graph from the detected elements, applies GraphSAGE message passing over this structure, and predicts per-element coordinate corrections.
+The pipeline takes a noisy VLM output JSON and constructs a bipartite constraint graph from the detected elements. It then applies GraphSAGE message passing over this structure and predicts per-element coordinate corrections.
 
 **Figure 1: System architecture pipeline.**
 ![Figure 1: System architecture pipeline](figures/fig%201.png)
@@ -311,25 +311,25 @@ We evaluated augmenting the structural features (5-d bbox coordinates) with visu
 
 ## 5. Current Status and Next Steps
 
-All 9 development phases complete with 942 integration tests passing. Core research directions validated on both synthetic benchmarks and real VLM data.
+All 9 development phases complete with 942 integration tests passing. We validated core research directions on both synthetic benchmarks and real VLM data.
 
 ### 5.1 Completed Work
 
-Requirements analysis covered the VLM output format, ground-truth annotation structure, use-case definitions, and the evaluation metrics. The high-level and detailed designs defined the system architecture, data schema, component contracts, and class hierarchies. All modules were then implemented: the data pipeline (VLM parsing, ground-truth loading, normalization, Dataset and DataLoader), the bipartite graph construction (ten constraint types, heterogeneous HeteroData format), the GraphSAGE encoder with three prediction heads and combined loss, the training loop with hyperparameter sweep, and the inference pipeline. Integration testing confirmed 942 tests passing across two end-to-end pipelines. Performance benchmarking showed inference at 0.53 milliseconds p50 and training throughput of 357 steps per second — the GNN is never the bottleneck; the VLM is the limiting step at roughly two seconds per image. The experiment pipeline was unified under a single entry point covering hyperparameter sweeps, constraint ablations, and cross-dataset evaluation. Finally, thirteen controlled experiments across four research directions were conducted and statistically verified.
+Requirements analysis covered the VLM output format, ground-truth annotation structure, use-case definitions, and the evaluation metrics. The high-level and detailed designs defined the system architecture, data schema, component contracts, and class hierarchies. We then implemented all modules: the data pipeline (VLM parsing, ground-truth loading, normalization, Dataset and DataLoader), the bipartite graph construction (ten constraint types, heterogeneous HeteroData format), and the GraphSAGE encoder with three prediction heads and combined loss. We also implemented the training loop with hyperparameter sweep and the inference pipeline. Integration testing confirmed 942 tests passing across two end-to-end pipelines. Performance benchmarking showed inference at 0.53 milliseconds p50 and training throughput of 357 steps per second. The GNN is never the bottleneck — the VLM is the limiting step at roughly two seconds per image. We unified the experiment pipeline under a single entry point covering hyperparameter sweeps, constraint ablations, and cross-dataset evaluation. Finally, we conducted and statistically verified thirteen controlled experiments across four research directions.
 
 ### 5.2 Key Findings
 
-Confidence scoring under synthetic conditions achieved an AUROC of 0.989, demonstrating that spatial context alone is sufficient to distinguish real GUI elements from random imposters. The element completion head outperformed a nearest-neighbor baseline by 40 percent in IoU when at least sixty percent of ground-truth elements were dropped, confirming that the GNN learns genuine structural priors rather than simple interpolation.
+Confidence scoring under synthetic conditions achieved an AUROC of 0.989, demonstrating that spatial context alone is sufficient to distinguish real GUI elements from random imposters. The element completion head outperformed a nearest-neighbor baseline by 40 percent in IoU when we dropped at least sixty percent of ground-truth elements. This confirms that the GNN learns genuine structural priors rather than simple interpolation.
 
-On real VLM data from Qwen3-VL Flash across 200 screenshots, the full pipeline improved recall by 4.7 percentage points, recovering 226 missed elements through constraint-based proposals. The net F1 gain was 2.9 percentage points at a modest precision cost of 1.4 points. Fine-tuning the model on real VLM predictions rather than synthetic dropping added another 2.1 percentage points of F1, suggesting that the synthetic pre-training captures most of the structural patterns but real data still provides incremental benefit.
+On real VLM data from Qwen3-VL Flash across 200 screenshots, the full pipeline improved recall by 4.7 percentage points, recovering 226 missed elements through constraint-based proposals. The net F1 gain was 2.9 percentage points at a modest precision cost of 1.4 points. Fine-tuning the model on real VLM predictions rather than synthetic dropping added another 2.1 percentage points of F1. This suggests that the synthetic pre-training captures most of the structural patterns, but real data still provides incremental benefit.
 
-Cross-attention fusion between structural features and ViT-Tiny visual features consistently improved proposal MSE by 18 to 22 percent across all random seeds, though violation accuracy became more sensitive to initialization. Simple concatenation of visual features, by contrast, produced only marginal gains. Cross-dataset generalization from RICO to ScreenSpot improved from 28 percent zero-shot accuracy to 72 percent after fine-tuning, a gain of 44 percentage points.
+Cross-attention fusion between structural features and ViT-Tiny visual features consistently improved proposal MSE by 18 to 22 percent across all random seeds. However, violation accuracy became more sensitive to initialization. Simple concatenation of visual features, by contrast, produced only marginal gains. Cross-dataset generalization from RICO to ScreenSpot improved from 28 percent zero-shot accuracy to 72 percent after fine-tuning, a gain of 44 percentage points.
 
-Two limitations were also identified. Type prediction from constraint context alone caps at 62 percent accuracy — constraint features carry spatial and structural information but are fundamentally weak for semantic type disambiguation. The confidence model also shows limited transfer across domains: AUROC drops from 0.703 on RICO to 0.554 on ScreenSpot, indicating that the false-positive patterns learned on mobile screens do not generalize to the mixed mobile, PC, and web layout distribution.
+We also identified two limitations. Type prediction from constraint context alone caps at 62 percent accuracy — constraint features carry spatial and structural information but are fundamentally weak for semantic type disambiguation. The confidence model also shows limited transfer across domains: AUROC drops from 0.703 on RICO to 0.554 on ScreenSpot. This indicates that the false-positive patterns learned on mobile screens do not generalize to the mixed mobile, PC, and web layout distribution.
 
 ### 5.3 Remaining Work
 
-Three main deliverables remain. The final report is a comprehensive document that consolidates all methodology, experimental results, and figures — roughly 8 to 12 pages covering the full project scope. The academic paper distills the core method and key findings into a 4-to-6-page conference-ready draft targeting an HCI or ML venue, focusing on the GNN correction framework and the structural element completion results. The web demo is a Streamlit interface that accepts a screenshot, runs the VLM prediction and GNN correction side by side, and visualizes the improvement for qualitative inspection. A poster summarizing the project is also planned for the internship presentation session.
+Three main deliverables remain. The final report is a comprehensive document that consolidates all methodology, experimental results, and figures — roughly 8 to 12 pages covering the full project scope. The academic paper distills the core method and key findings into a 4-to-6-page conference-ready draft targeting an HCI or ML venue. It focuses on the GNN correction framework and the structural element completion results. The web demo is a Streamlit interface that accepts a screenshot, runs the VLM prediction and GNN correction side by side, and visualizes the improvement for qualitative inspection. We also plan a poster summarizing the project for the internship presentation session.
 
 ---
 
