@@ -7,7 +7,7 @@
 
 ## 1. Problem Formulation
 
-A lightweight VLM (e.g. Qwen3.5-2B) takes a screenshot and outputs a list of
+A lightweight VLM (for example, Qwen3.5-2B) takes a screenshot and outputs a list of
 predicted GUI elements with bounding boxes. These predictions are **noisy**: the
 VLM's spatial understanding is approximate, with typical errors of 5–25 px in
 position and 3–15% in size, even when semantic labeling is correct.
@@ -36,7 +36,7 @@ A GUI layout has two kinds of entities with fundamentally different semantics:
 | **Element node** | A concrete UI widget | Spatial position (cx, cy, w, h), type one-hot, confidence |
 | **Constraint node** | A spatial relationship | Constraint type one-hot, tolerance, geometric params |
 
-A homogeneous graph (e.g. all-element with pairwise edges) conflates these.
+A homogeneous graph (for example, all-element with pairwise edges) conflates these.
 Element–element edges encode pairwise relations implicitly. Constraint nodes
 make relations **explicit, typed, and learnable** — each constraint is a
 first-class object with its own embedding that can be updated through message
@@ -101,9 +101,9 @@ $$
 where $(x_1, y_1, x_2, y_2)$ is the predicted bounding box (normalized to
 $[0, 1]^4$) and $p_i \in [0, 1]$ is the VLM's detection confidence.
 
-> **Planned:** The feature dimension will grow to ~23-d with one-hot type
+> **Planned:** The feature dimension grows to 23-d with one-hot type
 > encoding (18+ element types: button, text, image, input, icon, container,
-> list, etc.) and explicit spatial features (cx, cy, w, h) instead of raw
+> list, and others) and explicit spatial features (cx, cy, w, h) instead of raw
 > xyxy corners.
 
 ### 3.2 Constraint Node Features
@@ -238,10 +238,10 @@ $(x_1', y_1', x_2', y_2')$:
 | Constraint filter | Keep all | Drop constraints with $w_j < 0.3$ |
 | Constraint weight $w_j$ | 1.0 (known-correct) | Heuristic confidence score |
 
-In training, constraints are extracted from ground-truth annotations — they are
-the "correct" spatial rules that the model should learn to enforce. At
-inference, constraints are proposed heuristically from VLM predictions and may
-be erroneous; low-weight constraints are dropped to prevent propagating bad
+In training, the system extracts constraints from ground-truth annotations — they are
+the "correct" spatial rules that the model learns to enforce. At
+inference, the system proposes constraints heuristically from VLM predictions. These constraints may
+be erroneous. The system drops low-weight constraints to prevent propagating bad
 structural information.
 
 > **Note:** The current stub does not implement this train/inference split.
@@ -427,7 +427,7 @@ VLM JSON → parse → ElementNodes → extract constraints → HeteroData
 8. **Denormalize** to absolute pixel coordinates if needed.
 9. **Output** corrected JSON with the same schema as the VLM input.
 
-The violation and existence heads are **not used** during inference (they are
+The system does **not use** the violation and existence heads during inference (they are
 auxiliary training signals). However, future work could use them to flag
 low-confidence elements for human review.
 
@@ -460,7 +460,7 @@ constraint nodes are factors and element nodes are variables.
 
 The violation and existence heads are auxiliary tasks that force the encoder
 to produce embeddings that are useful for multiple purposes. This prevents the
-encoder from collapsing to a trivial solution (e.g. always predicting zero
+encoder from collapsing to a trivial solution (for example, always predicting zero
 deltas). The existence head in particular gives the model an "escape hatch" for
 hallucinated elements — instead of trying to correct a non-existent button, it
 can suppress it.
