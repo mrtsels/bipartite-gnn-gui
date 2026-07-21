@@ -51,9 +51,9 @@ VLM predictions ──→ [Bipartite Constraint Graph] ──→ GNN predicts co
 ### Why This Works
 
 - VLMs have **type-dependent reliability**: buttons are well-localized, icons drift
-- Spatial context provides **independent evidence**: if *all* elements in a row are
-  left-aligned except one, that one is likely wrong
-- Two-hop message passing (`element → constraint → element`) is perfectly suited:
+- Spatial context provides **independent evidence**: if *all* elements in a row
+  align left except one, that one is likely wrong
+- Two-hop message passing (`element → constraint → element`) works well:
   a constraint node aggregates information from *all* participant elements and
   broadcasts alignment status back
 
@@ -109,8 +109,8 @@ the missing element's type, position, and size.
 
 > **Status: ✅ DONE** — `scripts/train_violation.py`
 
-Training: 500 → 2000 RICO samples, 40% → 60% elements removed per sample.
-GNN predicts which constraints are violated (`violation_head`) AND proposes
+Training: 500 → 2000 RICO samples. We remove 40% → 60% of elements per sample.
+GNN predicts constraint violations (`violation_head`) AND proposes
 the missing element's bounding box (`proposal_head`).
 
 | Config | Violation Acc | Random Baseline | Proposal MSE | Proposal RMSE |
@@ -122,7 +122,7 @@ the missing element's bounding box (`proposal_head`).
 
 This validates the core hypothesis: **the constraint graph encodes structural
 completeness information that the GNN can decode**. Random dropping of 60%
-of elements creates detectable constraint violations — the GNN identifies
+of elements creates detectable constraint violations. The GNN identifies
 incomplete constraints at 95% accuracy while simultaneously learning to
 predict the missing elements' bounding boxes from graph context alone.
 
@@ -196,7 +196,7 @@ Advantage:     fully self-supervised, completely reproducible,
 
 - **Spatial reasoning**: adjacent elements have correlated missing patterns
 - **Type propagation**: if a "Settings" icon exists, a "Back" button should be nearby
-- **Multi-constraint integration**: missing element position triangulated from
+- **Multi-constraint integration**: triangulate the missing element position from
   alignment + spacing + containment constraints simultaneously
 
 ### Challenging Cases (Interesting Failure Modes)
