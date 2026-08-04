@@ -538,9 +538,9 @@ large proposal-quality gain, which matters for completion.
     \draw (3.9,{0.489*\sc+0.05}) -- (3.9,{0.489*\sc+0.05+0.071*\sc});
     \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
-    \node[font=\scriptsize] at (1.1,-0.5) {joint};
-    \node[font=\scriptsize] at (2.5,-0.5) {violation-only};
-    \node[font=\scriptsize] at (3.9,-0.5) {proposal-only};
+    \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.45) {joint};
+    \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.45) {violation-only};
+    \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.45) {proposal-only};
   \end{scope}
   % Right panel: proposal MSE (joint 0.051, vio-only 0.116, prop-only 0.051)
   % MSE scale: 1.0 = 30cm, y = value*30 (0.116 -> 3.48cm, matches left panel)
@@ -559,9 +559,9 @@ large proposal-quality gain, which matters for completion.
     \draw (3.9,{0.051*\scm+0.05}) -- (3.9,{0.051*\scm+0.05+0.010*\scm});
     \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
-    \node[font=\scriptsize] at (1.1,-0.5) {joint};
-    \node[font=\scriptsize] at (2.5,-0.5) {violation-only};
-    \node[font=\scriptsize] at (3.9,-0.5) {proposal-only};
+    \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.45) {joint};
+    \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.45) {violation-only};
+    \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.45) {proposal-only};
   \end{scope}
 \end{tikzpicture}
 \caption{Training-objective ablation over 5 seeds (mean $\pm$ std): joint
