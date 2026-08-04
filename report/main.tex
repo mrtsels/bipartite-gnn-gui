@@ -9,6 +9,10 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{caption}
+% More breathing room between table caption and the table body
+\captionsetup[table]{skip=14pt}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc}
 % Times New Roman (system font, XeLaTeX)
@@ -242,7 +246,7 @@ $\varepsilon$.
 \caption{The ten spatial constraint types extracted from a layout.}
 \label{tab:constraints}
 \centering
-\begin{tabular}{lll}
+\begin{tabularx}{\textwidth}{lXX}
 \toprule
 \textbf{Type} & \textbf{Predicate} & \textbf{Example} \\
 \midrule
@@ -257,7 +261,7 @@ $\varepsilon$.
 \texttt{GRID} & row/column membership & Grid layout detection \\
 \texttt{SAME\_SIZE} & similar widths/heights & Uniform card sizes \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsubsection{The Bipartite Graph}
@@ -448,7 +452,7 @@ cannot support violation detection.
 \caption{Constraint-type ablation on violation detection (n=500, drop=0.6).}
 \label{tab:ablation}
 \centering
-\begin{tabular}{lc}
+\begin{tabularx}{\textwidth}{Xc}
 \toprule
 Constraint set & Violation acc. \\
 \midrule
@@ -459,7 +463,7 @@ All 10 types (control) & \textbf{0.908} \\
 Remove all \texttt{ALIGNMENT} & 0.939 ($+3.1$pp) \\
 Only \texttt{ALIGNMENT} & 0.878 ($-3.0$pp) \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \begin{figure}[htbp]
@@ -665,7 +669,7 @@ Checkpoints loaded with shape-filtering; numbers reflect correctly loaded
 weights.}
 \label{tab:real}
 \centering
-\begin{tabular}{lccc}
+\begin{tabularx}{\textwidth}{Xccc}
 \toprule
 Metric & VLM only & VLM + GNN & $\Delta$ \\
 \midrule
@@ -674,7 +678,7 @@ Recall & 0.235 & 0.257 & $+2.2$pp \\
 F1 & 0.291 & 0.311 & $+2.0$pp \\
 TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \begin{figure}[htbp]
