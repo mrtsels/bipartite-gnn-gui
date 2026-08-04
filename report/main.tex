@@ -1,10 +1,9 @@
-\documentclass[12pt, onecolumn]{IEEEtran}
-\IEEEoverridecommandlockouts
+\documentclass[11pt, letterpaper]{article}
 % Phase 12A — UG Summer Research Internship Final Report
-% Based on the Phase 12 paper (paper/main.tex), expanded for a general
-% technically-literate audience. Single column, 12pt.
+% Format follows the CUHK CSE sample final report: single column, Times
+% serif, 1-inch margins, 1.5 line spacing, arabic section numbers, cover
+% page with university header, table of contents, author-year citations.
 
-\usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
 \usepackage{textcomp}
@@ -12,39 +11,64 @@
 \usepackage{booktabs}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc}
+% Times New Roman (system font, XeLaTeX)
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+% Author-year citations: [Xie et al., 2024] style
+\usepackage[square,comma,authoryear]{natbib}
+\setcitestyle{square,comma,authoryear}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
 % TeX Live basic lacks Courier (pcr) fonts; fall back to CM Typewriter.
 \renewcommand{\ttdefault}{cmtt}
 \usepackage{hyperref}
-\hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=blue}
+\hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=blue,
+    pageanchor=false}
+% Allow LaTeX to stretch glue slightly to avoid marginal overfull hboxes.
+\setlength{\emergencystretch}{2em}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
 \begin{document}
 
-\title{Heterogeneous Bipartite Graph Neural Networks for \\
-GUI Structure Error Correction: \\
-A Post-Correction Framework for Lightweight Vision-Language Models}
+% ================= Cover page =================
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+{\large \textbf{The Chinese University of Hong Kong}\par}
+\vspace{0.3cm}
+{\normalsize Department of Information Engineering, Faculty of Engineering\par}
+\vspace{0.4cm}
+\rule{\textwidth}{0.6pt}
+\vspace{1.2cm}
+{\Large \textbf{Summer Research Project}\par}
+\vspace{1.4cm}
+{\LARGE \textbf{Heterogeneous Bipartite Graph Neural Networks for GUI Structure Error Correction}\par}
+\vspace{0.5cm}
+{\large A Post-Correction Framework for Lightweight Vision-Language Models\par}
+\vspace{2.5cm}
+{\normalsize \textbf{Author:}\par}
+{\large Xie Licheng (Alex)\par}
+{\normalsize 1155246441\par}
+\vspace{1.2cm}
+{\normalsize \textbf{Supervisor:}\par}
+{\large Prof.\ Wing Cheong Lau (IE)\par}
+\vfill
+{\normalsize August 2026\par}
+\end{titlepage}
 
-\author{\IEEEauthorblockN{Xie Licheng (Alex)}
-\IEEEauthorblockA{\textit{Department of Information Engineering} \\
-\textit{The Chinese University of Hong Kong}\\
-Hong Kong SAR, China \\
-1155246441@link.cuhk.edu.hk}
-\and
-\IEEEauthorblockN{Prof.\ Wing Cheong Lau}
-\IEEEauthorblockA{\textit{Department of Information Engineering} \\
-\textit{The Chinese University of Hong Kong}\\
-Hong Kong SAR, China \\
-wclau@ie.cuhk.edu.hk}
-}
-
-\markboth{UG Summer Research Internship 2026 --- Final Report}{Xie \& Lau}
-
-\maketitle
+\tableofcontents
+\newpage
 
 \begin{abstract}
-Computer programs that ``look at'' a phone screen --- assistive tools for
-visually impaired users, automated UI testers, and software agents --- all
+Computer programs that ``look at'' a phone screen (assistive tools for
+visually impaired users, automated UI testers, and software agents) all
 need to know what is on the screen and where. Small vision-language models
 (VLMs) are attractive for running such tasks directly on a phone because they
 are fast and memory-efficient, but they make mistakes: they miss 10--30\% of
@@ -52,7 +76,7 @@ the visible interface elements, and the bounding boxes they draw around the
 elements they do find are often misaligned with reality. This report presents
 a post-correction framework that fixes these mistakes without retraining the
 VLM or adding a second detector. The key insight is that well-designed
-interfaces obey spatial rules --- elements align, sit inside containers, and
+interfaces obey spatial rules: elements align, sit inside containers, and
 follow consistent spacing. We encode these rules as a heterogeneous bipartite
 graph: one set of nodes for the detected elements, one set for the spatial
 constraints among them, and edges only between the two sets. A GraphSAGE
@@ -70,17 +94,12 @@ is model-agnostic, requires no VLM fine-tuning, and adds less than one
 millisecond of inference per screenshot.
 \end{abstract}
 
-\begin{IEEEkeywords}
-GUI understanding, graph neural networks, vision-language models,
-structure correction, bipartite graphs, accessibility
-\end{IEEEkeywords}
-
 \section{Introduction}
-\IEEEPARstart{T}{o} understand a smartphone interface, a program must first
+To understand a smartphone interface, a program must first
 answer a basic question: \emph{what is on this screen, and where is it?}
-Every application --- from screen readers for visually impaired users, to
+Every application (from screen readers for visually impaired users, to
 automated UI testers, to software agents that operate a phone on a user's
-behalf --- depends on accurate knowledge of the interface elements (buttons,
+behalf) depends on accurate knowledge of the interface elements (buttons,
 text fields, icons, images) and their positions.
 
 \subsection{Why Lightweight Vision-Language Models}
@@ -105,21 +124,21 @@ downstream reasoning about layout.
 \end{itemize}
 
 These are not random glitches; they are systematic consequences of
-compressing a large model into a small one. The natural response --- train a
-bigger model --- is precisely what on-device constraints forbid.
+compressing a large model into a small one. The natural response, training a
+bigger model, is precisely what on-device constraints forbid.
 
 \subsection{Our Approach in One Paragraph}
 We observe that GUI screenshots are \emph{highly structured}: designers lay
 out elements according to spatial rules such as alignment, containment,
 spacing, and grid membership. These rules are independent evidence that a
 VLM looking at pixels alone cannot exploit. If every element in a row is
-left-aligned except one, the odd one out is probably misplaced --- regardless
+left-aligned except one, the odd one out is probably misplaced, regardless
 of what the pixels look like. We formalize these rules as a graph: element
 nodes on one side, constraint nodes on the other, and edges connecting an
 element to every constraint it participates in. A graph neural network
 (GraphSAGE) then reasons over this structure and outputs corrected
-coordinates, violated constraints, per-element confidence, and --- for the
-omission problem --- entirely new element proposals. Because the correction
+coordinates, violated constraints, per-element confidence, and (for the
+omission problem) entirely new element proposals. Because the correction
 runs after the VLM, it is \emph{model-agnostic}: the same correction network
 works behind any VLM, and it never needs the VLM's weights.
 
@@ -133,7 +152,7 @@ discusses limitations and future work, and Section~VI concludes.
 The most direct remedy for VLM mistakes is to fine-tune a larger VLM (7B+) on
 GUI data, or to fine-tune the lightweight model on domain-specific screenshots.
 This improves accuracy but has two costs: it requires labelled GUI data, and
---- more fundamentally for the on-device use case --- the improved model is
+(more fundamentally for the on-device use case) the improved model is
 larger, slower, or both. Fine-tuning also bakes in a specific VLM; swapping
 the front-end model means retraining everything.
 
@@ -149,8 +168,8 @@ structure that all well-designed interfaces share.
 LayoutGAN \cite{li2019layoutgan} and LayoutTransformer
 \cite{gupta2021layouttransformer} learn layout priors and can \emph{generate}
 new layouts. They are generative: given random noise or partial structure,
-they synthesize complete layouts. Our problem is different --- we receive a
-noisy layout and must \emph{repair} it --- but the idea of a learned layout
+Our problem is different: we receive a
+noisy layout and must \emph{repair} it, but the idea of a learned layout
 prior is shared. We make the prior explicit and interpretable (ten spatial
 constraint types) rather than implicit in a generative model.
 
@@ -173,6 +192,7 @@ missed elements, and per-element reliability scores.
 
 \begin{figure}[htbp]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
     box/.style={draw, rounded corners=2pt, align=center, minimum height=0.9cm,
                 font=\small},
@@ -193,10 +213,9 @@ missed elements, and per-element reliability scores.
   \node[font=\scriptsize, align=center, below=0.28cm of noisy] {10--30\% omissions,\\box misalignment};
   \node[font=\scriptsize, below=0.28cm of graph] {constraint extraction};
   \node[font=\scriptsize, below=0.28cm of gnn] {$\Delta\mathbf{x}$, proposals};
-\end{tikzpicture}
-\caption{End-to-end pipeline: screenshot $\rightarrow$ lightweight VLM
-$\rightarrow$ noisy JSON $\rightarrow$ heterogeneous bipartite graph
-$\rightarrow$ GraphSAGE $\rightarrow$ corrected JSON.}
+\end{tikzpicture}}
+\caption{Pipeline overview: screenshot, lightweight VLM, noisy element
+list, bipartite graph, GraphSAGE, corrected JSON.}
 \label{fig:pipeline}
 \end{figure}
 
@@ -250,7 +269,7 @@ G=(\mathcal{V},\mathcal{E}_{\text{edge}},\phi,\psi),
 where $\mathcal{V}=\mathcal{E}\cup\mathcal{C}$ is the node set, partitioned
 into element nodes $V_e$ ($|V_e|=N$) and constraint nodes $V_c$ ($|V_c|=M$);
 $\phi:\mathcal{V}\to\{0,1\}$ labels each node's partition; edges exist only
-between partitions --- an edge $(e_i,c_j)$ connects element $e_i$ to
+between partitions; an edge $(e_i,c_j)$ connects element $e_i$ to
 constraint $c_j$ iff $e_i\in S_j\cup T_j$; and $\psi$ weights each edge by
 the normalized distance between the element and the constraint's subspace.
 There are no element--element or constraint--constraint edges. Fig.~\ref{fig:arch}
@@ -301,7 +320,7 @@ A graph neural network propagates information along the edges. We use two
 alternating hops of GraphSAGE convolution \cite{hamilton2017sage}, which
 aggregates neighbouring features with a mean operation.
 
-\subsubsection{Hop 1 --- Element to Constraint}
+\subsubsection{Hop 1: Element to Constraint}
 Each constraint node collects information from the elements it involves:
 \begin{equation}
 \mathbf{h}_{c_j}^{(1)}=\sigma\!\left(\mathbf{W}_1\cdot
@@ -313,7 +332,7 @@ where $\mathbf{h}_{e_i}^{(0)}$ is the initial element feature vector and
 $\sigma$ is the ReLU activation. Intuitively, the constraint node now
 ``knows'' the aggregate state of the elements that share it.
 
-\subsubsection{Hop 2 --- Constraint to Element}
+\subsubsection{Hop 2: Constraint to Element}
 Each element node collects the updated constraint states back:
 \begin{equation}
 \mathbf{h}_{e_i}^{(2)}=\sigma\!\left(\mathbf{W}_2\cdot
@@ -322,7 +341,7 @@ Each element node collects the updated constraint states back:
 \label{eq:hop2}
 \end{equation}
 After this hop, every element's representation carries information from all
-elements that share a constraint with it --- its ``spatial neighbourhood.''
+elements that share a constraint with it, its ``spatial neighbourhood.''
 Elements that share no constraint never exchange messages, which keeps the
 inductive bias strong and computation local.
 
@@ -348,8 +367,8 @@ with default weights $w_c{=}1.0$, $w_v{=}0.5$, $w_e{=}0.5$, $w_p{=}0.5$.
 
 \subsubsection{Coordinate Correction}
 The first head predicts a per-element delta vector
-$\Delta\mathbf{x}_i=\operatorname{MLP}_{\text{coord}}(\mathbf{h}_{e_i}^{(2)})$
---- the amount by which the VLM's box should move --- optimized with a smooth
+$\Delta\mathbf{x}_i=\operatorname{MLP}_{\text{coord}}(\mathbf{h}_{e_i}^{(2)})$,
+the amount by which the VLM's box should move, optimized with a smooth
 L1 loss:
 \begin{equation}
 \mathcal{L}_{\text{coord}}=\frac{1}{N}\sum_{i=1}^{N}
@@ -373,7 +392,8 @@ containment looks like from the graph alone.
 
 \subsubsection{Existence Scoring}
 The third head scores whether each detected element is real or hallucinated,
-with $\hat{e}_i=\sigma(\operatorname{MLP}_{\text{exist}}(\mathbf{h}_{e_i}^{(2)}))$:
+predicting $\hat{e}_i$ with a binary classifier on the element embedding and
+training with binary cross-entropy:
 \begin{equation}
 \mathcal{L}_{\text{exist}}=-\frac{1}{N}\sum_{i=1}^{N}\bigl[
 e_i^*\log\hat{e}_i+(1-e_i^*)\log(1-\hat{e}_i)\bigr],
@@ -383,7 +403,7 @@ where $e_i^*$ is the ground-truth existence label. Downstream, this score can
 filter false positives or rank elements by reliability.
 
 \subsubsection{Element Completion}
-The fourth head --- the one that addresses the omission problem --- proposes
+The fourth head, the one that addresses the omission problem, proposes
 \emph{missing} elements. During training, we randomly drop a fraction
 $\rho\in[0.2,0.8]$ of the ground-truth elements. A constraint that referenced
 a dropped element now has a ``hole'' (a dangling edge), which is exactly the
@@ -400,7 +420,7 @@ missing element's box and type from the aggregated constraint embedding:
 \end{equation}
 where $K$ is the number of violated constraints with a missing target and
 $\mathcal{L}_{\text{IoU}}$ is the IoU-based box loss. Note that the training
-signal is derived purely by masking ground-truth layouts --- the completion
+signal is derived purely by masking ground-truth layouts; the completion
 head is \emph{self-supervised}: it needs no additional human annotation.
 
 \section{Experiments and Results}
@@ -502,40 +522,46 @@ large proposal-quality gain, which matters for completion.
   % scale: 1.0 = 4cm, y = value*4
   \def\sc{4}
   \begin{scope}[shift={(0,0)}]
-    \node[font=\footnotesize] at (2.4,4.35) {Violation head};
+    \node[font=\footnotesize] at (2.4,4.5) {Violation head};
     % joint
     \fill[blue!60] (0.6,0) rectangle (1.6,{0.876*\sc});
-    \node[font=\scriptsize] at (1.1,{0.876*\sc+0.12}) {0.876};
+    \node[font=\scriptsize] at (1.1,{0.876*\sc+0.15}) {0.876};
     % violation-only
     \fill[blue!60] (2.0,0) rectangle (3.0,{0.898*\sc});
-    \node[font=\scriptsize] at (2.5,{0.898*\sc+0.12}) {0.898};
+    \node[font=\scriptsize] at (2.5,{0.898*\sc+0.15}) {0.898};
     % proposal-only
     \fill[blue!60] (3.4,0) rectangle (4.4,{0.489*\sc});
-    \node[font=\scriptsize] at (3.9,{0.489*\sc+0.12}) {0.489};
+    \node[font=\scriptsize] at (3.9,{0.489*\sc+0.15}) {0.489};
     % error bars (std: 0.019, 0.018, 0.071)
     \draw (1.1,{0.876*\sc+0.05}) -- (1.1,{0.876*\sc+0.05+0.019*\sc});
     \draw (2.5,{0.898*\sc+0.05}) -- (2.5,{0.898*\sc+0.05+0.018*\sc});
     \draw (3.9,{0.489*\sc+0.05}) -- (3.9,{0.489*\sc+0.05+0.071*\sc});
-    \draw[thick,-{Stealth}] (0,-0.15) -- (0,3.9);
+    \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
-    \node[font=\scriptsize, align=center] at (2.5,-0.55) {joint\\violation-only\\proposal-only};
+    \node[font=\scriptsize] at (1.1,-0.5) {joint};
+    \node[font=\scriptsize] at (2.5,-0.5) {violation-only};
+    \node[font=\scriptsize] at (3.9,-0.5) {proposal-only};
   \end{scope}
   % Right panel: proposal MSE (joint 0.051, vio-only 0.116, prop-only 0.051)
+  % MSE scale: 1.0 = 30cm, y = value*30 (0.116 -> 3.48cm, matches left panel)
+  \def\scm{30}
   \begin{scope}[shift={(6.6,0)}]
-    \node[font=\footnotesize] at (2.4,4.35) {Proposal head};
-    \fill[blue!60] (0.6,0) rectangle (1.6,{0.051*\sc*3});
-    \node[font=\scriptsize] at (1.1,{0.051*\sc*3+0.12}) {0.051};
-    \fill[blue!60] (2.0,0) rectangle (3.0,{0.116*\sc*3});
-    \node[font=\scriptsize] at (2.5,{0.116*\sc*3+0.12}) {0.116};
-    \fill[blue!60] (3.4,0) rectangle (4.4,{0.051*\sc*3});
-    \node[font=\scriptsize] at (3.9,{0.051*\sc*3+0.12}) {0.051};
-    % error bars (std: 0.009, 0.009, 0.010) *3
-    \draw (1.1,{0.051*\sc*3+0.05}) -- (1.1,{0.051*\sc*3+0.05+0.009*\sc*3});
-    \draw (2.5,{0.116*\sc*3+0.05}) -- (2.5,{0.116*\sc*3+0.05+0.009*\sc*3});
-    \draw (3.9,{0.051*\sc*3+0.05}) -- (3.9,{0.051*\sc*3+0.05+0.010*\sc*3});
-    \draw[thick,-{Stealth}] (0,-0.15) -- (0,3.9);
+    \node[font=\footnotesize] at (2.4,4.5) {Proposal head};
+    \fill[blue!60] (0.6,0) rectangle (1.6,{0.051*\scm});
+    \node[font=\scriptsize] at (1.1,{0.051*\scm+0.15}) {0.051};
+    \fill[blue!60] (2.0,0) rectangle (3.0,{0.116*\scm});
+    \node[font=\scriptsize] at (2.5,{0.116*\scm+0.15}) {0.116};
+    \fill[blue!60] (3.4,0) rectangle (4.4,{0.051*\scm});
+    \node[font=\scriptsize] at (3.9,{0.051*\scm+0.15}) {0.051};
+    % error bars (std: 0.009, 0.009, 0.010) *30
+    \draw (1.1,{0.051*\scm+0.05}) -- (1.1,{0.051*\scm+0.05+0.009*\scm});
+    \draw (2.5,{0.116*\scm+0.05}) -- (2.5,{0.116*\scm+0.05+0.009*\scm});
+    \draw (3.9,{0.051*\scm+0.05}) -- (3.9,{0.051*\scm+0.05+0.010*\scm});
+    \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
-    \node[font=\scriptsize, align=center] at (2.5,-0.55) {joint\\violation-only\\proposal-only};
+    \node[font=\scriptsize] at (1.1,-0.5) {joint};
+    \node[font=\scriptsize] at (2.5,-0.5) {violation-only};
+    \node[font=\scriptsize] at (3.9,-0.5) {proposal-only};
   \end{scope}
 \end{tikzpicture}
 \caption{Training-objective ablation over 5 seeds (mean $\pm$ std): joint
@@ -565,11 +591,11 @@ simple interpolation.
   % drop 0.8: GNN 0.097+/-0.047, NN 0.062+/-0.012
   % x positions: group i center at 1+2i, bars at center-0.3 and center+0.3
   \begin{scope}
-    % legend
-    \fill[blue!60] (7.6,5.3) rectangle (8.0,5.55);
-    \node[anchor=west, font=\scriptsize] at (8.05,5.42) {GNN (ours)};
-    \fill[gray!60] (9.6,5.3) rectangle (10.0,5.55);
-    \node[anchor=west, font=\scriptsize] at (10.05,5.42) {NN baseline};
+    % legend (top center, above axis)
+    \fill[blue!60] (2.4,5.3) rectangle (2.8,5.55);
+    \node[anchor=west, font=\scriptsize] at (2.85,5.42) {GNN (ours)};
+    \fill[gray!60] (4.9,5.3) rectangle (5.3,5.55);
+    \node[anchor=west, font=\scriptsize] at (5.35,5.42) {NN baseline};
     % group 1: drop 0.2
     \fill[blue!60] (0.7,0) rectangle (1.3,{0.047*\sc});
     \draw (1.0,{0.047*\sc+0.04}) -- (1.0,{0.047*\sc+0.04+0.009*\sc});
@@ -681,7 +707,7 @@ Recall and F1 improve while precision also rises slightly.}
 The corrected pipeline recovers 106 previously missed elements ($+106$ TP,
 $+2.2$pp recall) at a cost of 84 additional false positives, improving F1 by
 2.0 points. Precision also improves slightly ($+1.1$pp), unlike earlier
-results reported with incorrectly loaded checkpoints --- a subtle but
+results reported with incorrectly loaded checkpoints, a subtle but
 important evaluation pitfall. An earlier evaluation loaded a checkpoint with
 mismatched hidden dimensions under non-strict weight loading, silently
 dropping 89\% of the weights and producing a spurious $+2.9$pp F1 gain from
@@ -700,7 +726,7 @@ minutes on CPU.
 \subsection{When Does Structural Reasoning Help?}
 The experiments reveal a clear pattern: structural reasoning helps most when
 the VLM output is \emph{sparse} (many elements missing) and less when the VLM
-is already accurate. This is the expected ``Goldilocks'' behaviour --- the
+is already accurate. This is the expected ``Goldilocks'' behaviour: the
 graph has real information to exploit when elements are missing, and nothing
 to correct when the VLM is already near-perfect. For lightweight VLMs on
 realistic screenshots (which omit 10--30\% of elements), the regime where the
@@ -709,7 +735,7 @@ model helps is the regime that matters.
 \subsection{Limitations}
 Three limitations stand out. First, \emph{type prediction is weak}: predicting
 an element's semantic type from constraint context alone caps at 62\%
-accuracy --- constraints carry spatial but not semantic information. Second,
+accuracy; constraints carry spatial but not semantic information. Second,
 \emph{domain transfer is limited}: the confidence model's AUROC drops from
 0.703 on RICO to 0.554 on ScreenSpot, indicating that false-positive patterns
 learned on mobile screens do not fully transfer to mixed mobile/PC/web
@@ -735,7 +761,7 @@ achieves 90--94\% violation accuracy, a $+56\%$ IoU gain over nearest-neighbour
 completion at high drop ratios, and a $+2.0$pp F1 improvement on 200 real
 Qwen3-VL Flash screenshots with honest checkpoint loading. The framework is
 model-agnostic, adds sub-millisecond inference, and directly addresses the
-dominant failure mode of lightweight VLMs --- element omission --- without
+dominant failure mode of lightweight VLMs (element omission) without
 retraining them.
 
 \section*{Acknowledgment}
@@ -743,7 +769,7 @@ The author thanks Prof.\ Wing Cheong Lau for supervision and guidance
 throughout the internship, and the CUHK Information Engineering Department
 for support.
 
-\bibliographystyle{IEEEtran}
+\bibliographystyle{plainnat}
 \bibliography{references}
 
 \end{document}
