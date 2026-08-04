@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ⬜ → P12 ⬜ → P13 ⬜ → P14 ✅ → P15 ⬜**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ⬜ → P13 ⬜ → P14 ✅ → P15 ⬜**
 
 ---
 
@@ -552,17 +552,20 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 
 ---
 
-## Phase 11: Web Demo ⬜ [优先级 1] (开发文档 ✅)
+## Phase 11: Web Demo ✅ [优先级 1]
 
 **Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
+**实现:** 轻量单进程 FastAPI + 原生 JS SPA（无 Docker/MySQL）。策略: `docs/development/web_demo_strategy.md`; 审查: `docs/development/demo_review_plan.md`; 使用: `docs/development/web_demo.md`。
 
-| # | Item | Status |
-|---|------|--------|
-|| 11.0 | 开发文档 → [`docs/development/web_demo.md`](docs/development/web_demo.md) | ✅ |
-|| 11.1 | FastAPI 后端 | ⬜ |
-|| 11.2 | 前端: 上传区 + Canvas bbox overlay | ⬜ |
-|| 11.3 | 测试与文档 | ⬜ |
-|| 11.4 | 部署: Dockerfile | ⬜ |
+|| # | Item | Status |
+||---|------|--------|
+|| 11.0 | 开发文档 → `docs/development/web_demo.md` + strategy + review | ✅ |
+|| 11.1 | FastAPI 后端 (`api/main.py` + `api/pipeline.py`)，joint checkpoint 44/44 keys shape-filter 加载 | ✅ |
+|| 11.2 | 前端 (`web/index.html` 1151 行)：双栏 Canvas + 案例导航 + 指标卡 + 上传模式 | ✅ |
+|| 11.3 | 预计算 hero cases (`scripts/prepare_demo_cases.py` → `demo_data/cases.json` 12 案例) | ✅ |
+|| 11.4 | 端到端验证：health/cases/case/screenshot/predict 全部 200，942 tests 通过 | ✅ |
+
+**重要更正:** 原 `experiments/eval_real_vlm_pipeline.py` 用 hd=128 加载 hd=16 checkpoint（strict=False 丢弃 89% 权重）→ 文档中记录的 +2.9pp F1 为随机权重假象。正确加载 joint 模型后全量 200 图 F1 +1pp；精选案例 ΔF1 +0.15~0.26（10027: +0.156, 10043: +0.260）。
 
 ---
 
