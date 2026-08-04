@@ -1,369 +1,1462 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GUI-GNN Demo</title>
+<title>GUI Structural Correction Demo</title>
 <style>
+  /* ============================ 基础 ============================ */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; color: #2c3e50; min-height: 100vh; padding: 20px; }
-  .app { max-width: 1200px; margin: 0 auto; }
-  h1 { font-size: 1.4em; margin-bottom: 16px; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
-  h1 small { font-size: 0.55em; color: #888; font-weight: normal; }
+  :root {
+    --bg: #1a1a2e;
+    --bg2: #16213e;
+    --bg3: #10101f;
+    --border: rgba(148, 163, 255, 0.12);
+    --text: #e8eaf6;
+    --muted: #8f97b3;
+    --accent: #5b8cff;
+    --red: #ff5d6c;
+    --blue: #4cc9f0;
+    --green: #3ddc97;
+    --amber: #ffd166;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .app {
+    width: 100%;
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: 22px 26px 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 
-  /* Config bar */
-  .config { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .config label { font-size: 0.85em; color: #666; }
-  .config select, .config input { padding: 6px 10px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 0.85em; background: #fafafa; }
-  .config .note { font-size: 0.78em; color: #999; margin-left: 4px; }
+  /* ============================ 头部 ============================ */
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    background: linear-gradient(90deg, #ffffff 0%, #9db4ff 60%, #4cc9f0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header .subtitle { font-size: 13px; color: var(--muted); }
 
-  /* Upload area */
-  .upload-zone { border: 2px dashed #c0c5ce; border-radius: 12px; padding: 40px; text-align: center; background: #fff; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 16px; }
-  .upload-zone.dragover { border-color: #3498db; background: #ebf5ff; }
-  .upload-zone.has-image { padding: 12px; }
-  .upload-zone .icon { font-size: 2em; color: #b0b8c4; margin-bottom: 8px; }
-  .upload-zone .text { font-size: 0.9em; color: #888; }
-  .upload-zone.has-image .icon, .upload-zone.has-image .text { display: none; }
-  .upload-zone img { max-width: 100%; max-height: 300px; border-radius: 6px; display: block; margin: 0 auto; }
+  /* ============================ 主布局 ============================ */
+  .layout {
+    display: grid;
+    grid-template-columns: 264px 1fr;
+    gap: 16px;
+    flex: 1;
+    min-height: 0;
+  }
 
-  /* Action bar */
-  .action-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
-  .action-bar .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 0.95em; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-  .action-bar .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-primary { background: #2c3e50; color: #fff; }
-  .btn-primary:hover:not(:disabled) { background: #1a252f; }
-  .btn-secondary { background: #e8eaef; color: #555; }
-  .btn-secondary:hover:not(:disabled) { background: #d0d5dd; }
+  /* ============================ 侧边栏 ============================ */
+  .sidebar {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+  .side-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .nav-row { display: flex; gap: 8px; align-items: center; }
+  .nav-btn {
+    flex: 1;
+    padding: 8px 0;
+    background: rgba(91, 140, 255, 0.12);
+    color: var(--text);
+    border: 1px solid rgba(91, 140, 255, 0.35);
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .nav-btn:hover:not(:disabled) { background: rgba(91, 140, 255, 0.25); }
+  .nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .nav-counter { font-size: 12px; color: var(--muted); text-align: center; }
 
-  /* Loading */
-  .loader { display: none; align-items: center; gap: 12px; padding: 16px 20px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; }
-  .loader.visible { display: flex; }
-  .spinner { width: 20px; height: 20px; border: 3px solid #e0e0e0; border-top-color: #3498db; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .case-list {
+    list-style: none;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148,163,255,0.25) transparent;
+  }
+  .case-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 11px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .case-item:hover { background: rgba(255,255,255,0.07); }
+  .case-item.active {
+    background: rgba(91, 140, 255, 0.16);
+    border-color: rgba(91, 140, 255, 0.55);
+  }
+  .case-item .case-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .badge.pos { background: rgba(61, 220, 151, 0.15); color: var(--green); }
+  .badge.neg { background: rgba(255, 93, 108, 0.15); color: var(--red); }
+  .badge.flat { background: rgba(143, 151, 179, 0.15); color: var(--muted); }
+
+  .upload-btn {
+    width: 100%;
+    padding: 11px;
+    background: linear-gradient(135deg, #5b8cff 0%, #4cc9f0 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .upload-btn:hover { filter: brightness(1.1); }
+  .upload-btn:active { transform: scale(0.98); }
+  .drop-hint { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+  /* ============================ 主区域 ============================ */
+  .main { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+
+  /* Tab 导航 */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 7px 16px;
+    border-radius: 9px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: flex; flex-direction: column; gap: 12px; }
+
+  /* 能力验证面板 */
+  .cap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+  }
+  .cap-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cap-card img { width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+  .cap-card .cap-title { font-size: 13px; font-weight: 600; }
+  .cap-card .cap-stats { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .cap-card .cap-stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .cap-note {
+    font-size: 12px;
+    color: var(--amber);
+    background: rgba(255, 200, 87, 0.08);
+    border: 1px solid rgba(255, 200, 87, 0.25);
+    border-radius: 10px;
+    padding: 10px 14px;
+    line-height: 1.7;
+  }
+  .cap-note.muted { color: var(--muted); background: var(--bg2); border-color: var(--border); }
+  .curve-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .curve-wrap canvas { width: 100%; height: 260px; display: block; }
+
+  .canvas-area {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    min-height: 0;
+  }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .panel-head .tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; }
+  .tag.red { background: rgba(255, 93, 108, 0.15); color: var(--red); }
+  .tag.blue { background: rgba(76, 201, 240, 0.15); color: var(--blue); }
+  .canvas-box {
+    background: var(--bg3);
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    height: min(62vh, 640px);
+    min-height: 320px;
+    padding: 10px;
+  }
+  .cv-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .cv-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  .canvas-box canvas { display: block; border-radius: 4px; box-shadow: 0 4px 18px rgba(0,0,0,0.35); }
+  /* 框层画布：深色底，与截图同尺寸 */
+  .canvas-box canvas.ov { background: #1c1f33; }
+
+  /* 加载遮罩 */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(16, 16, 31, 0.82);
+    border-radius: 14px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  .overlay.visible { display: flex; }
+  .spinner {
+    width: 34px; height: 34px;
+    border: 3px solid rgba(91,140,255,0.25);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loader .status { font-size: 0.9em; color: #666; }
+  .overlay .ov-text { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; }
 
-  /* Error */
-  .error { display: none; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #c0392b; font-size: 0.88em; margin-bottom: 16px; }
-  .error.visible { display: block; }
+  /* 图例 */
+  .legend {
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0 4px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend .item { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 15px; height: 15px; border-radius: 3px; display: inline-block; }
+  .sw.red { border: 2px solid var(--red); background: rgba(255,93,108,0.18); }
+  .sw.blue { border: 2px dashed var(--blue); background: rgba(76,201,240,0.10); }
+  .sw.green { border: 2px solid var(--green); background: rgba(61,220,151,0.12); }
 
-  /* Stats bar */
-  .stats { display: none; padding: 14px 18px; background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; font-size: 0.88em; }
-  .stats.visible { display: block; }
-  .stats-grid { display: flex; gap: 24px; flex-wrap: wrap; }
-  .stat-item { display: flex; flex-direction: column; }
-  .stat-value { font-size: 1.3em; font-weight: 700; }
-  .stat-label { font-size: 0.78em; color: #888; }
-  .stat-item.vlm .stat-value { color: #c0392b; }
-  .stat-item.gnn .stat-value { color: #2980b9; }
-  .stat-item.time .stat-value { color: #27ae60; }
+  /* 状态行 */
+  .status-line { font-size: 13px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; min-height: 18px; }
+  .status-line .case-title { color: var(--text); font-weight: 600; }
+  .status-line .recover { color: var(--green); font-weight: 600; }
+  .status-line .recover.down { color: var(--red); }
+  .status-line .back-link { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
 
-  /* JSON panels */
-  .json-panels { display: none; gap: 16px; grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
-  .json-panels.visible { display: grid; }
-  .json-pane { background: #1e1e2e; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
-  .json-pane-header { padding: 10px 14px; font-size: 0.85em; font-weight: 600; color: #cdd6f4; background: #181825; display: flex; justify-content: space-between; align-items: center; }
-  .json-pane-header .badge { font-size: 0.8em; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
-  .badge-red { background: #f38ba8; color: #1e1e2e; }
-  .badge-blue { background: #89b4fa; color: #1e1e2e; }
-  .json-pane pre { margin: 0; padding: 14px; overflow: auto; max-height: 500px; font-size: 0.78em; line-height: 1.45; color: #cdd6f4; tab-size: 2; }
-  .json-pane pre code { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; white-space: pre; }
+  /* ============================ 指标卡 ============================ */
+  .metrics-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px 16px;
+    display: flex;
+    gap: 26px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .metrics-card.hidden { display: none; }
+  .metrics-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  table.metrics { border-collapse: collapse; font-size: 13px; min-width: 340px; }
+  table.metrics th, table.metrics td { padding: 5px 14px 5px 0; text-align: right; font-variant-numeric: tabular-nums; }
+  table.metrics th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  table.metrics td { color: var(--text); }
+  table.metrics td:first-child { text-align: left; color: var(--muted); }
+  table.metrics tr.f1 td { font-weight: 700; border-top: 1px solid var(--border); }
+  table.metrics tr.f1 td:first-child { color: var(--text); }
+  .delta.up { color: var(--green); }
+  .delta.down { color: var(--red); }
+  .delta.flat { color: var(--muted); }
 
-  /* Footer */
-  .help-text { font-size: 0.82em; color: #999; text-align: center; margin-top: 20px; }
-  .help-text code { background: #eee; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .metrics-note { font-size: 12px; color: var(--muted); line-height: 1.7; max-width: 300px; }
+  .metrics-note .kv { display: flex; justify-content: space-between; gap: 10px; }
 
-  /* Responsive */
-  @media (max-width: 720px) {
-    .json-panels.visible { grid-template-columns: 1fr; }
-    .config { flex-direction: column; align-items: stretch; }
-    .stats-grid { gap: 16px; }
+  /* ============================ 错误条 ============================ */
+  .error-bar {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(92vw, 760px);
+    background: #3a1020;
+    border: 1px solid rgba(255, 93, 108, 0.5);
+    color: #ffb3bb;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+    z-index: 200;
+    display: none;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .error-bar.visible { display: block; }
+
+  /* 拖拽悬停反馈 */
+  body.drag-over::after {
+    content: '松开以上传截图';
+    position: fixed;
+    inset: 0;
+    background: rgba(91, 140, 255, 0.12);
+    border: 3px dashed var(--accent);
+    border-radius: 10px;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--accent);
+    pointer-events: none;
+  }
+
+  /* ============================ 页脚 ============================ */
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 8px 0 2px;
+    border-top: 1px solid var(--border);
+    line-height: 1.6;
+  }
+
+  /* ============================ 响应式 ============================ */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .case-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; min-height: auto; }
+    .case-item { flex: 0 0 auto; min-width: 150px; }
+    .canvas-area { grid-template-columns: 1fr; }
+    .canvas-box { height: min(42vh, 460px); }
   }
 </style>
 </head>
 <body>
 <div class="app">
-  <h1>🧪 GUI-GNN Demo <small>VLM → Graph → GNN → Corrected JSON</small></h1>
 
-  <!-- Config bar -->
-  <div class="config">
-    <label>VLM Model</label>
-    <select id="vlmModel">
-      <option value="qwen3-vl-flash" selected>Qwen3-VL Flash (fast)</option>
-      <option value="qwen3-vl-plus">Qwen3-VL Plus (accurate)</option>
-    </select>
-    <span class="note">VLM via <code>DASHSCOPE_API_KEY</code> env</span>
+  <header>
+    <h1>GUI Structural Correction Demo</h1>
+    <span class="subtitle">基于约束图的 GNN：把 VLM 漏检的元素找回来</span>
+  </header>
+
+  <div class="layout">
+    <!-- ================= 左侧边栏 ================= -->
+    <aside class="sidebar">
+      <div class="side-title">案例导航</div>
+      <div class="nav-row">
+        <button class="nav-btn" id="prevBtn" aria-label="上一个案例" title="上一个案例 (←)">◀</button>
+        <button class="nav-btn" id="nextBtn" aria-label="下一个案例" title="下一个案例 (→)">▶</button>
+      </div>
+      <div class="nav-counter" id="navCounter">—</div>
+      <ul class="case-list" id="caseList"></ul>
+      <button class="upload-btn" id="uploadBtn">⬆ 上传截图</button>
+      <div class="drop-hint">拖拽图片到页面任意位置即可上传<br>支持 JPEG / PNG，最大 10MB</div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </aside>
+
+    <!-- ================= 主区域 ================= -->
+    <main class="main">
+      <div class="tabs" id="tabs">
+        <button class="tab-btn active" data-tab="e2e">端到端案例</button>
+        <button class="tab-btn" data-tab="confidence">置信度打分</button>
+        <button class="tab-btn" data-tab="completion">结构补全</button>
+      </div>
+
+      <!-- Tab 1: 端到端精选案例 -->
+      <div class="tab-panel active" id="tab-e2e">
+        <div class="canvas-area" id="canvasArea">
+          <div class="panel">
+            <div class="panel-head">
+              <span>VLM 检测</span>
+              <span class="tag red">红色框</span>
+            </div>
+            <div class="canvas-box" id="boxLeft">
+              <div class="cv-col">
+                <div class="cv-label">截图</div>
+                <canvas id="canvasLeft" width="300" height="500"></canvas>
+              </div>
+              <div class="cv-col">
+                <div class="cv-label">检测框</div>
+                <canvas id="canvasLeftOv" class="ov" width="300" height="500"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <span>VLM + GNN</span>
+              <span class="tag blue">红框 + 蓝虚线提议</span>
+            </div>
+            <div class="canvas-box" id="boxRight">
+              <div class="cv-col">
+                <div class="cv-label">截图</div>
+                <canvas id="canvasRight" width="300" height="500"></canvas>
+              </div>
+              <div class="cv-col">
+                <div class="cv-label">检测框</div>
+                <canvas id="canvasRightOv" class="ov" width="300" height="500"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="overlay" id="overlay">
+            <div class="spinner"></div>
+            <div class="ov-text" id="overlayText">VLM 检测 + GNN 推理中…<br>通常需要 10–30 秒</div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="item"><span class="sw red"></span>VLM 检测</span>
+          <span class="item"><span class="sw blue"></span>GNN 提议</span>
+          <span class="item"><span class="sw green"></span>GT 匹配</span>
+        </div>
+
+        <div class="status-line" id="statusLine"></div>
+
+        <div class="metrics-card hidden" id="metricsCard">
+          <div>
+            <div class="metrics-title">Before / After 指标对比</div>
+            <table class="metrics" id="metricsTable">
+              <thead><tr><th>指标</th><th>Before</th><th>After</th><th>Δ</th></tr></thead>
+              <tbody id="metricsBody"></tbody>
+            </table>
+          </div>
+          <div class="metrics-note" id="metricsNote"></div>
+        </div>
+      </div>
+
+      <!-- Tab 2: 置信度打分（合成条件能力验证） -->
+      <div class="tab-panel" id="tab-confidence">
+        <div class="cap-note">
+          <b>实验条件：</b>在 RICO 真值元素中混入随机 imposter 框（imposter ratio 0.5），
+          让 GNN 仅凭<b>空间结构上下文</b>判断每个框是真实元素还是杂音。
+          蓝框 = 真实元素，红框 = 随机混入的假元素，数字 = 模型打分。
+          此任务在<b>合成条件</b>下验证（随机 imposter 结构上与真实元素明显不同）。
+        </div>
+        <div class="cap-grid" id="confGrid"><!-- 动态填充 --></div>
+        <div class="cap-note muted" id="confRealNote"></div>
+      </div>
+
+      <!-- Tab 3: 结构补全（合成条件能力验证） -->
+      <div class="tab-panel" id="tab-completion">
+        <div class="cap-note">
+          <b>实验条件：</b>随机丢弃 GT 布局中 20%~80% 的元素，让 GNN 检测约束图中的
+          "结构空洞"并提议缺失元素的位置（自监督，无需额外标注）。
+          对比基线：把最近邻存活元素的框复制为提议（NN baseline）。
+        </div>
+        <div class="curve-wrap">
+          <div class="metrics-title">GNN vs NN baseline — 提议 IoU（越高越好）</div>
+          <canvas id="completionCurve" width="900" height="280"></canvas>
+        </div>
+        <div class="cap-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 4px;">
+          <div class="cap-card">
+            <div class="cap-title">GNN 有效条件</div>
+            <div class="cap-stats" id="compWinNote"></div>
+          </div>
+          <div class="cap-card">
+            <div class="cap-title">GNN 失效条件</div>
+            <div class="cap-stats" id="compLoseNote"></div>
+          </div>
+        </div>
+        <div class="cap-note muted" id="compRealNote"></div>
+      </div>
+    </main>
   </div>
 
-  <!-- Upload zone -->
-  <div class="upload-zone" id="uploadZone">
-    <div class="icon">📁</div>
-    <div class="text">Drop screenshot here, or click to select</div>
-    <input type="file" id="fileInput" accept="image/*" hidden>
-  </div>
-
-  <!-- Action bar -->
-  <div class="action-bar">
-    <button class="btn btn-primary" id="runBtn" disabled>▶ Run Pipeline</button>
-    <button class="btn btn-secondary" id="clearBtn" style="display:none">✕ Clear</button>
-    <span style="font-size:0.82em;color:#999" id="fileLabel"></span>
-  </div>
-
-  <!-- Loader -->
-  <div class="loader" id="loader">
-    <div class="spinner"></div>
-    <span class="status" id="loaderStatus">Running VLM detection...</span>
-  </div>
-
-  <!-- Error -->
-  <div class="error" id="error"></div>
-
-  <!-- Stats -->
-  <div class="stats" id="stats">
-    <div class="stats-grid">
-      <div class="stat-item vlm">
-        <span class="stat-value" id="statVlmCount">0</span>
-        <span class="stat-label">VLM elements</span>
-      </div>
-      <div class="stat-item gnn">
-        <span class="stat-value" id="statGnnCon">0</span>
-        <span class="stat-label">constraints</span>
-      </div>
-      <div class="stat-item gnn">
-        <span class="stat-value" id="statGnnViol">0</span>
-        <span class="stat-label">violations</span>
-      </div>
-      <div class="stat-item gnn">
-        <span class="stat-value" id="statGnnProp">0</span>
-        <span class="stat-label">proposals</span>
-      </div>
-      <div class="stat-item time">
-        <span class="stat-value" id="statVlmTime">—</span>
-        <span class="stat-label">VLM time</span>
-      </div>
-      <div class="stat-item time">
-        <span class="stat-value" id="statGnnTime">—</span>
-        <span class="stat-label">GNN time</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- JSON panels -->
-  <div class="json-panels" id="jsonPanels">
-    <div class="json-pane">
-      <div class="json-pane-header">
-        <span>VLM Detection (raw)</span>
-        <span class="badge badge-red" id="vlmCountBadge">0 elements</span>
-      </div>
-      <pre><code id="vlmJson"></code></pre>
-    </div>
-    <div class="json-pane">
-      <div class="json-pane-header">
-        <span>GNN Corrected</span>
-        <span class="badge badge-blue" id="gnnCountBadge">0 elements</span>
-      </div>
-      <pre><code id="correctedJson"></code></pre>
-    </div>
-  </div>
-
-  <div class="help-text">
-    Source: <a href="https://github.com/mrtsels/bipartite-gnn-gui" target="_blank">github.com/mrtsels/bipartite-gnn-gui</a>
-  </div>
+  <footer>
+    端到端：全量 200 图平均 F1 +1pp，精选案例展示最佳结果 · 能力验证：合成条件（随机 imposter / 随机 drop）
+  </footer>
 </div>
 
+<!-- 错误提示条（点击关闭） -->
+<div class="error-bar" id="errorBar"></div>
+
 <script>
+"use strict";
+/* =========================================================================
+ * GUI Structural Correction Demo — 单文件前端
+ * 双栏 Canvas 对比：左 = VLM 检测(红框 + 红X漏检)，右 = VLM+GNN(红框 + 蓝虚线提议 + 绿GT匹配)
+ * API 契约:
+ *   GET  /api/cases          -> [{id, name, metrics:{before:{...},after:{...}}}]
+ *   GET  /api/case/{id}      -> {id, name, screenshot, img_w, img_h, vlm_elements, proposals, metrics}
+ *   GET  /api/screenshot/{id}-> JPEG 图片
+ *   POST /api/predict        -> (multipart: file) {id:'upload', img_w, img_h, vlm_elements, proposals, metrics, vlm_time_ms, gnn_time_ms}
+ * ========================================================================= */
+
 // ---------------------------------------------------------------------------
-// State
+// 状态
 // ---------------------------------------------------------------------------
 const state = {
-  imageFile: null,
-  imageUrl: null,
-  vlmElements: null,
-  result: null,
-  loading: false,
+  cases: [],            // /api/cases 返回的摘要列表
+  currentIdx: 0,        // 当前案例索引
+  mode: 'cases',        // 'cases' | 'upload'
+  currentData: null,    // 当前渲染数据 (case 详情 或 upload 结果)
+  currentImage: null,   // 当前 Image 对象
+  currentReqId: 0,      // 竞态防护：每次 render 前 ++，过期响应直接丢弃
+  upload: null,         // { file, imgUrl, result }
+  loaded: false,        // 案例列表是否已加载
 };
 
-const API_BASE = window.location.origin;
+// ---------------------------------------------------------------------------
+// DOM 引用
+// ---------------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const caseList = $('caseList');
+const navCounter = $('navCounter');
+const prevBtn = $('prevBtn');
+const nextBtn = $('nextBtn');
+const uploadBtn = $('uploadBtn');
+const fileInput = $('fileInput');
+const canvasLeft = $('canvasLeft');
+const canvasRight = $('canvasRight');
+const canvasLeftOv = $('canvasLeftOv');
+const canvasRightOv = $('canvasRightOv');
+const boxLeft = $('boxLeft');
+const boxRight = $('boxRight');
+const overlay = $('overlay');
+const overlayText = $('overlayText');
+const statusLine = $('statusLine');
+const metricsCard = $('metricsCard');
+const metricsBody = $('metricsBody');
+const metricsNote = $('metricsNote');
+const errorBar = $('errorBar');
+
+let ctxLeft = canvasLeft.getContext('2d');
+let ctxRight = canvasRight.getContext('2d');
+let ctxLeftOv = canvasLeftOv.getContext('2d');
+let ctxRightOv = canvasRightOv.getContext('2d');
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
 
 // ---------------------------------------------------------------------------
-// DOM refs
+// 工具函数
 // ---------------------------------------------------------------------------
-const uploadZone = document.getElementById('uploadZone');
-const fileInput = document.getElementById('fileInput');
-const runBtn = document.getElementById('runBtn');
-const clearBtn = document.getElementById('clearBtn');
-const fileLabel = document.getElementById('fileLabel');
-const loader = document.getElementById('loader');
-const loaderStatus = document.getElementById('loaderStatus');
-const error = document.getElementById('error');
-const stats = document.getElementById('stats');
-const jsonPanels = document.getElementById('jsonPanels');
-const vlmJson = document.getElementById('vlmJson');
-const correctedJson = document.getElementById('correctedJson');
-const vlmCountBadge = document.getElementById('vlmCountBadge');
-const gnnCountBadge = document.getElementById('gnnCountBadge');
-const statVlmCount = document.getElementById('statVlmCount');
-const statGnnCon = document.getElementById('statGnnCon');
-const statGnnViol = document.getElementById('statGnnViol');
-const statGnnProp = document.getElementById('statGnnProp');
-const statVlmTime = document.getElementById('statVlmTime');
-const statGnnTime = document.getElementById('statGnnTime');
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function fmt3(n) {
+  const v = Number(n);
+  return (n == null || !isFinite(v)) ? '—' : v.toFixed(3);
+}
+
+function fmtInt(n) {
+  const v = Number(n);
+  return (n == null || !isFinite(v)) ? '—' : String(Math.round(v));
+}
+
+function signed(v, decimals) {
+  if (v == null || !isFinite(Number(v))) return '—';
+  const s = decimals ? Number(v).toFixed(decimals) : String(Math.round(Number(v)));
+  return (v > 0 ? '+' : '') + s;
+}
+
+function deltaClass(d, goodWhenUp) {
+  const eps = 0.0005;
+  if (d > eps) return goodWhenUp ? 'up' : 'down';
+  if (d < -eps) return goodWhenUp ? 'down' : 'up';
+  return 'flat';
+}
+
+function caseDeltaF1(c) {
+  const b = c && c.metrics && c.metrics.before && c.metrics.before.f1;
+  const a = c && c.metrics && c.metrics.after && c.metrics.after.f1;
+  if (b == null || a == null) return null;
+  return Number(a) - Number(b);
+}
+
+// 错误条（fetch 失败等均走这里，绝不白屏）
+let errorTimer = null;
+function showError(msg) {
+  errorBar.textContent = msg;
+  errorBar.classList.add('visible');
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => errorBar.classList.remove('visible'), 9000);
+}
+function hideError() {
+  errorBar.classList.remove('visible');
+  errorBar.textContent = '';
+  clearTimeout(errorTimer);
+}
+errorBar.addEventListener('click', hideError);
+
+function showLoading(text) {
+  overlayText.innerHTML = text || '处理中…';
+  overlay.classList.add('visible');
+}
+function hideLoading() { overlay.classList.remove('visible'); }
 
 // ---------------------------------------------------------------------------
-// Upload zone handlers
+// Canvas 尺寸与 Retina 适配
+//   canvas.width = displayW * dpr, ctx.setTransform(dpr,...) 后所有坐标用 CSS 像素
 // ---------------------------------------------------------------------------
-uploadZone.addEventListener('click', () => fileInput.click());
-uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+function setupCanvas(canvas, cssW, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(cssW * dpr));
+  canvas.height = Math.max(1, Math.round(cssH * dpr));
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
 
-function handleFile(file) {
-  if (!file.type.startsWith('image/')) return;
-  state.imageFile = file;
-  fileLabel.textContent = file.name;
+// 把两个面板的截图+框层 canvas 统一为「截图按 contain 适配」的尺寸
+function sizeCanvases() {
+  const img = state.currentImage;
+  if (!img) return;
+  const box = boxLeft;
+  const boxW = box.clientWidth || 300;
+  const boxH = box.clientHeight || 400;
+  const iw = (state.currentData && state.currentData.img_w) || img.naturalWidth || boxW;
+  const ih = (state.currentData && state.currentData.img_h) || img.naturalHeight || boxH;
+  const scale = Math.min(boxW / iw, boxH / ih);
+  const cssW = Math.max(1, Math.floor(iw * scale));
+  const cssH = Math.max(1, Math.floor(ih * scale));
+  ctxLeft = setupCanvas(canvasLeft, cssW, cssH);
+  ctxRight = setupCanvas(canvasRight, cssW, cssH);
+  ctxLeftOv = setupCanvas(canvasLeftOv, cssW, cssH);
+  ctxRightOv = setupCanvas(canvasRightOv, cssW, cssH);
+}
 
-  if (state.imageUrl) URL.revokeObjectURL(state.imageUrl);
-  state.imageUrl = URL.createObjectURL(file);
-  uploadZone.classList.add('has-image');
+// 归一化 bbox -> canvas 像素的变换（保持宽高比，居中，带 offset）
+function getTransform() {
+  const img = state.currentImage;
+  const cw = canvasLeft.clientWidth || 300;
+  const ch = canvasLeft.clientHeight || 400;
+  if (!img) return null;
+  const iw = (state.currentData && state.currentData.img_w) || img.naturalWidth || cw;
+  const ih = (state.currentData && state.currentData.img_h) || img.naturalHeight || ch;
+  const scale = Math.min(cw / iw, ch / ih);
+  return {
+    drawW: iw * scale,
+    drawH: ih * scale,
+    offX: (cw - iw * scale) / 2,
+    offY: (ch - ih * scale) / 2,
+    imgW: iw,
+    imgH: ih,
+  };
+}
 
-  const oldImg = uploadZone.querySelector('img');
-  if (oldImg) oldImg.remove();
-
-  const img = document.createElement('img');
-  img.src = state.imageUrl;
-  img.alt = file.name;
-  uploadZone.appendChild(img);
-
-  runBtn.disabled = false;
-  clearBtn.style.display = 'inline-block';
-  hideResults();
-  hideError();
+// bbox: [x1,y1,x2,y2] 归一化 0-1 -> {x,y,w,h} (canvas CSS 像素)。无效框返回 null。
+function mapBBox(bbox, T) {
+  if (!Array.isArray(bbox) || bbox.length < 4) return null;
+  const nums = bbox.slice(0, 4).map(Number);
+  if (nums.some((v) => !isFinite(v))) return null;
+  let [x1, y1, x2, y2] = nums;
+  // 防御：若后端误传像素坐标，归一化后再映射
+  if (Math.max(x1, y1, x2, y2) > 1.5) {
+    x1 /= T.imgW; y1 /= T.imgH; x2 /= T.imgW; y2 /= T.imgH;
+  }
+  const x = x1 * T.drawW + T.offX;
+  const y = y1 * T.drawH + T.offY;
+  const w = (x2 - x1) * T.drawW;
+  const h = (y2 - y1) * T.drawH;
+  if (w <= 0.5 || h <= 0.5) return null;
+  return { x: x, y: y, w: w, h: h };
 }
 
 // ---------------------------------------------------------------------------
-// Clear
+// 绘制
 // ---------------------------------------------------------------------------
-clearBtn.addEventListener('click', () => {
-  state.imageFile = null;
-  if (state.imageUrl) URL.revokeObjectURL(state.imageUrl);
-  state.imageUrl = null;
-  state.result = null;
-  uploadZone.classList.remove('has-image');
-  const img = uploadZone.querySelector('img');
-  if (img) img.remove();
-  fileLabel.textContent = '';
-  runBtn.disabled = true;
-  clearBtn.style.display = 'none';
-  hideResults();
-  hideError();
+function clearCanvas(ctx) {
+  ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
+}
+
+function drawImageFit(ctx, img, T) {
+  if (!img) return;
+  try {
+    ctx.drawImage(img, T.offX, T.offY, T.drawW, T.drawH);
+  } catch (e) {
+    // 图片解码失败等极端情况：不崩溃，画纯色底
+    ctx.fillStyle = '#10101f';
+    ctx.fillRect(T.offX, T.offY, T.drawW, T.drawH);
+  }
+}
+
+function drawOverlayText(ctx, lines, color) {
+  const cw = ctx.canvas.clientWidth;
+  const ch = ctx.canvas.clientHeight;
+  ctx.save();
+  ctx.fillStyle = color || 'rgba(143,151,179,0.95)';
+  ctx.font = '14px -apple-system, "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  lines.forEach((ln, i) => ctx.fillText(ln, cw / 2, ch / 2 + i * 22));
+  ctx.restore();
+}
+
+// 在 bbox 左上角画小标签
+function drawLabel(ctx, r, text, color) {
+  if (!text) return;
+  if (r.w < 48 || r.h < 12) return; // 框太小不画，避免糊成一片
+  ctx.save();
+  ctx.font = '10px -apple-system, "PingFang SC", sans-serif';
+  const tw = ctx.measureText(text).width;
+  const bx = clamp(r.x, 0, ctx.canvas.clientWidth - tw - 8);
+  const by = Math.max(0, r.y - 15);
+  ctx.fillStyle = color;
+  ctx.fillRect(bx, by, tw + 8, 14);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, bx + 4, by + 7);
+  ctx.restore();
+}
+
+// score 标签：画在 bbox 右下角（不受 drawLabel 最小高度限制）
+function drawScoreLabel(ctx, r, text) {
+  if (!text) return;
+  ctx.save();
+  ctx.font = '10px -apple-system, "PingFang SC", sans-serif';
+  const tw = ctx.measureText(text).width;
+  const bx = clamp(r.x + r.w - tw - 8, 0, Math.max(0, ctx.canvas.clientWidth - tw - 8));
+  const by = Math.min(ctx.canvas.clientHeight - 14, r.y + r.h + 2);
+  ctx.fillStyle = 'rgba(76,201,240,0.85)';
+  ctx.fillRect(bx, by, tw + 8, 14);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, bx + 4, by + 7);
+  ctx.restore();
+}
+
+// 红 X 漏检标记：画在 GT/漏检框中心
+function drawMissX(ctx, cx, cy) {
+  const s = 6;
+  ctx.save();
+  ctx.strokeStyle = '#ff1744';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx + s, cy + s);
+  ctx.moveTo(cx - s, cy + s); ctx.lineTo(cx + s, cy - s);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// 漏检框来源（防御性读取，后端补充这些字段后自动生效）：
+//   1) data.missed       — 漏检 bbox 数组
+//   2) data.gt_elements  — GT 框，凡中心未被任何 VLM 框覆盖者视为漏检
+function getMissedBoxes(data) {
+  if (Array.isArray(data.missed)) return data.missed;
+  if (Array.isArray(data.gt_elements) && data.gt_elements.length) {
+    const vlm = (data.vlm_elements || []).map((e) => e.bbox).filter(Boolean);
+    return data.gt_elements.filter((g) => {
+      const b = g.bbox || g;
+      if (!Array.isArray(b) || b.length < 4) return false;
+      const cx = (Number(b[0]) + Number(b[2])) / 2;
+      const cy = (Number(b[1]) + Number(b[3])) / 2;
+      return !vlm.some((vb) => cx >= vb[0] && cx <= vb[2] && cy >= vb[1] && cy <= vb[3]);
+    }).map((g) => g.bbox || g);
+  }
+  return [];
+}
+
+// 绿色 GT 匹配框来源（后端补充后自动生效）：
+//   1) data.gt_matches   — 匹配 GT bbox 数组
+//   2) proposals 中带 matched/tp/is_tp 标志者
+function getMatchedBoxes(data) {
+  if (Array.isArray(data.gt_matches)) return data.gt_matches;
+  const out = [];
+  (data.proposals || []).forEach((p) => {
+    if (p && (p.matched === true || p.tp === true || p.is_tp === true)) out.push(p.bbox);
+  });
+  return out;
+}
+
+function drawLeft() {
+  const data = state.currentData;
+  const T = getTransform();
+  if (!T) return;
+
+  // 左截图 canvas：只画干净截图
+  clearCanvas(ctxLeft);
+  drawImageFit(ctxLeft, state.currentImage, T);
+
+  // 左框层 canvas：深色底 + VLM 红框 + 红 X
+  const ctx = ctxLeftOv;
+  clearCanvas(ctx);
+  ctx.fillStyle = '#1c1f33';
+  ctx.fillRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
+  if (!data) return;
+
+  const vlm = data.vlm_elements || [];
+  ctx.save();
+  ctx.strokeStyle = '#ff5252';
+  ctx.lineWidth = 2;
+  vlm.forEach((el) => {
+    const r = mapBBox(el.bbox, T);
+    if (!r) return;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    drawLabel(ctx, r, el.label, 'rgba(255,82,82,0.85)');
+  });
+  ctx.restore();
+
+  // 红 X：漏检标记
+  const missed = getMissedBoxes(data);
+  missed.forEach((b) => {
+    const r = mapBBox(b, T);
+    if (!r) return;
+    drawMissX(ctx, r.x + r.w / 2, r.y + r.h / 2);
+  });
+
+  // 空数据提示（不崩溃）：仅当数据里确实有 vlm_elements 键（真实结果）才提示，
+  // 上传预览阶段 currentData 无此键，跳过
+  const hasVlmKey = Array.isArray(data.vlm_elements);
+  if (hasVlmKey && !vlm.length) {
+    drawOverlayText(ctx, ['未检测到元素', '（元素过少，无法构建约束图）']);
+  } else if (hasVlmKey && !missed.length
+             && data.metrics && data.metrics.before && Number(data.metrics.before.fn) > 0) {
+    drawOverlayText(ctx, ['GT 数据缺失，漏检标记不可用'], 'rgba(143,151,179,0.65)');
+  }
+}
+
+function drawRight() {
+  const data = state.currentData;
+  const T = getTransform();
+  if (!T) return;
+
+  // 右截图 canvas：只画干净截图
+  clearCanvas(ctxRight);
+  drawImageFit(ctxRight, state.currentImage, T);
+
+  // 右框层 canvas：深色底 + 红框 + 绿框 + 蓝虚线
+  const ctx = ctxRightOv;
+  clearCanvas(ctx);
+  ctx.fillStyle = '#1c1f33';
+  ctx.fillRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
+  if (!data) return;
+
+  const vlm = data.vlm_elements || [];
+  const proposals = data.proposals || [];
+
+  // 红框：VLM 检测
+  ctx.save();
+  ctx.strokeStyle = '#ff5252';
+  ctx.lineWidth = 2;
+  vlm.forEach((el) => {
+    const r = mapBBox(el.bbox, T);
+    if (!r) return;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+  });
+  ctx.restore();
+
+  // 绿框：GT 匹配（matched 提议 / gt_matches）
+  const matched = getMatchedBoxes(data);
+  ctx.save();
+  ctx.strokeStyle = '#3ddc97';
+  ctx.lineWidth = 1.5;
+  matched.forEach((b) => {
+    const r = mapBBox(b, T);
+    if (!r) return;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+  });
+  ctx.restore();
+
+  // 蓝虚线：GNN 提议
+  const matchedSet = new Set(matched.map((b) => JSON.stringify(b)));
+  ctx.save();
+  ctx.strokeStyle = '#4cc9f0';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  proposals.forEach((p) => {
+    if (!p || !Array.isArray(p.bbox)) return;
+    if (matchedSet.has(JSON.stringify(p.bbox))) return; // 已用绿色表示
+    const r = mapBBox(p.bbox, T);
+    if (!r) return;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    if (p.violation_score != null && r.w >= 48) {
+      drawScoreLabel(ctx, r, 'score ' + Number(p.violation_score).toFixed(2));
+    }
+  });
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  if (Array.isArray(data.vlm_elements) && !vlm.length && !proposals.length) {
+    drawOverlayText(ctx, ['未检测到元素，GNN 无输入', '（元素过少，无法构建约束图）']);
+  } else if (Array.isArray(data.vlm_elements) && vlm.length && !proposals.length) {
+    drawOverlayText(ctx, ['GNN 无提议', '（元素过少或结构约束不足）']);
+  }
+}
+
+// 两栏同帧绘制
+function drawBoth() {
+  requestAnimationFrame(() => {
+    drawLeft();
+    drawRight();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 指标卡
+// ---------------------------------------------------------------------------
+const METRIC_ROWS = [
+  { key: 'detections', label: '检测数', int: true,  goodUp: true  },
+  { key: 'tp',         label: 'TP',     int: true,  goodUp: true  },
+  { key: 'fp',         label: 'FP',     int: true,  goodUp: false },
+  { key: 'fn',         label: 'FN',     int: true,  goodUp: false },
+  { key: 'precision',  label: 'Precision', int: false, goodUp: true },
+  { key: 'recall',     label: 'Recall',    int: false, goodUp: true },
+  { key: 'f1',         label: 'F1',         int: false, goodUp: true },
+];
+
+function renderMetrics(metrics, data) {
+  if (!metrics || !metrics.before || !metrics.after) {
+    metricsCard.classList.add('hidden');
+    return;
+  }
+  metricsCard.classList.remove('hidden');
+  const b = metrics.before;
+  const a = metrics.after;
+
+  metricsBody.innerHTML = METRIC_ROWS.map((row) => {
+    const bv = b[row.key], av = a[row.key];
+    const d = (bv == null || av == null) ? null : Number(av) - Number(bv);
+    const cls = d === null ? 'flat' : deltaClass(d, row.goodUp);
+    const dStr = d === null ? '—' : signed(d, row.int ? 0 : 3);
+    const fmt = row.int ? fmtInt : fmt3;
+    const isF1 = row.key === 'f1';
+    return '<tr' + (isF1 ? ' class="f1"' : '') + '>'
+      + '<td>' + row.label + '</td>'
+      + '<td>' + fmt(bv) + '</td>'
+      + '<td>' + fmt(av) + '</td>'
+      + '<td class="delta ' + cls + '">' + dStr + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // 补充说明
+  const noteEls = [];
+  const dTP = (b.tp == null || a.tp == null) ? null : Number(a.tp) - Number(b.tp);
+  if (dTP !== null && dTP > 0) {
+    noteEls.push('<div class="kv"><span>GNN 找回漏检元素</span><b class="delta up">+' + dTP + '</b></div>');
+  } else if (dTP !== null && dTP < 0) {
+    noteEls.push('<div class="kv"><span>有效检出</span><b class="delta down">' + dTP + '</b></div>');
+  }
+  if (data && (data.vlm_time_ms != null || data.gnn_time_ms != null)) {
+    const v = data.vlm_time_ms != null ? (Number(data.vlm_time_ms) / 1000).toFixed(1) + 's' : '—';
+    const g = data.gnn_time_ms != null ? Number(data.gnn_time_ms).toFixed(1) + 'ms' : '—';
+    noteEls.push('<div class="kv"><span>VLM 耗时</span><b>' + v + '</b></div>');
+    noteEls.push('<div class="kv"><span>GNN 耗时</span><b>' + g + '</b></div>');
+  }
+  if (data && data.fallback) {
+    noteEls.push('<div style="color:var(--amber);margin-top:6px">⚠ ' + String(data.fallback) + '</div>');
+  }
+  metricsNote.innerHTML = noteEls.join('');
+}
+
+// ---------------------------------------------------------------------------
+// 侧边栏
+// ---------------------------------------------------------------------------
+function updateSidebar() {
+  caseList.innerHTML = '';
+  if (!state.cases.length) {
+    const li = document.createElement('li');
+    li.textContent = state.loaded ? '暂无案例' : '加载中…';
+    li.style.cssText = 'color:var(--muted);font-size:12px;padding:6px 2px;';
+    caseList.appendChild(li);
+    return;
+  }
+  state.cases.forEach((c, i) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.className = 'case-item' + (i === state.currentIdx && state.mode === 'cases' ? ' active' : '');
+    btn.dataset.idx = String(i);
+
+    const name = document.createElement('span');
+    name.className = 'case-name';
+    name.textContent = (c.name || ('Case ' + c.id)).length > 24
+      ? (c.name || ('Case ' + c.id)).slice(0, 23) + '…'
+      : (c.name || ('Case ' + c.id));
+
+    const badge = document.createElement('span');
+    const d = caseDeltaF1(c);
+    if (d === null) {
+      badge.className = 'badge flat';
+      badge.textContent = '—';
+    } else {
+      badge.className = 'badge ' + (d > 0.0005 ? 'pos' : (d < -0.0005 ? 'neg' : 'flat'));
+      badge.textContent = signed(d, 3);
+    }
+    btn.appendChild(name);
+    btn.appendChild(badge);
+    li.appendChild(btn);
+    caseList.appendChild(li);
+  });
+}
+
+function updateNav() {
+  const n = state.cases.length;
+  navCounter.textContent = n ? ((state.currentIdx + 1) + ' / ' + n) : '—';
+  prevBtn.disabled = state.mode === 'cases' && state.currentIdx <= 0;
+  nextBtn.disabled = state.mode === 'cases' && state.currentIdx >= n - 1;
+}
+
+// 点击事件委托
+caseList.addEventListener('click', (e) => {
+  const btn = e.target.closest('.case-item');
+  if (!btn) return;
+  renderCase(Number(btn.dataset.idx));
 });
 
 // ---------------------------------------------------------------------------
-// Run pipeline
+// 案例模式
 // ---------------------------------------------------------------------------
-runBtn.addEventListener('click', runPipeline);
+async function loadCases() {
+  try {
+    const resp = await fetch('/api/cases');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
+    const data = await resp.json();
+    if (!Array.isArray(data)) throw new Error('返回格式错误：期望数组');
+    state.cases = data;
+    state.loaded = true;
+    updateSidebar();
+    updateNav();
+    if (data.length) {
+      renderCase(0);
+    } else {
+      statusLine.textContent = '暂无精选案例（后端未生成 cases.json）';
+    }
+  } catch (err) {
+    state.loaded = true;
+    updateSidebar();
+    showError('加载案例列表失败：' + err.message);
+  }
+}
 
-async function runPipeline() {
-  if (!state.imageFile || state.loading) return;
-  state.loading = true;
-  runBtn.disabled = true;
+// 加载图片（含 onerror 兜底）
+function loadImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+async function renderCase(idx) {
+  if (!state.cases.length) return;
+  const n = state.cases.length;
+  idx = clamp(idx, 0, n - 1);
+  const reqId = ++state.currentReqId; // 竞态防护
+  const c = state.cases[idx];
+
+  state.mode = 'cases';
+  state.currentIdx = idx;
+  state.currentData = null;   // 旧数据先清掉，避免画出错位内容
+  state.currentImage = null;
+  updateSidebar();
+  updateNav();
+  statusLine.textContent = '加载案例 ' + (c.name || c.id) + '…';
+
+  let data = null;
+  let img = null;
+  try {
+    const resp = await fetch('/api/case/' + encodeURIComponent(c.id));
+    if (reqId !== state.currentReqId) return; // 已过期
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    data = await resp.json();
+    if (reqId !== state.currentReqId) return;
+  } catch (err) {
+    if (reqId !== state.currentReqId) return;
+    showError('加载案例 ' + (c.name || c.id) + ' 失败：' + err.message);
+    return;
+  }
+
+  // 截图与数据并行加载，互不阻塞；截图失败仍可画框
+  img = await loadImage('/api/screenshot/' + encodeURIComponent(c.id));
+  if (reqId !== state.currentReqId) return;
+
+  state.currentData = data;
+  state.currentImage = img;
+  sizeCanvases();
+  drawBoth();
+
+  // 状态行
+  const dTP = data.metrics && data.metrics.before && data.metrics.after
+    ? Number(data.metrics.after.tp) - Number(data.metrics.before.tp) : null;
+  const parts = [];
+  parts.push('<span class="case-title">' + escapeHtml(c.name || ('Case ' + c.id)) + '</span>');
+  parts.push('<span>#' + escapeHtml(String(c.id)) + '</span>');
+  if (dTP !== null && isFinite(dTP)) {
+    parts.push('<span class="recover' + (dTP >= 0 ? '' : ' down') + '">'
+      + 'GNN 找回 ' + signed(dTP, 0) + ' 个漏检元素</span>');
+  }
+  if (data.fallback) {
+    parts.push('<span style="color:var(--amber)">⚠ ' + escapeHtml(String(data.fallback)) + '</span>');
+  }
+  statusLine.innerHTML = parts.join('');
+  renderMetrics(data.metrics, data);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function prevCase() { renderCase(state.currentIdx - 1); }
+function nextCase() { renderCase(state.currentIdx + 1); }
+prevBtn.addEventListener('click', prevCase);
+nextBtn.addEventListener('click', nextCase);
+
+// ---------------------------------------------------------------------------
+// 上传模式
+// ---------------------------------------------------------------------------
+async function handleUploadFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showError('请选择图片文件（JPEG / PNG）');
+    return;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    showError('图片超过 10MB，请压缩后重试');
+    return;
+  }
+
+  const reqId = ++state.currentReqId; // 竞态防护：与案例切换共用同一序列
+  state.mode = 'upload';
+  state.currentData = null;
+  state.currentImage = null;
+
+  if (state.upload && state.upload.imgUrl) URL.revokeObjectURL(state.upload.imgUrl);
+  const imgUrl = URL.createObjectURL(file);
+  state.upload = { file: file, imgUrl: imgUrl, result: null };
+
+  statusLine.innerHTML = '<span class="case-title">' + escapeHtml(file.name) + '</span>'
+    + '<span>上传模式</span>';
+  updateSidebar();
+  updateNav();
+  metricsCard.classList.add('hidden');
   hideError();
 
-  showLoader('Running VLM detection...');
+  // 1) 本地预览先行：URL.createObjectURL -> 立即画图（无框）
+  const img = await loadImage(imgUrl);
+  if (reqId !== state.currentReqId) return; // 已切走
+  state.currentImage = img;
+  state.currentData = { img_w: img ? img.naturalWidth : 0, img_h: img ? img.naturalHeight : 0 };
+  sizeCanvases();
+  drawBoth();
 
+  // 2) POST /api/predict
+  showLoading('VLM 检测 + GNN 推理中…<br>通常需要 10–30 秒，请勿关闭页面');
   try {
-    const formData = new FormData();
-    formData.append('file', state.imageFile);
-    formData.append('vlm_model', document.getElementById('vlmModel').value);
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch('/api/predict', { method: 'POST', body: fd });
+    if (reqId !== state.currentReqId) return;
+    if (!resp.ok) {
+      let msg = 'HTTP ' + resp.status + ' ' + resp.statusText;
+      try {
+        const errData = await resp.json();
+        if (errData && errData.error) msg = errData.error;
+      } catch (e) { /* 非 JSON 错误体，忽略 */ }
+      throw new Error(msg);
+    }
+    const data = await resp.json();
+    if (reqId !== state.currentReqId) return;
 
-    setLoaderStatus('Waiting for VLM API response...');
+    hideLoading();
+    state.upload.result = data;
+    state.currentData = data;
+    sizeCanvases();
+    drawBoth();
+    renderMetrics(data.metrics, data);
+    if (data.fallback) {
+      statusLine.innerHTML = '<span class="case-title">' + escapeHtml(file.name) + '</span>'
+        + '<span style="color:var(--amber)">⚠ ' + escapeHtml(String(data.fallback)) + '</span>';
+    }
+  } catch (err) {
+    if (reqId !== state.currentReqId) return;
+    hideLoading();
+    showError('上传推理失败：' + err.message);
+    // 保留本地预览，画图仍在
+  }
+}
 
-    const resp = await fetch(`${API_BASE}/api/predict`, {
-      method: 'POST',
-      body: formData,
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleUploadFile(fileInput.files[0]);
+  fileInput.value = ''; // 允许重复选择同一文件
+});
+
+// 拖拽上传：所有 drag 事件 preventDefault（否则浏览器直接打开图片）
+let dragDepth = 0;
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach((evName) => {
+  document.addEventListener(evName, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+});
+document.addEventListener('dragenter', (e) => {
+  dragDepth++;
+  document.body.classList.add('drag-over');
+});
+document.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) document.body.classList.remove('drag-over');
+});
+document.addEventListener('drop', (e) => {
+  dragDepth = 0;
+  document.body.classList.remove('drag-over');
+  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) handleUploadFile(file);
+});
+
+// ---------------------------------------------------------------------------
+// 键盘导航（← → 切换案例，preventDefault 避免页面滚动）
+// ---------------------------------------------------------------------------
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (state.cases.length) prevCase();
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    if (state.cases.length) nextCase();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Tab 切换 + 能力验证面板（Tab 2 置信度 / Tab 3 结构补全）
+// ---------------------------------------------------------------------------
+const tabsEl = document.getElementById('tabs');
+const tabPanels = {
+  e2e: document.getElementById('tab-e2e'),
+  confidence: document.getElementById('tab-confidence'),
+  completion: document.getElementById('tab-completion'),
+};
+
+tabsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  tabsEl.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b === btn));
+  Object.entries(tabPanels).forEach(([name, el]) => el.classList.toggle('active', name === tab));
+  if (tab === 'confidence') loadConfidenceTab();
+  if (tab === 'completion') loadCompletionTab();
+  // 切回端到端时确保画布尺寸正确
+  if (tab === 'e2e' && state.currentImage) {
+    sizeCanvases();
+    drawBoth();
+  }
+});
+
+async function loadConfidenceTab() {
+  const grid = document.getElementById('confGrid');
+  const note = document.getElementById('confRealNote');
+  if (grid.dataset.loaded) return;
+  try {
+    const resp = await fetch('/api/demo/confidence');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!data.images || !data.images.length) throw new Error('无置信度演示数据');
+    grid.innerHTML = data.images.map((im) => {
+      const t = im.threshold || 0.55;
+      const tp = im.elements.filter((el) => !el.is_imposter && el.score > t).length;
+      const fp = im.elements.filter((el) => el.is_imposter && el.score > t).length;
+      const tn = im.elements.filter((el) => el.is_imposter && el.score <= t).length;
+      const fn = im.elements.filter((el) => !el.is_imposter && el.score <= t).length;
+      const acc = ((tp + tn) / Math.max(im.elements.length, 1) * 100).toFixed(1);
+      return '<div class="cap-card">'
+        + '<div class="cap-title">#' + escapeHtml(String(im.id)) + '</div>'
+        + '<img src="/api/demo/confidence/' + encodeURIComponent(im.id) + '" alt="confidence demo">'
+        + '<div class="cap-stats">'
+        + 'AUROC <b>' + (im.auroc != null ? Number(im.auroc).toFixed(3) : '—') + '</b> · '
+        + 'Accuracy <b>' + acc + '%</b><br>'
+        + '真实元素 <b>' + im.n_real + '</b> · 混入 imposter <b>' + im.n_imposter + '</b><br>'
+        + '判错：<b>' + fn + '</b> 个真实元素被标为假，<b>' + fp + '</b> 个 imposter 被当真'
+        + '</div></div>';
+    }).join('');
+    note.textContent = '真实数据对照：同样的存在性打分在真实 VLM 检测结果上 AUROC 仅约 0.60 —— '
+      + '真实 VLM 的误检与真实元素结构相似，比随机 imposter 难区分得多。'
+      + '因此该能力是"结构先验有效性"的方法学验证，不代表端到端精度。';
+    grid.dataset.loaded = '1';
+  } catch (err) {
+    grid.innerHTML = '<div class="cap-card" style="color:var(--amber)">置信度演示数据加载失败：'
+      + escapeHtml(err.message) + '</div>';
+  }
+}
+
+async function loadCompletionTab() {
+  const cv = document.getElementById('completionCurve');
+  const winNote = document.getElementById('compWinNote');
+  const loseNote = document.getElementById('compLoseNote');
+  const realNote = document.getElementById('compRealNote');
+  if (cv.dataset.loaded) return;
+  try {
+    const resp = await fetch('/api/demo/completion');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const pts = data.points || [];
+    if (!pts.length) throw new Error('无补全曲线数据');
+
+    // 绘制双线折线图
+    const ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    const padL = 44, padR = 14, padT = 16, padB = 30;
+    const pw = W - padL - padR, ph = H - padT - padB;
+    const xs = pts.map((p) => p.drop_ratio);
+    const allVals = pts.flatMap((p) => [p.gnn_iou_mean, p.nn_iou_mean, ...(p.gnn_iou_runs || []), ...(p.nn_iou_runs || [])]);
+    const vMax = Math.max(...allVals) * 1.15;
+    const x = (dr) => padL + ((dr - 0.2) / 0.6) * pw;
+    const y = (v) => padT + ph - (v / vMax) * ph;
+
+    ctx.clearRect(0, 0, W, H);
+    // 网格 + y 轴
+    ctx.strokeStyle = 'rgba(140,150,180,0.18)';
+    ctx.fillStyle = '#8b93ad';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+      const v = (vMax * i) / 4;
+      const yy = y(v);
+      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
+      ctx.fillText(v.toFixed(2), padL - 6, yy + 4);
+    }
+    // x 轴
+    ctx.textAlign = 'center';
+    xs.forEach((dr) => {
+      ctx.fillText('drop ' + dr, x(dr), H - 8);
     });
 
-    if (!resp.ok) {
-      const errData = await resp.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${resp.status}: ${resp.statusText}`);
-    }
+    // 运行点（半透明）
+    pts.forEach((p) => {
+      (p.gnn_iou_runs || []).forEach((v) => {
+        ctx.fillStyle = 'rgba(76,201,240,0.35)';
+        ctx.beginPath(); ctx.arc(x(p.drop_ratio), y(v), 3, 0, 7); ctx.fill();
+      });
+      (p.nn_iou_runs || []).forEach((v) => {
+        ctx.fillStyle = 'rgba(255,167,38,0.35)';
+        ctx.beginPath(); ctx.arc(x(p.drop_ratio), y(v), 3, 0, 7); ctx.fill();
+      });
+    });
 
-    const data = await resp.json();
-    state.result = data;
-    state.vlmElements = data.vlm?.elements || [];
+    // GNN 线（蓝）
+    ctx.strokeStyle = '#4cc9f0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const px = x(p.drop_ratio), py = y(p.gnn_iou_mean);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    // NN 线（橙）
+    ctx.strokeStyle = '#ffa726';
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const px = x(p.drop_ratio), py = y(p.nn_iou_mean);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    // 图例
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fillText('— GNN', padL, padT - 4);
+    ctx.fillStyle = '#ffa726';
+    ctx.fillText('— NN baseline', padL + 80, padT - 4);
 
-    setLoaderStatus('Rendering JSON...');
-    await new Promise(r => setTimeout(r, 50));
-
-    renderResults(data);
-    hideLoader();
+    // 汇总注记（诚实：全量数据）
+    const win = pts.filter((p) => p.gnn_iou_mean > p.nn_iou_mean);
+    const lose = pts.filter((p) => p.gnn_iou_mean <= p.nn_iou_mean);
+    winNote.innerHTML = win.map((p) => 'drop ' + p.drop_ratio + '：GNN <b>' + p.gnn_iou_mean
+      + '</b> vs NN <b>' + p.nn_iou_mean + '</b>（+' + ((p.gnn_iou_mean / Math.max(p.nn_iou_mean, 1e-9)) - 1) * 100
+      + '%）').join('<br>');
+    loseNote.innerHTML = lose.map((p) => 'drop ' + p.drop_ratio + '：GNN <b>' + p.gnn_iou_mean
+      + '</b> vs NN <b>' + p.nn_iou_mean + '</b>（' + ((p.gnn_iou_mean / Math.max(p.nn_iou_mean, 1e-9)) - 1) * 100
+      + '%）').join('<br>');
+    realNote.textContent = '真实数据对照：真实 VLM 漏检模式（200 图、527 提议）下 GNN 提议平均 IoU 0.198 '
+      + 'vs NN 基线 0.212 —— 优势消失。GNN 的补全优势只在大量元素缺失（drop≥0.6）的合成条件下成立。';
+    cv.dataset.loaded = '1';
   } catch (err) {
-    showError(err.message || 'An unexpected error occurred');
-    hideLoader();
-  } finally {
-    state.loading = false;
-    runBtn.disabled = false;
+    const wrap = cv.parentElement;
+    wrap.insertAdjacentHTML('beforeend',
+      '<div style="color:var(--amber);font-size:12px">补全曲线加载失败：' + escapeHtml(err.message) + '</div>');
   }
 }
 
 // ---------------------------------------------------------------------------
-// Render results
+// resize 防抖重绘（200ms）
 // ---------------------------------------------------------------------------
-function renderResults(data) {
-  const vlm = data.vlm || {};
-  const gnn = data.gnn || {};
-  const corrected = data.corrected_json || {};
-
-  // Stats
-  statVlmCount.textContent = vlm.count || 0;
-  statGnnCon.textContent = gnn.constraints_count || 0;
-  statGnnViol.textContent = gnn.violations_count || 0;
-  statGnnProp.textContent = gnn.proposals_count || 0;
-  statVlmTime.textContent = vlm.time_ms ? `${vlm.time_ms} ms` : '—';
-  statGnnTime.textContent = gnn.time_ms ? `${gnn.time_ms} ms` : '—';
-
-  // Badges
-  vlmCountBadge.textContent = `${corrected.vlm_count || 0} elements`;
-  gnnCountBadge.textContent = `${corrected.total_count || 0} elements`;
-
-  // Render JSON
-  vlmJson.textContent = formatJson(data.vlm?.elements || []);
-  correctedJson.textContent = formatJson(corrected.elements || []);
-
-  // Show panels
-  stats.classList.add('visible');
-  jsonPanels.classList.add('visible');
-}
-
-function formatJson(obj) {
-  try {
-    return JSON.stringify(obj, null, 2);
-  } catch {
-    return String(obj);
-  }
-}
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!state.currentImage) return;
+    sizeCanvases();
+    drawBoth();
+  }, 200);
+});
 
 // ---------------------------------------------------------------------------
-// UI helpers
+// 初始化
 // ---------------------------------------------------------------------------
-function showLoader(msg) {
-  loader.classList.add('visible');
-  loaderStatus.textContent = msg || 'Processing...';
-}
-function setLoaderStatus(msg) {
-  const el = document.getElementById('loaderStatus');
-  if (el) el.textContent = msg;
-}
-function hideLoader() { loader.classList.remove('visible'); }
-function showError(msg) {
-  error.textContent = msg;
-  error.classList.add('visible');
-}
-function hideError() { error.classList.remove('visible'); }
-function hideResults() {
-  jsonPanels.classList.remove('visible');
-  stats.classList.remove('visible');
-}
+document.addEventListener('DOMContentLoaded', loadCases);
 </script>
 </body>
 </html>
