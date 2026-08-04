@@ -51,6 +51,7 @@ runs/
 output/
 results/
 figures/
+demo_data/
 *.png
 *.jpg
 *.jpeg
