@@ -525,17 +525,20 @@ large proposal-quality gain, which matters for completion.
     \node[font=\footnotesize] at (2.4,4.5) {Violation head};
     % joint
     \fill[blue!60] (0.6,0) rectangle (1.6,{0.876*\sc});
-    \node[font=\scriptsize] at (1.1,{0.876*\sc+0.15}) {0.876};
     % violation-only
     \fill[blue!60] (2.0,0) rectangle (3.0,{0.898*\sc});
-    \node[font=\scriptsize] at (2.5,{0.898*\sc+0.15}) {0.898};
     % proposal-only
     \fill[blue!60] (3.4,0) rectangle (4.4,{0.489*\sc});
-    \node[font=\scriptsize] at (3.9,{0.489*\sc+0.15}) {0.489};
-    % error bars (std: 0.019, 0.018, 0.071)
+    % error bars with caps (std: 0.019, 0.018, 0.071); labels above caps
     \draw (1.1,{0.876*\sc+0.05}) -- (1.1,{0.876*\sc+0.05+0.019*\sc});
+    \draw (1.02,{0.876*\sc+0.05+0.019*\sc}) -- (1.18,{0.876*\sc+0.05+0.019*\sc});
+    \node[font=\scriptsize] at (1.1,{0.876*\sc+0.05+0.019*\sc+0.18}) {0.876};
     \draw (2.5,{0.898*\sc+0.05}) -- (2.5,{0.898*\sc+0.05+0.018*\sc});
+    \draw (2.42,{0.898*\sc+0.05+0.018*\sc}) -- (2.58,{0.898*\sc+0.05+0.018*\sc});
+    \node[font=\scriptsize] at (2.5,{0.898*\sc+0.05+0.018*\sc+0.18}) {0.898};
     \draw (3.9,{0.489*\sc+0.05}) -- (3.9,{0.489*\sc+0.05+0.071*\sc});
+    \draw (3.82,{0.489*\sc+0.05+0.071*\sc}) -- (3.98,{0.489*\sc+0.05+0.071*\sc});
+    \node[font=\scriptsize] at (3.9,{0.489*\sc+0.05+0.071*\sc+0.18}) {0.489};
     \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
     \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.45) {joint};
@@ -548,15 +551,18 @@ large proposal-quality gain, which matters for completion.
   \begin{scope}[shift={(6.6,0)}]
     \node[font=\footnotesize] at (2.4,4.5) {Proposal head};
     \fill[blue!60] (0.6,0) rectangle (1.6,{0.051*\scm});
-    \node[font=\scriptsize] at (1.1,{0.051*\scm+0.15}) {0.051};
     \fill[blue!60] (2.0,0) rectangle (3.0,{0.116*\scm});
-    \node[font=\scriptsize] at (2.5,{0.116*\scm+0.15}) {0.116};
     \fill[blue!60] (3.4,0) rectangle (4.4,{0.051*\scm});
-    \node[font=\scriptsize] at (3.9,{0.051*\scm+0.15}) {0.051};
-    % error bars (std: 0.009, 0.009, 0.010) *30
+    % error bars with caps (std: 0.009, 0.009, 0.010) *30; labels above caps
     \draw (1.1,{0.051*\scm+0.05}) -- (1.1,{0.051*\scm+0.05+0.009*\scm});
+    \draw (1.02,{0.051*\scm+0.05+0.009*\scm}) -- (1.18,{0.051*\scm+0.05+0.009*\scm});
+    \node[font=\scriptsize] at (1.1,{0.051*\scm+0.05+0.009*\scm+0.18}) {0.051};
     \draw (2.5,{0.116*\scm+0.05}) -- (2.5,{0.116*\scm+0.05+0.009*\scm});
+    \draw (2.42,{0.116*\scm+0.05+0.009*\scm}) -- (2.58,{0.116*\scm+0.05+0.009*\scm});
+    \node[font=\scriptsize] at (2.5,{0.116*\scm+0.05+0.009*\scm+0.18}) {0.116};
     \draw (3.9,{0.051*\scm+0.05}) -- (3.9,{0.051*\scm+0.05+0.010*\scm});
+    \draw (3.82,{0.051*\scm+0.05+0.010*\scm}) -- (3.98,{0.051*\scm+0.05+0.010*\scm});
+    \node[font=\scriptsize] at (3.9,{0.051*\scm+0.05+0.010*\scm+0.18}) {0.051};
     \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
     \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.45) {joint};
