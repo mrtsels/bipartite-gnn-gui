@@ -162,24 +162,34 @@ def _call_qwen_vl(
 # Element normalisation helpers
 # ---------------------------------------------------------------------------
 
+# qwen3-vl-flash returns bbox coords in a fixed 1080x960 internal frame,
+# regardless of the input image size. Normalizing against the original
+# image size (img_w/img_h) would shift all boxes (y halved for 1080x1920
+# inputs). Verified: all 200 RICO VLM files have coords within 1080x960.
+VLM_COORD_W = 1080
+VLM_COORD_H = 960
+
 
 def _vlm_json_to_element_nodes(vlm_data: Dict[str, Any], img_w: int, img_h: int) -> List[ElementNode]:
-    """Convert VLM JSON elements to ElementNode list with normalised bboxes."""
+    """Convert VLM JSON elements to ElementNode list with normalised bboxes.
+
+    bboxes are normalized against the VLM coordinate baseline (1080x960),
+    NOT the original image size (img_w/img_h).
+    """
     raw_elements = vlm_data.get("elements", vlm_data.get("predictions", []))
     nodes: List[ElementNode] = []
     for i, item in enumerate(raw_elements):
         if not isinstance(item, dict):
             continue
         try:
-            bbox_raw = item.get("bbox_xyxy") or item.get("bbox")
+            bbox_raw = item.get("bbox_xyxy") or item.get("bbox") or item.get("bbox_2d")
             if not bbox_raw or len(bbox_raw) != 4:
                 continue
             x1, y1, x2, y2 = map(float, bbox_raw)
-            if img_w > 0 and img_h > 0:
-                x1 /= img_w
-                y1 /= img_h
-                x2 /= img_w
-                y2 /= img_h
+            x1 /= VLM_COORD_W
+            y1 /= VLM_COORD_H
+            x2 /= VLM_COORD_W
+            y2 /= VLM_COORD_H
             x1 = max(0.0, min(1.0, x1))
             y1 = max(0.0, min(1.0, y1))
             x2 = max(0.0, min(1.0, x2))
@@ -338,42 +348,124 @@ class DemoPipeline:
         self,
         checkpoint_path: str = "",
         device: str = "cpu",
-        violation_threshold: float = 0.3,
+        violation_threshold: float = 0.60,
     ) -> None:
         self.device = device
         self.violation_threshold = violation_threshold
         self._builder = BipartiteGraphBuilder()
 
-        # Resolve checkpoint path
+        # Resolve checkpoint path — the joint model is the only checkpoint whose
+        # proposal head was trained (verified: 44/44 keys, hidden_dim=128).
         if not checkpoint_path:
             # Auto-detect relative to this file
             here = Path(__file__).parent.parent
-            default = here / "checkpoints" / "violation_detection_violation_only" / "best_model.pt"
+            default = here / "checkpoints" / "violation_detection_joint" / "best_model.pt"
             checkpoint_path = str(default)
 
-        logger.info("Loading checkpoint: %s", checkpoint_path)
+        # Infer hidden_dim from the checkpoint itself (compatible hd=16/128).
+        self.hidden_dim = self._detect_hidden_dim(checkpoint_path)
+
+        logger.info("Loading checkpoint: %s (hidden_dim=%d)", checkpoint_path, self.hidden_dim)
         ckpt = torch_load(checkpoint_path)
         self.model = BipartiteGNNCorrector(
             element_dim=5,
             constraint_dim=11,
-            hidden_dim=128,
+            hidden_dim=self.hidden_dim,
             num_layers=2,
-            dropout=0.1,
+            dropout=0.0,  # inference only — dropout irrelevant in eval mode
         )
 
-        # Handle both raw state_dict and wrapped dict formats
-        if isinstance(ckpt, dict) and "model" in ckpt:
-            self.model.load_state_dict(ckpt["model"], strict=True)
-        else:
-            self.model.load_state_dict(ckpt, strict=True)
+        # Shape-filtered load with sanity checks (44/44 keys for joint model).
+        n_matched = self._safe_load_state(ckpt)
 
         self.model.to(device)
         self.model.eval()
         logger.info(
-            "Model loaded: %s params, device=%s",
+            "Model loaded: %s params (%d/%d keys matched), device=%s, hd=%d",
             f"{sum(p.numel() for p in self.model.parameters()):,}",
+            n_matched,
+            len(ckpt.get("model", ckpt)) if isinstance(ckpt, dict) else len(ckpt),
             device,
+            self.hidden_dim,
         )
+
+    # ------------------------------------------------------------------
+    # Checkpoint loading helpers
+    # ------------------------------------------------------------------
+
+    def _detect_hidden_dim(self, checkpoint_path: str) -> int:
+        """Infer ``hidden_dim`` from the checkpoint's first-layer weight shape.
+
+        The element projection weight is shaped ``(hidden_dim, element_dim)``,
+        so ``shape[0]`` is the hidden dimension.  Handles raw state dicts and
+        wrapped ``{"model": ...}`` formats; covers hd=16 and hd=128.
+        """
+        state = torch_load(checkpoint_path)
+        if isinstance(state, dict) and "model" in state:
+            state = state["model"]
+        if isinstance(state, dict):
+            for key in (
+                "encoder.element_proj.weight",
+                "encoder.e_to_c_convs.0.lin_l.weight",
+            ):
+                if key in state:
+                    return int(state[key].shape[0])
+        raise RuntimeError(
+            f"Cannot detect hidden_dim from checkpoint: {checkpoint_path}"
+        )
+
+    def _safe_load_state(self, ckpt: Any) -> int:
+        """Load checkpoint with shape filtering plus sanity checks.
+
+        Only keys whose name AND shape match the model are loaded; missing
+        keys keep their (random) initialisation.  Raises ``RuntimeError`` if
+        too few keys match or any critical layer is absent, so a wrong
+        checkpoint fails loudly instead of silently degrading to noise.
+
+        Args:
+            ckpt: Raw state dict, or wrapped ``{"model": state_dict}``.
+
+        Returns:
+            Number of matched (loaded) keys.
+        """
+        state = ckpt
+        if isinstance(state, dict) and "model" in state:
+            state = state["model"]
+        if isinstance(state, dict) and "state_dict" in state:
+            state = state["state_dict"]
+        if not isinstance(state, dict):
+            raise RuntimeError(f"Unsupported checkpoint format: {type(ckpt)}")
+
+        # Strip a possible "model." prefix on keys.
+        if any(k.startswith("model.") for k in state):
+            state = {k[len("model."):]: v for k, v in state.items()}
+
+        model_state = self.model.state_dict()
+        matched = {
+            k: v for k, v in state.items()
+            if k in model_state and v.shape == model_state[k].shape
+        }
+        n_matched, n_total = len(matched), len(state)
+        if n_matched < 30:
+            raise RuntimeError(
+                f"Checkpoint mismatch: only {n_matched}/{n_total} keys matched. "
+                f"Expected hidden_dim={self.hidden_dim}; checkpoint may be "
+                f"incompatible (e.g. untrained proposal head or visual-fusion model)."
+            )
+
+        # Critical layers must be present (not silently dropped by shape filter).
+        critical = [
+            "encoder.element_proj.weight",
+            "violation_head.network.3.weight",
+            "proposal_head.network.3.weight",
+        ]
+        for ck in critical:
+            if ck not in matched:
+                raise RuntimeError(f"Critical layer missing from checkpoint: {ck}")
+
+        self.model.load_state_dict(matched, strict=False)
+        logger.info("Loaded %d/%d keys (critical layers OK)", n_matched, n_total)
+        return n_matched
 
     # ------------------------------------------------------------------
     # Public API
@@ -425,10 +517,33 @@ class DemoPipeline:
                 "existence_scores": [],
                 "graph_stats": {"elements": 0, "constraints": 0},
                 "time_ms": 0,
+                "fallback": "no_elements",
+            }
+
+        if len(element_nodes) < 3:
+            # Too few elements to form a meaningful constraint graph.
+            return {
+                "constraints": [],
+                "proposals": [],
+                "existence_scores": [],
+                "graph_stats": {"elements": len(element_nodes), "constraints": 0},
+                "time_ms": 0,
+                "fallback": "no_elements",
             }
 
         # 2. Extract constraints
         constraints = extract_all_constraints(element_nodes)
+
+        if not constraints:
+            # Too few elements (<3) to form any constraint — nothing to analyse.
+            return {
+                "constraints": [],
+                "proposals": [],
+                "existence_scores": [],
+                "graph_stats": {"elements": len(element_nodes), "constraints": 0},
+                "time_ms": 0,
+                "fallback": "no_constraints",
+            }
 
         # 3. Build graph
         graph = self._builder.build(element_nodes, constraints)
@@ -465,10 +580,14 @@ class DemoPipeline:
                 score = float(viol[i].item())
                 if score <= self.violation_threshold:
                     continue
-                bbox_xywh = proposal[i].tolist()
-                bbox_xyxy = _xywh_to_xyxy(bbox_xywh)
+                bbox_xyxy = proposal[i].tolist()
                 # Clamp to [0, 1]
                 bbox_xyxy = [max(0.0, min(1.0, v)) for v in bbox_xyxy]
+                # Proposal head outputs post-sigmoid [x1, y1, x2, y2]; the four
+                # coordinates are independent sigmoids so x1>x2 / y1>y2 is
+                # common — skip invalid boxes instead of drawing backwards rects.
+                if bbox_xyxy[2] <= bbox_xyxy[0] or bbox_xyxy[3] <= bbox_xyxy[1]:
+                    continue
                 pred_type_idx = int(proposal_type[i].argmax().item()) if proposal_type is not None else 0
                 proposals_list.append({
                     "bbox": bbox_xyxy,
