@@ -572,13 +572,17 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 ## Phase 12: 论文写作 ⬜ [优先级 2]
 
 **Goal:** Write and publish a paper documenting the project's findings.
+**格式:** IEEE conference 模板（`IEEEtran.cls`，双栏），全流程 LaTeX 管理（.tex + .bib + 编译产物）。
+模板来源: `tmp/IEEE-conference-template-062824/`（拷贝到 `paper/`）。
 
 | # | Item | Status |
 |---|------|--------|
-|| 12.1 | 实验图生成（violation acc bar chart, type acc bar chart, 混淆矩阵, 消融表） | ⬜ |
-|| 12.2 | 论文草稿（introduction, method, experiments, results, conclusion） | ⬜ |
-|| 12.3 | 引用管理 + bibtex | ⬜ |
-|| 12.4 | 终稿 + 提交 | ⬜ |
+| 12.0 | 环境搭建: `paper/` 目录 + IEEEtran.cls + 主 .tex + figures/ + 空跑编译通过 | ⬜ |
+| 12.1 | 实验图生成: `scripts/make_paper_figures.py` 从 experiments/*.json 生成出版级图表（violation acc bar, type acc bar, 混淆矩阵, 消融图, completion 曲线） | ⬜ |
+| 12.2 | 论文草稿: abstract / introduction / related work / method / experiments / results / conclusion（数学基础复用 `docs/midterm_report.md` §2） | ⬜ |
+| 12.3 | 引用管理: `paper/references.bib`（PyTorch/GraphSAGE/PyG/RICO/ScreenSpot/Qwen/DINOv2/NumPy/SciPy/Matplotlib 等，对齐 midterm_report 引用清单） | ⬜ |
+| 12.4 | 编译验证: pdflatex ×2 + bibtex，无 error、无 undefined citation | ⬜ |
+| 12.5 | 终稿审查 + 图注/页数核对 + TASK.md 状态更新 + commit/push | ⬜ |
 
 ---
 
