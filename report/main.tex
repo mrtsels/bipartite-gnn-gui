@@ -10,6 +10,8 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc}
 % TeX Live basic lacks Courier (pcr) fonts; fall back to CM Typewriter.
 \renewcommand{\ttdefault}{cmtt}
 \usepackage{hyperref}
@@ -171,7 +173,27 @@ missed elements, and per-element reliability scores.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/fig_pipeline.png}
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners=2pt, align=center, minimum height=0.9cm,
+                font=\small},
+    arr/.style={-{Stealth[length=2.2mm]}, thick},
+    scale=1.0, transform shape]
+  \node[box] (shot) at (0,0) {Screenshot};
+  \node[box] (vlm) at (3.0,0) {Lightweight\\VLM};
+  \node[box, fill=red!8] (noisy) at (6.2,0) {Noisy JSON};
+  \node[box, fill=blue!8] (graph) at (9.6,0) {Heterogeneous\\bipartite graph};
+  \node[box, fill=blue!8] (gnn) at (12.9,0) {GraphSAGE};
+  \node[box, fill=green!10] (out) at (16.0,0) {Corrected JSON};
+  \draw[arr] (shot) -- (vlm);
+  \draw[arr] (vlm) -- (noisy);
+  \draw[arr] (noisy) -- (graph);
+  \draw[arr] (graph) -- (gnn);
+  \draw[arr] (gnn) -- (out);
+  \node[font=\scriptsize, below=0.28cm of vlm] {detection};
+  \node[font=\scriptsize, align=center, below=0.28cm of noisy] {10--30\% omissions,\\box misalignment};
+  \node[font=\scriptsize, below=0.28cm of graph] {constraint extraction};
+  \node[font=\scriptsize, below=0.28cm of gnn] {$\Delta\mathbf{x}$, proposals};
+\end{tikzpicture}
 \caption{End-to-end pipeline: screenshot $\rightarrow$ lightweight VLM
 $\rightarrow$ noisy JSON $\rightarrow$ heterogeneous bipartite graph
 $\rightarrow$ GraphSAGE $\rightarrow$ corrected JSON.}
@@ -236,7 +258,38 @@ illustrates the structure.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.6\textwidth]{figures/fig_architecture.png}
+\begin{tikzpicture}[
+    elem/.style={draw, rounded corners=2pt, fill=blue!10, minimum width=1.9cm,
+                 minimum height=0.55cm, font=\footnotesize},
+    cons/.style={draw, rounded corners=2pt, fill=orange!15, minimum width=1.9cm,
+                 minimum height=0.55cm, font=\footnotesize},
+    edg/.style={gray!60, thick},
+    scale=1.0, transform shape]
+  % element nodes (left)
+  \node[elem] (e1) at (0,2.6) {$e_1$: Button};
+  \node[elem] (e2) at (0,1.6) {$e_2$: Text};
+  \node[elem] (e3) at (0,0.6) {$e_3$: Icon};
+  \node[elem] (e4) at (0,-0.4) {$e_4$: Input};
+  \node[elem] (e5) at (0,-1.4) {$e_5$: Image};
+  % constraint nodes (right)
+  \node[cons] (c1) at (5.2,2.0) {$c_1$: ALIGN\_LEFT};
+  \node[cons] (c2) at (5.2,0.9) {$c_2$: CONTAINMENT};
+  \node[cons] (c3) at (5.2,-0.2) {$c_3$: SPACING};
+  \node[cons] (c4) at (5.2,-1.3) {$c_4$: SAME\_SIZE};
+  % edges: only cross-partition
+  \draw[edg] (e1) -- (c1);
+  \draw[edg] (e1) -- (c2);
+  \draw[edg] (e2) -- (c1);
+  \draw[edg] (e2) -- (c3);
+  \draw[edg] (e3) -- (c2);
+  \draw[edg] (e3) -- (c4);
+  \draw[edg] (e4) -- (c3);
+  \draw[edg] (e5) -- (c4);
+  \draw[edg] (e5) -- (c2);
+  % partition labels
+  \node[font=\small\itshape, above=0.25cm of e1] {Element nodes $V_e$};
+  \node[font=\small\itshape, above=0.25cm of c1] {Constraint nodes $V_c$};
+\end{tikzpicture}
 \caption{Heterogeneous bipartite graph: element nodes (left) connect only to
 constraint nodes (right). No two elements are ever connected directly; they
 communicate through shared constraints.}
@@ -391,7 +444,43 @@ Only ALIGNMENT & 0.878 ($-3.0$pp) \\
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/fig_ablation.png}
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % horizontal bars: length = (value - 0.84) * 60 cm
+  \def\sc{60}
+  \def\base{0.0}
+  % y positions for 6 rows (top to bottom), bar height 0.35
+  % All 10 types (control) 0.908 -> 4.08cm
+  \fill[blue!60] (\base,5.0) rectangle ({(\base+ (0.908-0.84)*\sc)},5.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,5.175) {All 10 types};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.1)},5.175) {0.908};
+  % Remove CONTAINMENT 0.889 -> 2.94cm
+  \fill[gray!50] (\base,4.0) rectangle ({(\base+(0.889-0.84)*\sc)},4.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,4.175) {Remove CONTAINMENT};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.889-0.84)*\sc+0.1)},4.175) {0.889};
+  % Remove SPACING 0.903 -> 3.78cm
+  \fill[gray!50] (\base,3.0) rectangle ({(\base+(0.903-0.84)*\sc)},3.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,3.175) {Remove SPACING};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.903-0.84)*\sc+0.1)},3.175) {0.903};
+  % Remove GRID 0.916 -> 4.56cm
+  \fill[gray!50] (\base,2.0) rectangle ({(\base+(0.916-0.84)*\sc)},2.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,2.175) {Remove GRID};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.916-0.84)*\sc+0.1)},2.175) {0.916};
+  % Remove all ALIGNMENT 0.939 -> 5.94cm
+  \fill[gray!50] (\base,1.0) rectangle ({(\base+(0.939-0.84)*\sc)},1.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,1.175) {Remove all ALIGNMENT};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.939-0.84)*\sc+0.1)},1.175) {0.939};
+  % Only ALIGNMENT 0.878 -> 2.28cm
+  \fill[gray!50] (\base,0.0) rectangle ({(\base+(0.878-0.84)*\sc)},0.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,0.175) {Only ALIGNMENT};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.878-0.84)*\sc+0.1)},0.175) {0.878};
+  % axis
+  \draw[thick,-{Stealth}] (\base,5.75) -- (\base,-0.5);
+  \draw[thick,-{Stealth}] (\base,-0.65) -- (6.6,-0.65);
+  \node[font=\footnotesize] at (3.3,-1.0) {Violation accuracy};
+  \foreach \v in {0.86,0.88,0.90,0.92,0.94} {
+    \draw ({(\v-0.84)*\sc},-0.65) -- ++(0,-0.08) node[below, font=\tiny] {\v};
+  }
+\end{tikzpicture}
 \caption{Violation accuracy per constraint set. CONTAINMENT is the most
 critical single type.}
 \label{fig:ablation}
@@ -408,7 +497,47 @@ large proposal-quality gain, which matters for completion.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\textwidth]{figures/fig_phase9.png}
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % Left panel: violation accuracy (joint 0.876, vio-only 0.898, prop-only 0.489)
+  % scale: 1.0 = 4cm, y = value*4
+  \def\sc{4}
+  \begin{scope}[shift={(0,0)}]
+    \node[font=\footnotesize] at (2.4,4.35) {Violation head};
+    % joint
+    \fill[blue!60] (0.6,0) rectangle (1.6,{0.876*\sc});
+    \node[font=\scriptsize] at (1.1,{0.876*\sc+0.12}) {0.876};
+    % violation-only
+    \fill[blue!60] (2.0,0) rectangle (3.0,{0.898*\sc});
+    \node[font=\scriptsize] at (2.5,{0.898*\sc+0.12}) {0.898};
+    % proposal-only
+    \fill[blue!60] (3.4,0) rectangle (4.4,{0.489*\sc});
+    \node[font=\scriptsize] at (3.9,{0.489*\sc+0.12}) {0.489};
+    % error bars (std: 0.019, 0.018, 0.071)
+    \draw (1.1,{0.876*\sc+0.05}) -- (1.1,{0.876*\sc+0.05+0.019*\sc});
+    \draw (2.5,{0.898*\sc+0.05}) -- (2.5,{0.898*\sc+0.05+0.018*\sc});
+    \draw (3.9,{0.489*\sc+0.05}) -- (3.9,{0.489*\sc+0.05+0.071*\sc});
+    \draw[thick,-{Stealth}] (0,-0.15) -- (0,3.9);
+    \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
+    \node[font=\scriptsize, align=center] at (2.5,-0.55) {joint\\violation-only\\proposal-only};
+  \end{scope}
+  % Right panel: proposal MSE (joint 0.051, vio-only 0.116, prop-only 0.051)
+  \begin{scope}[shift={(6.6,0)}]
+    \node[font=\footnotesize] at (2.4,4.35) {Proposal head};
+    \fill[blue!60] (0.6,0) rectangle (1.6,{0.051*\sc*3});
+    \node[font=\scriptsize] at (1.1,{0.051*\sc*3+0.12}) {0.051};
+    \fill[blue!60] (2.0,0) rectangle (3.0,{0.116*\sc*3});
+    \node[font=\scriptsize] at (2.5,{0.116*\sc*3+0.12}) {0.116};
+    \fill[blue!60] (3.4,0) rectangle (4.4,{0.051*\sc*3});
+    \node[font=\scriptsize] at (3.9,{0.051*\sc*3+0.12}) {0.051};
+    % error bars (std: 0.009, 0.009, 0.010) *3
+    \draw (1.1,{0.051*\sc*3+0.05}) -- (1.1,{0.051*\sc*3+0.05+0.009*\sc*3});
+    \draw (2.5,{0.116*\sc*3+0.05}) -- (2.5,{0.116*\sc*3+0.05+0.009*\sc*3});
+    \draw (3.9,{0.051*\sc*3+0.05}) -- (3.9,{0.051*\sc*3+0.05+0.010*\sc*3});
+    \draw[thick,-{Stealth}] (0,-0.15) -- (0,3.9);
+    \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
+    \node[font=\scriptsize, align=center] at (2.5,-0.55) {joint\\violation-only\\proposal-only};
+  \end{scope}
+\end{tikzpicture}
 \caption{Training-objective ablation over 5 seeds (mean $\pm$ std): joint
 training balances the two heads, while single-objective training degrades the
 other head.}
@@ -427,7 +556,54 @@ simple interpolation.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/fig_completion.png}
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % grouped bars: 4 drop ratios x {GNN, NN}; y = value * 22 cm (max ~0.204 -> 4.5cm)
+  \def\sc{22}
+  % drop 0.2: GNN 0.047+/-0.009, NN 0.057+/-0.031
+  % drop 0.4: GNN 0.079+/-0.014, NN 0.110+/-0.013
+  % drop 0.6: GNN 0.122+/-0.082, NN 0.088+/-0.011
+  % drop 0.8: GNN 0.097+/-0.047, NN 0.062+/-0.012
+  % x positions: group i center at 1+2i, bars at center-0.3 and center+0.3
+  \begin{scope}
+    % legend
+    \fill[blue!60] (7.6,5.3) rectangle (8.0,5.55);
+    \node[anchor=west, font=\scriptsize] at (8.05,5.42) {GNN (ours)};
+    \fill[gray!60] (9.6,5.3) rectangle (10.0,5.55);
+    \node[anchor=west, font=\scriptsize] at (10.05,5.42) {NN baseline};
+    % group 1: drop 0.2
+    \fill[blue!60] (0.7,0) rectangle (1.3,{0.047*\sc});
+    \draw (1.0,{0.047*\sc+0.04}) -- (1.0,{0.047*\sc+0.04+0.009*\sc});
+    \fill[gray!60] (1.7,0) rectangle (2.3,{0.057*\sc});
+    \draw (2.0,{0.057*\sc+0.04}) -- (2.0,{0.057*\sc+0.04+0.031*\sc});
+    \node[font=\scriptsize] at (1.5,-0.28) {0.2};
+    % group 2: drop 0.4
+    \fill[blue!60] (2.7,0) rectangle (3.3,{0.079*\sc});
+    \draw (3.0,{0.079*\sc+0.04}) -- (3.0,{0.079*\sc+0.04+0.014*\sc});
+    \fill[gray!60] (3.7,0) rectangle (4.3,{0.110*\sc});
+    \draw (4.0,{0.110*\sc+0.04}) -- (4.0,{0.110*\sc+0.04+0.013*\sc});
+    \node[font=\scriptsize] at (3.5,-0.28) {0.4};
+    % group 3: drop 0.6
+    \fill[blue!60] (4.7,0) rectangle (5.3,{0.122*\sc});
+    \draw (5.0,{0.122*\sc+0.04}) -- (5.0,{0.122*\sc+0.04+0.082*\sc});
+    \fill[gray!60] (5.7,0) rectangle (6.3,{0.088*\sc});
+    \draw (6.0,{0.088*\sc+0.04}) -- (6.0,{0.088*\sc+0.04+0.011*\sc});
+    \node[font=\scriptsize] at (5.5,-0.28) {0.6};
+    % group 4: drop 0.8
+    \fill[blue!60] (6.7,0) rectangle (7.3,{0.097*\sc});
+    \draw (7.0,{0.097*\sc+0.04}) -- (7.0,{0.097*\sc+0.04+0.047*\sc});
+    \fill[gray!60] (7.7,0) rectangle (8.3,{0.062*\sc});
+    \draw (8.0,{0.062*\sc+0.04}) -- (8.0,{0.062*\sc+0.04+0.012*\sc});
+    \node[font=\scriptsize] at (7.5,-0.28) {0.8};
+    % axes
+    \draw[thick,-{Stealth}] (0,-0.12) -- (0,4.9);
+    \draw[thick,-{Stealth}] (-0.15,0) -- (8.7,0);
+    \node[font=\footnotesize] at (4.3,-0.75) {Drop ratio};
+    \node[font=\footnotesize, rotate=90] at (-0.55,2.4) {Proposal IoU};
+    \foreach \v in {0.05,0.10,0.15,0.20} {
+      \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc}) node[left, font=\tiny] {\v};
+    }
+  \end{scope}
+\end{tikzpicture}
 \caption{Element-completion IoU vs.\ drop ratio (mean $\pm$ std, 2 seeds).
 The GNN beats the nearest-neighbour baseline when substantial structure is
 missing (drop 0.6--0.8).}
@@ -462,7 +638,41 @@ TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/fig_real_vlm.png}
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
+  % y = value * 14 cm (0.393 -> 5.5cm)
+  \def\sc{14}
+  % legend
+  \fill[gray!60] (5.6,4.3) rectangle (6.0,4.55);
+  \node[anchor=west, font=\scriptsize] at (6.05,4.42) {VLM only};
+  \fill[blue!60] (7.6,4.3) rectangle (8.0,4.55);
+  \node[anchor=west, font=\scriptsize] at (8.05,4.42) {VLM + GNN};
+  % Precision
+  \fill[gray!60] (0.7,0) rectangle (1.3,{0.382*\sc});
+  \node[font=\scriptsize] at (1.0,{0.382*\sc+0.12}) {0.382};
+  \fill[blue!60] (1.7,0) rectangle (2.3,{0.393*\sc});
+  \node[font=\scriptsize] at (2.0,{0.393*\sc+0.12}) {0.393};
+  \node[font=\scriptsize] at (1.5,-0.28) {Precision};
+  % Recall
+  \fill[gray!60] (2.7,0) rectangle (3.3,{0.235*\sc});
+  \node[font=\scriptsize] at (3.0,{0.235*\sc+0.12}) {0.235};
+  \fill[blue!60] (3.7,0) rectangle (4.3,{0.257*\sc});
+  \node[font=\scriptsize] at (4.0,{0.257*\sc+0.12}) {0.257};
+  \node[font=\scriptsize] at (3.5,-0.28) {Recall};
+  % F1
+  \fill[gray!60] (4.7,0) rectangle (5.3,{0.291*\sc});
+  \node[font=\scriptsize] at (5.0,{0.291*\sc+0.12}) {0.291};
+  \fill[blue!60] (5.7,0) rectangle (6.3,{0.311*\sc});
+  \node[font=\scriptsize] at (6.0,{0.311*\sc+0.12}) {0.311};
+  \node[font=\scriptsize] at (5.5,-0.28) {F1};
+  % axes
+  \draw[thick,-{Stealth}] (0,-0.12) -- (0,4.9);
+  \draw[thick,-{Stealth}] (-0.15,0) -- (6.9,0);
+  \node[font=\footnotesize, rotate=90] at (-0.55,2.4) {Score};
+  \foreach \v in {0.1,0.2,0.3,0.4} {
+    \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc}) node[left, font=\tiny] {\v};
+  }
+\end{tikzpicture}
 \caption{End-to-end: VLM only vs.\ VLM + GNN (corrected checkpoint loading).
 Recall and F1 improve while precision also rises slightly.}
 \label{fig:realvlm}
