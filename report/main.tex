@@ -640,13 +640,13 @@ TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
 \centering
 \begin{tikzpicture}[scale=1.0, transform shape]
   % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
-  % y = value * 14 cm (0.393 -> 5.5cm)
+  % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
   \def\sc{14}
-  % legend
-  \fill[gray!60] (5.6,4.3) rectangle (6.0,4.55);
-  \node[anchor=west, font=\scriptsize] at (6.05,4.42) {VLM only};
-  \fill[blue!60] (7.6,4.3) rectangle (8.0,4.55);
-  \node[anchor=west, font=\scriptsize] at (8.05,4.42) {VLM + GNN};
+  % legend (top center, above axis)
+  \fill[gray!60] (2.1,6.0) rectangle (2.5,6.25);
+  \node[anchor=west, font=\scriptsize] at (2.55,6.12) {VLM only};
+  \fill[blue!60] (4.3,6.0) rectangle (4.7,6.25);
+  \node[anchor=west, font=\scriptsize] at (4.75,6.12) {VLM + GNN};
   % Precision
   \fill[gray!60] (0.7,0) rectangle (1.3,{0.382*\sc});
   \node[font=\scriptsize] at (1.0,{0.382*\sc+0.12}) {0.382};
@@ -666,9 +666,9 @@ TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
   \node[font=\scriptsize] at (6.0,{0.311*\sc+0.12}) {0.311};
   \node[font=\scriptsize] at (5.5,-0.28) {F1};
   % axes
-  \draw[thick,-{Stealth}] (0,-0.12) -- (0,4.9);
+  \draw[thick,-{Stealth}] (0,-0.12) -- (0,5.8);
   \draw[thick,-{Stealth}] (-0.15,0) -- (6.9,0);
-  \node[font=\footnotesize, rotate=90] at (-0.55,2.4) {Score};
+  \node[font=\footnotesize, rotate=90] at (-0.55,2.7) {Score};
   \foreach \v in {0.1,0.2,0.3,0.4} {
     \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc}) node[left, font=\tiny] {\v};
   }
