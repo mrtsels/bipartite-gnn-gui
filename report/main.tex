@@ -17,9 +17,9 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{setspace}
 \onehalfspacing
-% Author-year citations: [Xie et al., 2024] style
-\usepackage[square,comma,authoryear]{natbib}
-\setcitestyle{square,comma,authoryear}
+% Numbered citations: [1], [2], ... in text and reference list
+\usepackage[numbers,square,comma]{natbib}
+\setcitestyle{square,comma,numbers}
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
@@ -779,7 +779,7 @@ The author thanks Prof.\ Wing Cheong Lau for supervision and guidance
 throughout the internship, and the CUHK Information Engineering Department
 for support.
 
-\bibliographystyle{plainnat}
+\bibliographystyle{unsrtnat}
 \bibliography{references}
 
 \end{document}
