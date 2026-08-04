@@ -626,7 +626,8 @@ simple interpolation.
     \node[font=\footnotesize] at (4.3,-0.75) {Drop ratio};
     \node[font=\footnotesize, rotate=90] at (-0.55,2.4) {Proposal IoU};
     \foreach \v in {0.05,0.10,0.15,0.20} {
-      \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc}) node[left, font=\tiny] {\v};
+      \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
+      \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
     }
   \end{scope}
 \end{tikzpicture}
