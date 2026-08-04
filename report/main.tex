@@ -82,23 +82,23 @@ are fast and memory-efficient, but they make mistakes: they miss 10--30\% of
 the visible interface elements, and the bounding boxes they draw around the
 elements they do find are often misaligned with reality. This report presents
 a post-correction framework that fixes these mistakes without retraining the
-VLM or adding a second detector. The key insight is that well-designed
-interfaces obey spatial rules: elements align, sit inside containers, and
-follow consistent spacing. We encode these rules as a heterogeneous bipartite
-graph: one set of nodes for the detected elements, one set for the spatial
-constraints among them, and edges only between the two sets. A GraphSAGE
-neural network passes messages along this graph so that every element's
-prediction is informed by its spatial neighbours, then predicts per-element
-coordinate corrections, flags violated constraints, scores whether each
-detection is real or hallucinated, and proposes elements the VLM missed
-entirely. On the RICO dataset (real Android screenshots), the model detects
-violated constraints at 90--94\% accuracy and, when a large fraction of
-elements is missing, completes the layout with up to 56\% better IoU than a
-nearest-neighbor baseline. End-to-end on 200 real screenshots with a Qwen3-VL
-Flash front end, the corrected pipeline recovers 106 previously missed
-elements, raising F1 by 2.0 points and recall by 2.2 points. The framework
-is model-agnostic, requires no VLM fine-tuning, and adds less than one
-millisecond of inference per screenshot.
+VLM or adding a second detector. The underlying assumption is that
+well-designed interfaces obey spatial rules: elements align, sit inside
+containers, and follow consistent spacing. We encode these rules as a
+heterogeneous bipartite graph: one set of nodes for the detected elements,
+one set for the spatial constraints among them, and edges only between the
+two sets. A GraphSAGE network passes messages along this graph so that every
+element's prediction is informed by its spatial neighbours, then predicts
+per-element coordinate corrections, flags violated constraints, scores
+whether each detection is real or hallucinated, and proposes elements the
+VLM missed entirely. On the RICO dataset (real Android screenshots), the
+model detects violated constraints at 90--94\% accuracy and, when a large
+fraction of elements is missing, completes the layout with up to 56\% better
+IoU than a nearest-neighbor baseline. End-to-end on 200 real screenshots with
+a Qwen3-VL Flash front end, the corrected pipeline recovers 106 previously
+missed elements, raising F1 by 2.0 points and recall by 2.2 points. The
+correction module runs after the VLM, does not modify the underlying model,
+and adds less than one millisecond of inference per screenshot.
 \end{abstract}
 
 \section{Introduction}
@@ -119,7 +119,7 @@ phone. Lightweight VLMs under 3 billion parameters (such as Qwen3-VL Flash
 makes them attractive for real-time applications.
 
 \subsection{Two Systematic Failure Modes}
-Careful evaluation on real screenshots shows that lightweight VLMs make two
+Evaluation on real screenshots shows that lightweight VLMs make two
 kinds of mistakes:
 
 \begin{itemize}
@@ -135,19 +135,30 @@ compressing a large model into a small one. The natural response, training a
 bigger model, is precisely what on-device constraints forbid.
 
 \subsection{Our Approach in One Paragraph}
-We observe that GUI screenshots are \emph{highly structured}: designers lay
-out elements according to spatial rules such as alignment, containment,
-spacing, and grid membership. These rules are independent evidence that a
-VLM looking at pixels alone cannot exploit. If every element in a row is
-left-aligned except one, the odd one out is probably misplaced, regardless
-of what the pixels look like. We formalize these rules as a graph: element
-nodes on one side, constraint nodes on the other, and edges connecting an
-element to every constraint it participates in. A graph neural network
+Early experiments shaped this design. We first attempted to correct
+coordinates directly, training an MLP on per-element features. The results
+were consistently poor: on simulated Gaussian noise the model never beat the
+no-op baseline, and on real VLM output (Qwen3-VL Plus and Flash) the
+positional errors were already small enough that there was little to correct.
+A local LLaVA-7B model produced too few detections per screenshot for the
+graph to carry useful structure. These failures pointed to a common cause:
+single-element features carried too little context for coordinate
+prediction, regardless of how the regressor was trained.
+
+The alternative explored in this report is to exploit structure. GUI
+screenshots are laid out according to spatial rules such as alignment,
+containment, spacing, and grid membership. These rules are independent
+evidence that a VLM looking at pixels alone cannot use: if every element in
+a row is left-aligned except one, the odd one out is probably misplaced,
+regardless of what the pixels look like. We formalize these rules as a graph:
+element nodes on one side, constraint nodes on the other, and edges connecting
+an element to every constraint it participates in. A graph neural network
 (GraphSAGE) then reasons over this structure and outputs corrected
 coordinates, violated constraints, per-element confidence, and (for the
 omission problem) entirely new element proposals. Because the correction
-runs after the VLM, it is \emph{model-agnostic}: the same correction network
-works behind any VLM, and it never needs the VLM's weights.
+runs after the VLM, it does not modify the underlying model: the same
+correction network works behind any VLM that outputs elements with bounding
+boxes.
 
 The rest of this report is organized as follows. Section~II summarizes
 existing solutions and their limitations. Section~III describes the proposed
@@ -181,12 +192,17 @@ prior is shared. We make the prior explicit and interpretable (ten spatial
 constraint types) rather than implicit in a generative model.
 
 \subsection{Why a Correction Network}
-The framework proposed here differs from all of the above in a fundamental
-way: it never generates pixels or detections from scratch, and it never
-touches the VLM. It \emph{post-processes} the VLM's noisy output using
-structural reasoning. This keeps the on-device cost of the VLM unchanged,
-adds only a small graph network (57K parameters), and works with any VLM that
-outputs a list of elements with bounding boxes.
+The framework proposed here differs from the approaches above in one
+respect: it never generates pixels or detections from scratch, and it never
+modifies the VLM. It \emph{post-processes} the VLM's noisy output using
+structural reasoning. This choice was motivated by the on-device constraint:
+the VLM is the expensive component, and any fix that forces a larger model or
+an additional detector undoes the reason for using a lightweight VLM in the
+first place. Post-processing keeps the VLM unchanged, adds a small graph
+network (57K parameters), and works with any VLM that outputs a list of
+elements with bounding boxes. The trade-off is that the correction is limited
+by what the VLM initially detects; elements missed entirely can only be
+recovered through the completion head, which is evaluated in Section~IV.
 
 \section{Proposed Method}
 \subsection{Overview}
@@ -587,11 +603,11 @@ other head.}
 We compare the GNN proposal head against a nearest-neighbor baseline that
 copies the box of the closest surviving element (Fig.~\ref{fig:completion}).
 At low drop ratios (0.2--0.4) the baseline wins because many survivors are
-nearby. At high drop ratios (0.6--0.8) the GNN clearly wins: at drop 0.6 the
+nearby. At high drop ratios (0.6--0.8) the GNN wins: at drop 0.6 the
 GNN reaches IoU 0.122 vs.\ 0.088 for NN ($+39\%$); at drop 0.8, 0.097 vs.\
 0.062 ($+56\%$). With fewer survivors, structural reasoning matters more than
-proximity, confirming the model learns genuine structural priors rather than
-simple interpolation.
+proximity, which is consistent with the model using structural priors rather
+than simple interpolation.
 
 \begin{figure}[htbp]
 \centering
@@ -747,16 +763,21 @@ minutes on CPU.
 
 \section{Discussion}
 \subsection{When Does Structural Reasoning Help?}
-The experiments reveal a clear pattern: structural reasoning helps most when
-the VLM output is \emph{sparse} (many elements missing) and less when the VLM
-is already accurate. This is the expected ``Goldilocks'' behavior: the
-graph has real information to exploit when elements are missing, and nothing
-to correct when the VLM is already near-perfect. For lightweight VLMs on
-realistic screenshots (which omit 10--30\% of elements), the regime where the
-model helps is the regime that matters.
+Across the experiments, structural reasoning helped most when the VLM output
+was sparse (many elements missing) and less when the VLM was already
+accurate. This mirrors the sequence of negative results that motivated the
+graph formulation in the first place. On simulated Gaussian noise, the model
+never beat the no-op baseline; Qwen3-VL Plus and Flash produced positional
+errors around 0.01 or smaller, leaving nothing to correct; LLaVA-7B detected
+only a few elements per screenshot, so the graph carried little structure;
+and a reweighted existence-only objective had no false positives to filter.
+Only when a substantial fraction of elements was missing did the constraint
+graph contain information that a per-element regressor could not access. For
+lightweight VLMs on realistic screenshots (which omit 10--30\% of elements),
+this regime is the relevant one for practical use.
 
 \subsection{Limitations}
-Three limitations stand out. First, \emph{type prediction is weak}: predicting
+The main limitations are as follows. First, \emph{type prediction is weak}: predicting
 an element's semantic type from constraint context alone caps at 62\%
 accuracy; constraints carry spatial but not semantic information. Second,
 \emph{domain transfer is limited}: the confidence model's AUROC drops from
@@ -768,24 +789,30 @@ distinguish, and free-form layouts (maps, drawings) offer few constraints to
 reason from.
 
 \subsection{Future Work}
-Promising directions include visual feature fusion with cross-attention
-(early experiments show 18--22\% proposal-MSE improvement), domain
-adaptation to ScreenSpot, and extending the graph with temporal context so
-the model can distinguish missing elements from elements hidden by UI state.
+Visual feature fusion with cross-attention is a candidate next step (early
+experiments show 18--22\% proposal-MSE improvement), as is domain adaptation
+to ScreenSpot. Extending the graph with temporal context could help the model
+distinguish missing elements from elements hidden by UI state.
 
 \section{Conclusion}
-We presented a heterogeneous bipartite GraphSAGE framework that corrects
-noisy GUI element predictions from lightweight VLMs. Encoding ten spatial
-constraint types as a bipartite graph gives the model a strong structural
-inductive bias: elements communicate only through shared constraints. The
-multi-task objective couples coordinate correction, violation detection,
-existence scoring, and self-supervised element completion. On RICO, the model
-achieves 90--94\% violation accuracy, a $+56\%$ IoU gain over nearest-neighbor
-completion at high drop ratios, and a $+2.0$pp F1 improvement on 200 real
-Qwen3-VL Flash screenshots with honest checkpoint loading. The framework is
-model-agnostic, adds sub-millisecond inference, and directly addresses the
-dominant failure mode of lightweight VLMs (element omission) without
-retraining them.
+This report presented a heterogeneous bipartite GraphSAGE framework for
+correcting noisy GUI element predictions from lightweight VLMs. Ten spatial
+constraint types are encoded as a bipartite graph, so elements exchange
+messages only through shared constraints; the multi-task objective couples
+coordinate correction, violation detection, existence scoring, and
+self-supervised element completion. On RICO, the model achieves 90--94\%
+violation accuracy, a $+56\%$ IoU gain over nearest-neighbor completion at
+high drop ratios, and a $+2.0$pp F1 improvement on 200 real Qwen3-VL Flash
+screenshots with shape-filtered checkpoint loading.
+
+The results are encouraging but bounded. The gains appear when the VLM output
+is sparse, and the framework inherits the VLM's initial detections; it does
+not fix errors that are purely semantic, and its confidence scores transfer
+only partially across domains. These limits, along with the negative results
+reported in the discussion, suggest that structural post-correction is best
+viewed as one component of a GUI-understanding pipeline rather than a
+complete solution. Whether the approach generalizes beyond mobile layouts to
+desktop and web interfaces remains to be tested.
 
 \section*{Acknowledgment}
 The author thanks Prof.\ Wing Cheong Lau for supervision and guidance
