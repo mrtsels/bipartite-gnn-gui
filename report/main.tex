@@ -473,27 +473,27 @@ Only \texttt{ALIGNMENT} & 0.878 ($-3.0$pp) \\
   % horizontal bars: length = (value - 0.84) * 60 cm
   \def\sc{60}
   \def\base{0.0}
-  % y positions for 6 rows (top to bottom), bar height 0.35
-  % All 10 types (control) 0.908 -> 4.08cm
-  \fill[blue!60] (\base,5.0) rectangle ({(\base+ (0.908-0.84)*\sc)},5.35);
-  \node[anchor=east, font=\footnotesize] at (\base-0.1,5.175) {All 10 types};
-  \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.1)},5.175) {0.908};
-  % Remove CONTAINMENT 0.889 -> 2.94cm
-  \fill[gray!50] (\base,4.0) rectangle ({(\base+(0.889-0.84)*\sc)},4.35);
-  \node[anchor=east, font=\footnotesize] at (\base-0.1,4.175) {Remove \texttt{CONTAINMENT}};
-  \node[font=\footnotesize, anchor=west] at ({(\base+(0.889-0.84)*\sc+0.1)},4.175) {0.889};
-  % Remove SPACING 0.903 -> 3.78cm
-  \fill[gray!50] (\base,3.0) rectangle ({(\base+(0.903-0.84)*\sc)},3.35);
-  \node[anchor=east, font=\footnotesize] at (\base-0.1,3.175) {Remove \texttt{SPACING}};
-  \node[font=\footnotesize, anchor=west] at ({(\base+(0.903-0.84)*\sc+0.1)},3.175) {0.903};
-  % Remove GRID 0.916 -> 4.56cm
-  \fill[gray!50] (\base,2.0) rectangle ({(\base+(0.916-0.84)*\sc)},2.35);
-  \node[anchor=east, font=\footnotesize] at (\base-0.1,2.175) {Remove \texttt{GRID}};
-  \node[font=\footnotesize, anchor=west] at ({(\base+(0.916-0.84)*\sc+0.1)},2.175) {0.916};
+  % y positions for 6 rows (top to bottom), bar height 0.35; sorted desc by value
   % Remove all ALIGNMENT 0.939 -> 5.94cm
-  \fill[gray!50] (\base,1.0) rectangle ({(\base+(0.939-0.84)*\sc)},1.35);
-  \node[anchor=east, font=\footnotesize] at (\base-0.1,1.175) {Remove all \texttt{ALIGNMENT}};
-  \node[font=\footnotesize, anchor=west] at ({(\base+(0.939-0.84)*\sc+0.1)},1.175) {0.939};
+  \fill[gray!50] (\base,5.0) rectangle ({(\base+(0.939-0.84)*\sc)},5.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,5.175) {Remove all \texttt{ALIGNMENT}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.939-0.84)*\sc+0.1)},5.175) {0.939};
+  % Remove GRID 0.916 -> 4.56cm
+  \fill[gray!50] (\base,4.0) rectangle ({(\base+(0.916-0.84)*\sc)},4.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,4.175) {Remove \texttt{GRID}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.916-0.84)*\sc+0.1)},4.175) {0.916};
+  % All 10 types (control) 0.908 -> 4.08cm
+  \fill[blue!60] (\base,3.0) rectangle ({(\base+(0.908-0.84)*\sc)},3.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,3.175) {All 10 types};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.1)},3.175) {0.908};
+  % Remove SPACING 0.903 -> 3.78cm
+  \fill[gray!50] (\base,2.0) rectangle ({(\base+(0.903-0.84)*\sc)},2.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,2.175) {Remove \texttt{SPACING}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.903-0.84)*\sc+0.1)},2.175) {0.903};
+  % Remove CONTAINMENT 0.889 -> 2.94cm
+  \fill[gray!50] (\base,1.0) rectangle ({(\base+(0.889-0.84)*\sc)},1.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,1.175) {Remove \texttt{CONTAINMENT}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+(0.889-0.84)*\sc+0.1)},1.175) {0.889};
   % Only ALIGNMENT 0.878 -> 2.28cm
   \fill[gray!50] (\base,0.0) rectangle ({(\base+(0.878-0.84)*\sc)},0.35);
   \node[anchor=east, font=\footnotesize] at (\base-0.1,0.175) {Only \texttt{ALIGNMENT}};
