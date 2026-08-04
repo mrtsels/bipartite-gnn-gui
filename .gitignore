@@ -55,6 +55,14 @@ demo_data/
 *.png
 *.jpg
 *.jpeg
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.out
+*.log
 *.pdf
 *.svg
 
