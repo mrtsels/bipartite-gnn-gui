@@ -87,7 +87,7 @@ detection is real or hallucinated, and proposes elements the VLM missed
 entirely. On the RICO dataset (real Android screenshots), the model detects
 violated constraints at 90--94\% accuracy and, when a large fraction of
 elements is missing, completes the layout with up to 56\% better IoU than a
-nearest-neighbour baseline. End-to-end on 200 real screenshots with a Qwen3-VL
+nearest-neighbor baseline. End-to-end on 200 real screenshots with a Qwen3-VL
 Flash front end, the corrected pipeline recovers 106 previously missed
 elements, raising F1 by 2.0 points and recall by 2.2 points. The framework
 is model-agnostic, requires no VLM fine-tuning, and adds less than one
@@ -151,7 +151,7 @@ discusses limitations and future work, and Section~VI concludes.
 \subsection{Fine-Tuning Larger Models}
 The most direct remedy for VLM mistakes is to fine-tune a larger VLM (7B+) on
 GUI data, or to fine-tune the lightweight model on domain-specific screenshots.
-This improves accuracy but has two costs: it requires labelled GUI data, and
+This improves accuracy but has two costs: it requires labeled GUI data, and
 (more fundamentally for the on-device use case) the improved model is
 larger, slower, or both. Fine-tuning also bakes in a specific VLM; swapping
 the front-end model means retraining everything.
@@ -250,8 +250,8 @@ $\varepsilon$.
 \texttt{ALIGN\_RIGHT} & $|x_2-x_2'|<\varepsilon$ & Right edges aligned \\
 \texttt{ALIGN\_TOP} & $|y_1-y_1'|<\varepsilon$ & Top edges aligned \\
 \texttt{ALIGN\_BOTTOM} & $|y_2-y_2'|<\varepsilon$ & Bottom edges aligned \\
-\texttt{CENTER\_X} & center-distance $<\varepsilon$ & Horizontally centred \\
-\texttt{CENTER\_Y} & center-distance $<\varepsilon$ & Vertically centred \\
+\texttt{CENTER\_X} & center-distance $<\varepsilon$ & Horizontally centered \\
+\texttt{CENTER\_Y} & center-distance $<\varepsilon$ & Vertically centered \\
 \texttt{SPACING} & consistent gaps & Evenly spaced list items \\
 \texttt{CONTAINMENT} & one box inside another & Icon inside a container \\
 \texttt{GRID} & row/column membership & Grid layout detection \\
@@ -318,7 +318,7 @@ communicate through shared constraints.}
 \subsection{Message Passing}
 A graph neural network propagates information along the edges. We use two
 alternating hops of GraphSAGE convolution \cite{hamilton2017sage}, which
-aggregates neighbouring features with a mean operation.
+aggregates neighboring features with a mean operation.
 
 \subsubsection{Hop 1: Element to Constraint}
 Each constraint node collects information from the elements it involves:
@@ -577,7 +577,7 @@ other head.}
 \end{figure}
 
 \subsection{Element Completion}
-We compare the GNN proposal head against a nearest-neighbour baseline that
+We compare the GNN proposal head against a nearest-neighbor baseline that
 copies the box of the closest surviving element (Fig.~\ref{fig:completion}).
 At low drop ratios (0.2--0.4) the baseline wins because many survivors are
 nearby. At high drop ratios (0.6--0.8) the GNN clearly wins: at drop 0.6 the
@@ -646,7 +646,7 @@ simple interpolation.
   \end{scope}
 \end{tikzpicture}
 \caption{Element-completion IoU vs.\ drop ratio (mean $\pm$ std, 2 seeds).
-The GNN beats the nearest-neighbour baseline when substantial structure is
+The GNN beats the nearest-neighbor baseline when substantial structure is
 missing (drop 0.6--0.8).}
 \label{fig:completion}
 \end{figure}
@@ -656,7 +656,7 @@ We deploy the trained model behind Qwen3-VL Flash on 200 real RICO
 screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN
 receives the VLM's noisy elements, detects violated constraints, and proposes
 missing elements; proposals are merged with non-maximum suppression. We
-evaluate with centre-distance matching at threshold 0.1 against ground truth
+evaluate with center-distance matching at threshold 0.1 against ground truth
 (Table~\ref{tab:real}, Fig.~\ref{fig:realvlm}).
 
 \begin{table}[htbp]
@@ -742,7 +742,7 @@ minutes on CPU.
 \subsection{When Does Structural Reasoning Help?}
 The experiments reveal a clear pattern: structural reasoning helps most when
 the VLM output is \emph{sparse} (many elements missing) and less when the VLM
-is already accurate. This is the expected ``Goldilocks'' behaviour: the
+is already accurate. This is the expected ``Goldilocks'' behavior: the
 graph has real information to exploit when elements are missing, and nothing
 to correct when the VLM is already near-perfect. For lightweight VLMs on
 realistic screenshots (which omit 10--30\% of elements), the regime where the
@@ -773,7 +773,7 @@ constraint types as a bipartite graph gives the model a strong structural
 inductive bias: elements communicate only through shared constraints. The
 multi-task objective couples coordinate correction, violation detection,
 existence scoring, and self-supervised element completion. On RICO, the model
-achieves 90--94\% violation accuracy, a $+56\%$ IoU gain over nearest-neighbour
+achieves 90--94\% violation accuracy, a $+56\%$ IoU gain over nearest-neighbor
 completion at high drop ratios, and a $+2.0$pp F1 improvement on 200 real
 Qwen3-VL Flash screenshots with honest checkpoint loading. The framework is
 model-agnostic, adds sub-millisecond inference, and directly addresses the
