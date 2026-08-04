@@ -11,8 +11,9 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{caption}
-% More breathing room between table caption and the table body
-\captionsetup[table]{skip=14pt}
+% More breathing room between table caption and the table body;
+% table captions indented 3cm on each side (same as figure captions)
+\captionsetup[table]{skip=14pt, margin=3cm}
 % Figure captions indented 3cm on each side
 \captionsetup[figure]{margin=3cm}
 \usepackage{tikz}
@@ -22,8 +23,9 @@
 \setmainfont{Times New Roman}
 % Monospace for code identifiers (fontspec: \ttdefault override is TU-incompatible)
 \setmonofont{Courier New}
-% Margins: 1in = 2.54cm, reduced by 0.5cm on all sides -> 2.04cm
-\usepackage[margin=2.04cm]{geometry}
+% Margins: all sides 2.04cm (1in minus 0.5cm), then left/right reduced
+% another 0.5cm -> 1.54cm; top/bottom stay at 2.04cm
+\usepackage[left=1.54cm, right=1.54cm, top=2.04cm, bottom=2.04cm]{geometry}
 \usepackage{setspace}
 \onehalfspacing
 % Numbered citations: [1], [2], ... in text and reference list
@@ -244,6 +246,7 @@ list, bipartite graph, GraphSAGE, corrected JSON.}
 
 \subsection{Formalizing a Screenshot as a Graph}
 \subsubsection{Elements}
+\sloppy
 Let a screenshot yield $N$ detected elements
 $\mathcal{E}=\{e_i\}_{i=1}^{N}$, each with a normalized bounding box
 $\mathbf{b}_i=(x_1^{(i)},y_1^{(i)},x_2^{(i)},y_2^{(i)})\in[0,1]^4$ (the box
