@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ⬜ → P13 ⬜ → P14 ✅ → P15 ⬜**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ⬜ → P13 ⬜ → P14 ✅ → P15 ⬜**
 
 ---
 
@@ -587,6 +587,23 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 **结果:** `paper/main.pdf` — 4 页双栏 IEEE conference 草稿，零 error 零 overfull，13 条参考文献。
 **诚实性说明:** 实验数字全部直接来自 `experiments/*.json`（非文档转述）——完成消融 IoU 0.122 vs NN 0.088（drop=0.6）；真实 VLM 端到端采用**正确加载** checkpoint 的结果（F1 +2.0pp，recall +2.2pp，precision +1.1pp），并显式标注早期报告 +2.9pp 为 strict=False 权重丢弃假象。midterm 报告中无 JSON 支撑的数字（confidence AUROC 0.989、cross-dataset 28→72%）未进入论文。
 **编译环境:** TeX Live basic 缺 Courier 字体 → `\renewcommand{\ttdefault}{cmtt}`；缺 IEEEtran.bst → 已下载到 `paper/` 本地。
+
+---
+
+## Phase 12A: Final Report（终期报告）⬜ [优先级 1]
+
+**Goal:** 撰写 UG Summer Research Internship 终期报告并提交 SharePoint。
+**格式:** 单栏 LaTeX 报告（复用 `paper/` 的 IEEEtran.cls + references.bib + figures），面向**有知识但不一定是领域专家**的读者。
+
+| # | Item | Status |
+|---|------|--------|
+| 12A.1 | 结构规划: 问题描述(为什么重要) → 现有方案总结 → 提出方案 + 结果，非专家可读 | ⬜ |
+| 12A.2 | 报告正文 (`report/main.tex`): 基于 paper 扩展——intro/背景、现有方案、方法(图构建+消息传递+多任务+补全)、实验、结论 | ⬜ |
+| 12A.3 | 图表复用 + 编译验证（pdflatex ×2 + bibtex，无 error，页数合理） | ⬜ |
+| 12A.4 | 与导师 (Prof Lau) 沟通，确认报告要求后再提交 SharePoint（用户执行） | ⬜ |
+| 12A.5 | 终稿审查 + TASK.md 状态更新 + commit/push | ⬜ |
+
+**提交提醒（iii）:** 提交 SharePoint 前必须联系指导教授 (Prof. Lau Wing Cheong) 咨询报告要求并采纳其建议。
 
 ---
 
