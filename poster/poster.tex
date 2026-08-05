@@ -263,12 +263,14 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 \end{columns}
 
-\begin{block}{References}
+% References pinned to the bottom: left-aligned heading, no separator rule,
+% no beamer block chrome.
+\vfill
 
-  \nocite{*}
-  \footnotesize{\bibliographystyle{plain}\bibliography{poster}}
+{\usebeamerfont{block title}\usebeamercolor[fg]{block title}References\par}
 
-\end{block}
+\nocite{*}
+\footnotesize{\bibliographystyle{plain}\bibliography{poster}}
 
 \end{frame}
 
