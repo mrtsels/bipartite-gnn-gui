@@ -198,23 +198,26 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
     \begin{center}
     \begin{tikzpicture}[
-        elem/.style={draw, rounded corners=2pt, fill=cuhk-purple!12, minimum width=2.4cm,
-                     minimum height=0.55cm, font=\footnotesize, align=center},
-        cons/.style={draw, rounded corners=2pt, fill=cuhk-orange!15, minimum width=2.4cm,
-                     minimum height=0.55cm, font=\footnotesize, align=center},
-        edg/.style={cuhk-purple!50, thick},
-        xscale=2.2, yscale=1]
-      % element nodes (top row)
-      \node[elem] (e1) at (0,1.5) {$e_1$: Button};
-      \node[elem] (e2) at (2.2,1.5) {$e_2$: Text};
-      \node[elem] (e3) at (4.4,1.5) {$e_3$: Icon};
-      \node[elem] (e4) at (6.6,1.5) {$e_4$: Input};
-      \node[elem] (e5) at (8.8,1.5) {$e_5$: Image};
+        elem/.style={draw, rounded corners=2pt, fill=cuhk-purple!12, text width=3.2cm,
+                     minimum height=0.55cm, font=\footnotesize, align=center,
+                     inner sep=0pt},
+        cons/.style={draw, rounded corners=2pt, fill=cuhk-orange!15, text width=5.0cm,
+                     minimum height=0.55cm, font=\footnotesize, align=center,
+                     inner sep=0pt},
+        edg/.style={cuhk-purple!50, thick}]
+      % element nodes (top row); coordinates pre-scaled x2.2 (no xscale transform,
+      % so text width applies strictly and all boxes are exactly equal width)
+      % row center x=11; elem step 4.84, cons step 6.29 (gap +30%), cons width x1.6
+      \node[elem] (e1) at (1.32,1.5) {$e_1$: Button};
+      \node[elem] (e2) at (6.16,1.5) {$e_2$: Text};
+      \node[elem] (e3) at (11,1.5) {$e_3$: Icon};
+      \node[elem] (e4) at (15.84,1.5) {$e_4$: Input};
+      \node[elem] (e5) at (20.68,1.5) {$e_5$: Image};
       % constraint nodes (bottom row), centered on the element grid
-      \node[cons] (c1) at (1.1,-1.5) {$c_1$: \texttt{ALIGN\_LEFT}};
-      \node[cons] (c2) at (3.3,-1.5) {$c_2$: \texttt{CONTAINMENT}};
-      \node[cons] (c3) at (5.5,-1.5) {$c_3$: \texttt{SPACING}};
-      \node[cons] (c4) at (7.7,-1.5) {$c_4$: \texttt{SAME\_SIZE}};
+      \node[cons] (c1) at (1.565,-1.5) {$c_1$: \texttt{ALIGN\_\-LEFT}};
+      \node[cons] (c2) at (7.855,-1.5) {$c_2$: \texttt{CONTAIN\-MENT}};
+      \node[cons] (c3) at (14.145,-1.5) {$c_3$: \texttt{SPAC\-ING}};
+      \node[cons] (c4) at (20.435,-1.5) {$c_4$: \texttt{SAME\_\-SIZE}};
       % edges: only cross-partition
       \draw[edg] (e1) -- (c1);
       \draw[edg] (e1) -- (c2);
@@ -225,9 +228,9 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \draw[edg] (e4) -- (c3);
       \draw[edg] (e5) -- (c4);
       \draw[edg] (e5) -- (c2);
-      % partition labels, centered over the full row (row center x=4.4)
+      % partition labels, centered over the full row (row center x=11)
       \node[font=\small\itshape, above=0.25cm of e3] {Element nodes $V_e$};
-      \node[font=\small\itshape] at (4.4,-2.7) {Constraint nodes $V_c$};
+      \node[font=\small\itshape] at (11,-2.7) {Constraint nodes $V_c$};
     \end{tikzpicture}
     \end{center}
 
