@@ -25,6 +25,14 @@
 \pgfplotsset{compat=1.14}
 \usepackage{anyfontsize}
 
+% Clear the bibliography entry templates that Beamer's \newblock state
+% machine switches through (author -> title -> location -> note). With the
+% templates empty, each citation entry flows as one continuous block
+% instead of being split into separate author/title/journal lines.
+\setbeamertemplate{bibliography entry title}{}
+\setbeamertemplate{bibliography entry location}{}
+\setbeamertemplate{bibliography entry note}{}
+
 % ====================
 % Lengths
 % ====================
@@ -248,19 +256,20 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \end{block}
 
-  \begin{block}{References}
-
-    \nocite{*}
-    \footnotesize{\bibliographystyle{plain}\bibliography{poster}}
-
-  \end{block}
-
 \end{column}
 \separatorcolumn
 
 
 
 \end{columns}
+
+\begin{block}{References}
+
+  \nocite{*}
+  \footnotesize{\bibliographystyle{plain}\bibliography{poster}}
+
+\end{block}
+
 \end{frame}
 
 \end{document}
