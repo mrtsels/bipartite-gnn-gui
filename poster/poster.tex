@@ -166,7 +166,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
                     fill=cuhk-purple!10, text=cuhk-purple!90},
         arr/.style={-{Stealth[length=2.2mm]}, thick, cuhk-purple!70},
         lab/.style={font=\scriptsize, cuhk-purple!80, align=center},
-        scale=2.5]
+        xscale=2.5, yscale=1]
       % Row 1 (left to right)
       \node[box, fill=cuhk-yellow!40] (shot) at (0,0) {Screenshot};
       \node[box] (vlm) at (4.4,0) {Lightweight\\VLM};
@@ -203,7 +203,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         cons/.style={draw, rounded corners=2pt, fill=cuhk-orange!15, minimum width=1.9cm,
                      minimum height=0.55cm, font=\footnotesize},
         edg/.style={cuhk-purple!50, thick},
-        scale=3]
+        xscale=3, yscale=1]
       % element nodes (left)
       \node[elem] (e1) at (0,2.6) {$e_1$: Button};
       \node[elem] (e2) at (0,1.6) {$e_2$: Text};
@@ -293,7 +293,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{itemize}
 
     \begin{center}
-    \begin{tikzpicture}[scale=2]
+    \begin{tikzpicture}[xscale=2, yscale=1]
       % Left panel: violation accuracy (joint 0.876, vio-only 0.898, prop-only 0.489)
       % scale: 1.0 = 4cm, y = value*4
       \def\sc{4}
@@ -365,7 +365,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     hurts most ($-$3.0pp).
 
     \begin{center}
-    \begin{tikzpicture}[scale=2.8]
+    \begin{tikzpicture}[xscale=2.8, yscale=1]
       % horizontal bars: length = (value - 0.84) * 60 cm
       \def\sc{60}
       \def\base{0.0}
@@ -414,7 +414,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     drop 0.8: 0.097 vs.\ 0.062 ($+56\%$).
 
     \begin{center}
-    \begin{tikzpicture}[scale=2.2]
+    \begin{tikzpicture}[xscale=2.2, yscale=1]
       % grouped bars: 4 drop ratios x {GNN, NN}; y = value * 22 cm (max ~0.204 -> 4.5cm)
       \def\sc{22}
       % drop 0.2: GNN 0.047+/-0.009, NN 0.057+/-0.031
@@ -480,7 +480,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     (57K parameters, CPU-only).
 
     \begin{center}
-    \begin{tikzpicture}[scale=2.8]
+    \begin{tikzpicture}[xscale=2.8, yscale=1]
       % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
       % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
       \def\sc{14}
