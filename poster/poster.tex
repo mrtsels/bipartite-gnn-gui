@@ -279,10 +279,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 \begin{column}{\colwidth}
 
-
-  \begin{block}{5. Models}
-
-
         \begin{center}
 
 \begin{tikzpicture}[
@@ -369,6 +365,12 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 \end{tikzpicture}
     \end{center}
 
+
+
+  \begin{block}{5. Models}
+
+
+
     A two-layer bipartite GraphSAGE encoder (hidden dim 128, AdamW + cosine
     annealing) reads out four prediction heads, trained jointly on a
     weighted sum of losses:
@@ -417,6 +419,13 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % scale: 1.0 = 4cm, y = value*4
       \def\sc{4}
       \begin{scope}[shift={(0,0)}]
+
+    \textbf{Training-objective ablation} (5 seeds): joint training balances
+    both heads (violation 0.876, proposal MSE 0.051); single-objective
+    training degrades the other head (violation-only: proposal MSE 0.116;
+    proposal-only: violation 0.489).
+
+
         \node[font=\footnotesize] at (2.4,5.4) {Violation head};
         % joint
         \fill[cuhk-purple!75] (0.6,0) rectangle (1.6,{0.876*\sc});
@@ -469,15 +478,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 
 
-  \end{block}
-
-\end{column}
-
-\separatorcolumn
-
-\begin{column}{\colwidth}
-
-  \begin{block}{6. Results}
 
     \textbf{Constraint-type ablation} (violation accuracy): removing
     \texttt{CONTAINMENT} hurts most ($-$1.9pp), confirming containment is the
@@ -567,10 +567,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{tikzpicture}
     \end{center}
 
-    \textbf{Training-objective ablation} (5 seeds): joint training balances
-    both heads (violation 0.876, proposal MSE 0.051); single-objective
-    training degrades the other head (violation-only: proposal MSE 0.116;
-    proposal-only: violation 0.489).
 
     \textbf{Element completion} (proposal IoU): GNN beats nearest-neighbor
     when structure is missing --- drop 0.6: 0.122 vs.\ 0.088 ($+39\%$);
@@ -635,6 +631,17 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \end{scope}
     \end{tikzpicture}
     \end{center}
+
+
+  \end{block}
+
+\end{column}
+
+\separatorcolumn
+
+\begin{column}{\colwidth}
+
+  \begin{block}{6. Results}
 
     \textbf{End-to-end} (200 real RICO screenshots, Qwen3-VL Flash):
     recovers 106 previously missed elements; F1 0.291 $\rightarrow$ 0.311
