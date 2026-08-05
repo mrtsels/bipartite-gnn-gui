@@ -137,22 +137,24 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \begin{tikzpicture}[
         frame/.style={draw=black, line width=3pt, rounded corners=6pt},
         labcap/.style={font=\scriptsize\bfseries}]
-      % RICO screenshot (Android news/weather app) with rounded clip + border
+      % RICO screenshot (Android news/weather app, 1080x1920 portrait)
+      % keep native aspect ratio: width 3.0cm -> height 5.33cm
       \begin{scope}
-        \clip[rounded corners=6pt] (0,0) rectangle (2.6,4.6);
+        \clip[rounded corners=6pt] (0,0) rectangle (3.0,5.33);
         \node[anchor=south west, inner sep=0] at (0,0)
-          {\includegraphics[width=2.6cm, height=4.6cm]{figures/rico_sample.jpg}};
-        \draw[frame] (0,0) rectangle (2.6,4.6);
+          {\includegraphics[width=3.0cm]{figures/rico_sample.jpg}};
+        \draw[frame] (0,0) rectangle (3.0,5.33);
       \end{scope}
-      \node[labcap] at (1.3,-0.45) {RICO};
-      % ScreenSpot screenshot (iPad app library) with rounded clip + border
-      \begin{scope}[xshift=3.6cm]
-        \clip[rounded corners=6pt] (0,0) rectangle (3.2,4.6);
+      \node[labcap] at (1.5,-0.45) {RICO};
+      % ScreenSpot screenshot (iPad app library, 2360x1640 landscape)
+      % keep native aspect ratio: width 4.8cm -> height 3.34cm
+      \begin{scope}[xshift=4.1cm]
+        \clip[rounded corners=6pt] (0,0) rectangle (4.8,3.34);
         \node[anchor=south west, inner sep=0] at (0,0)
-          {\includegraphics[width=3.2cm, height=4.6cm]{figures/screenspot_sample.jpg}};
-        \draw[frame] (0,0) rectangle (3.2,4.6);
+          {\includegraphics[width=4.8cm]{figures/screenspot_sample.jpg}};
+        \draw[frame] (0,0) rectangle (4.8,3.34);
       \end{scope}
-      \node[labcap] at (3.6+1.6,-0.45) {ScreenSpot};
+      \node[labcap] at (4.1+2.4,-0.45) {ScreenSpot};
     \end{tikzpicture}
     \end{center}
 
