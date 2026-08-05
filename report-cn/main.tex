@@ -28,6 +28,8 @@
 % 数字编号引用：[1]、[2]……
 \usepackage[numbers,square,comma]{natbib}
 \setcitestyle{square,comma,numbers}
+% 全局标点压缩（开明标点：相邻标点/行首标点压缩为半角）
+\ctexset{punct=kaiming}
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
@@ -36,8 +38,8 @@
 \usepackage{hyperref}
 \hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=blue,
     pageanchor=false}
-% 允许 LaTeX 略微拉伸 glue，避免出现边缘 overfull hbox。
-\setlength{\emergencystretch}{2em}
+% 中文排版不需要 emergencystretch（会放大标点后的胶水）
+%\setlength{\emergencystretch}{2em}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
@@ -156,7 +158,6 @@ LayoutGAN \cite{li2019layoutgan} 和 LayoutTransformer \cite{gupta2021layouttran
 
 \subsection{把截图形式化为图}
 \subsubsection{元素}
-\sloppy
 设一张截图产生 $N$ 个检测元素
 $\mathcal{E}=\{e_i\}_{i=1}^{N}$，每个元素有一个归一化边界框
 $\mathbf{b}_i=(x_1^{(i)},y_1^{(i)},x_2^{(i)},y_2^{(i)})\in[0,1]^4$（框坐标，缩放至单位正方形）和一个来自元素分类体系的类型标签
