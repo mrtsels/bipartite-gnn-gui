@@ -33,8 +33,8 @@
 % (N+1)*\sepwidth + N*\colwidth = \paperwidth
 \newlength{\sepwidth}
 \newlength{\colwidth}
-\setlength{\sepwidth}{0.025\paperwidth}
-\setlength{\colwidth}{0.45\paperwidth}
+\setlength{\sepwidth}{0.01\paperwidth}
+\setlength{\colwidth}{0.32\paperwidth}
 
 \newcommand{\separatorcolumn}{\begin{column}{\sepwidth}\end{column}}
 
@@ -141,6 +141,12 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \end{block}
 
+\end{column}
+
+\separatorcolumn
+
+\begin{column}{\colwidth}
+
   \begin{block}{4. Proposed Methodologies}
 
     A screenshot is parsed by a lightweight VLM into a noisy element list,
@@ -169,12 +175,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \end{block}
 
-\end{column}
-
-\separatorcolumn
-
-\begin{column}{\colwidth}
-
   \begin{block}{5. Models}
 
     A two-layer bipartite GraphSAGE encoder (hidden dim 128, AdamW + cosine
@@ -196,6 +196,12 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{itemize}
 
   \end{block}
+
+\end{column}
+
+\separatorcolumn
+
+\begin{column}{\colwidth}
 
   \begin{block}{6. Results}
 
