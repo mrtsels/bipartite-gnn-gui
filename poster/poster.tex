@@ -424,28 +424,31 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{center}
 
     % KPI cards: one per constraint set (3x2 grid), solid color blocks,
-    % text left-aligned with padding
+    % equal padding on all sides, total width 80% of the column
     \begin{center}
+    \pgfmathsetlengthmacro{\cardw}{\dimexpr(0.8\colwidth - 1.2cm)/3\relax}
     \begin{tikzpicture}[
-        card/.style={rounded corners=4pt, text width=4.2cm, align=left,
-                     inner sep=10pt, font=\footnotesize, text=white}]
+        card/.style={rounded corners=4pt, text width=\cardw, align=left,
+                     inner sep=10pt, font=\footnotesize, text=white,
+                     minimum height=2.4cm},
+        node distance=0.6cm]
       % Row 1
-      \node[card, fill=cuhk-purple!85] at (0,0) {\textbf{All 10 types}\\(control)\\[6pt]
+      \node[card, fill=cuhk-purple!85] (a) {\textbf{All 10 types}\\(control)\\[6pt]
         {\Large\bfseries 0.908}};
-      \node[card, fill=cuhk-orange!80] at (4.9,0) {\texttt{CONTAINMENT}\\[6pt]
+      \node[card, fill=cuhk-orange!80, right=of a] (b) {\texttt{CONTAINMENT}\\[6pt]
         {\Large\bfseries 0.889}\\[2pt]
         {\scriptsize\bfseries\color{white!75}$-$1.9pp}};
-      \node[card, fill=cuhk-orange!80] at (9.8,0) {\texttt{SPACING}\\[6pt]
+      \node[card, fill=cuhk-orange!80, right=of b] (c) {\texttt{SPACING}\\[6pt]
         {\Large\bfseries 0.903}\\[2pt]
         {\scriptsize\bfseries\color{white!75}$-$0.5pp}};
       % Row 2
-      \node[card, fill=cuhk-purple!85] at (0,-3.0) {\texttt{GRID}\\[6pt]
+      \node[card, fill=cuhk-purple!85, below=of a] (d) {\texttt{GRID}\\[6pt]
         {\Large\bfseries 0.916}\\[2pt]
         {\scriptsize\bfseries\color{white!75}$+$0.8pp}};
-      \node[card, fill=cuhk-purple!85] at (4.9,-3.0) {Remove all\\\texttt{ALIGNMENT}\\[6pt]
+      \node[card, fill=cuhk-purple!85, right=of d] (e) {Remove all\\\texttt{ALIGNMENT}\\[6pt]
         {\Large\bfseries 0.939}\\[2pt]
         {\scriptsize\bfseries\color{white!75}$+$3.1pp}};
-      \node[card, fill=cuhk-orange!80] at (9.8,-3.0) {Only \texttt{ALIGNMENT}\\[6pt]
+      \node[card, fill=cuhk-orange!80, right=of e] (f) {Only \texttt{ALIGNMENT}\\[6pt]
         {\Large\bfseries 0.878}\\[2pt]
         {\scriptsize\bfseries\color{white!75}$-$3.0pp}};
     \end{tikzpicture}
