@@ -171,15 +171,15 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \node[box, fill=cuhk-yellow!40] (shot) at (0,0) {Screenshot};
       \node[box] (vlm) at (4.4,0) {Lightweight VLM};
       \node[box, fill=cuhk-orange!25] (noisy) at (8.8,0) {Noisy JSON};
-      % Row 2 (right to left, snake)
-      \node[box, fill=cuhk-purple!25] (graph) at (8.8,-3.4) {Bipartite Graph};
-      \node[box, fill=cuhk-purple!25] (gnn) at (4.4,-3.4) {GraphSAGE};
-      \node[box, fill=cuhk-yellow!40] (out) at (0,-3.4) {Corrected JSON};
+      % Row 2 (right to left, snake), row gap shortened by 1/3 (3.4 -> 2.27)
+      \node[box, fill=cuhk-purple!25] (graph) at (8.8,-2.27) {Bipartite Graph};
+      \node[box, fill=cuhk-purple!25] (gnn) at (4.4,-2.27) {GraphSAGE};
+      \node[box, fill=cuhk-yellow!40] (out) at (0,-2.27) {Corrected JSON};
       % Row 1 arrows
       \draw[arr] (shot) -- (vlm);
       \draw[arr] (vlm) -- (noisy);
-      % Row 1 -> Row 2 (down), shortened by 1/3 (from noisy bottom y=-0.45 to -2.12)
-      \draw[arr] (noisy.south) -- (8.8,-2.12);
+      % Row 1 -> Row 2 (down)
+      \draw[arr] (noisy) -- (graph);
       % Row 2 arrows (right to left)
       \draw[arr] (graph) -- (gnn);
       \draw[arr] (gnn) -- (out);
