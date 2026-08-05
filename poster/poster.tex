@@ -423,6 +423,34 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{tabularx}
     \end{center}
 
+    % KPI cards: one per constraint set (3x2 grid), solid color blocks,
+    % text left-aligned with padding
+    \begin{center}
+    \begin{tikzpicture}[
+        card/.style={rounded corners=4pt, text width=4.2cm, align=left,
+                     inner sep=10pt, font=\footnotesize, text=white}]
+      % Row 1
+      \node[card, fill=cuhk-purple!85] at (0,0) {\textbf{All 10 types}\\(control)\\[6pt]
+        {\Large\bfseries 0.908}};
+      \node[card, fill=cuhk-orange!80] at (4.9,0) {\texttt{CONTAINMENT}\\[6pt]
+        {\Large\bfseries 0.889}\\[2pt]
+        {\scriptsize\bfseries\color{white!75}$-$1.9pp}};
+      \node[card, fill=cuhk-orange!80] at (9.8,0) {\texttt{SPACING}\\[6pt]
+        {\Large\bfseries 0.903}\\[2pt]
+        {\scriptsize\bfseries\color{white!75}$-$0.5pp}};
+      % Row 2
+      \node[card, fill=cuhk-purple!85] at (0,-3.0) {\texttt{GRID}\\[6pt]
+        {\Large\bfseries 0.916}\\[2pt]
+        {\scriptsize\bfseries\color{white!75}$+$0.8pp}};
+      \node[card, fill=cuhk-purple!85] at (4.9,-3.0) {Remove all\\\texttt{ALIGNMENT}\\[6pt]
+        {\Large\bfseries 0.939}\\[2pt]
+        {\scriptsize\bfseries\color{white!75}$+$3.1pp}};
+      \node[card, fill=cuhk-orange!80] at (9.8,-3.0) {Only \texttt{ALIGNMENT}\\[6pt]
+        {\Large\bfseries 0.878}\\[2pt]
+        {\scriptsize\bfseries\color{white!75}$-$3.0pp}};
+    \end{tikzpicture}
+    \end{center}
+
     \textbf{Training-objective ablation} (5 seeds): joint training balances
     both heads (violation 0.876, proposal MSE 0.051); single-objective
     training degrades the other head (violation-only: proposal MSE 0.116;
