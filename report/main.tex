@@ -86,11 +86,11 @@ Alex Licheng Xie & Prof.\ Wing Cheong Lau \\
 \newpage
 
 \begin{abstract}
-Computer programs that ``look at'' a phone screen (assistive tools for
-visually impaired users, automated UI testers, and software agents) all
+Computer programs that interpret a phone screen, such as assistive tools for
+visually impaired users, automated UI testers, and software agents, all
 need to know what is on the screen and where. Small vision-language models
 (VLMs) are attractive for running such tasks directly on a phone because they
-are fast and memory-efficient, but they make mistakes: they miss 10--30\% of
+are fast and memory-efficient, but they make mistakes: they miss 38\% of
 the visible interface elements, and the bounding boxes they draw around the
 elements they do find are often misaligned with reality. This report presents
 a post-correction framework that fixes these mistakes without retraining the
@@ -103,7 +103,7 @@ two sets. A GraphSAGE network passes messages along this graph so that every
 element's prediction is informed by its spatial neighbours, then predicts
 per-element coordinate corrections, flags violated constraints, scores
 whether each detection is real or hallucinated, and proposes elements the
-VLM missed entirely. On the RICO dataset (real Android screenshots), the
+VLM missed entirely. On the RICO dataset of real Android screenshots, the
 model detects violated constraints at 90--94\% accuracy and, when a large
 fraction of elements is missing, completes the layout with up to 56\% better
 IoU than a nearest-neighbor baseline. End-to-end on 200 real screenshots with
@@ -126,8 +126,8 @@ Vision-language models (VLMs) are neural networks that can describe images in
 natural language and, given a screenshot, can list the interface elements and
 their bounding boxes. Large VLMs with 7 billion parameters or more are quite
 accurate at this task, but they are too slow and too memory-hungry to run on a
-phone. Lightweight VLMs under 3 billion parameters (such as Qwen3-VL Flash
-\cite{bai2023qwen} and MiniMax-VL-01) are fast enough for on-device use, which
+phone. Lightweight VLMs under 3 billion parameters, such as Qwen3-VL Flash
+\cite{bai2023qwen} and MiniMax-VL-01, are fast enough for on-device use, which
 makes them attractive for real-time applications.
 
 \subsection{Two Systematic Failure Modes}
@@ -135,8 +135,10 @@ Evaluation on real screenshots shows that lightweight VLMs make two
 kinds of mistakes:
 
 \begin{itemize}
-\item \textbf{Element omission.} 10--30\% of the visible elements are never
-reported. Small icons, dividers, and nested containers are missed most often.
+\item \textbf{Element omission.} 38\% of the visible elements are never
+reported: on 200 real RICO screenshots, the front-end VLM reports only 2947
+of 4789 ground-truth elements (Section~\ref{sec:endtoend}). Small icons,
+dividers, and nested containers are missed most often.
 \item \textbf{Misalignment.} The bounding boxes around detected elements can
 deviate by tens of pixels from where the element actually is, which breaks
 downstream reasoning about layout.
@@ -245,7 +247,7 @@ missed elements, and per-element reliability scores.
   \draw[arr] (graph) -- (gnn);
   \draw[arr] (gnn) -- (out);
   \node[font=\scriptsize, below=0.28cm of vlm] {detection};
-  \node[font=\scriptsize, align=center, below=0.28cm of noisy] {10--30\% omissions,\\box misalignment};
+  \node[font=\scriptsize, align=center, below=0.28cm of noisy] {38\% omissions,\\box misalignment};
   \node[font=\scriptsize, below=0.28cm of graph] {constraint extraction};
   \node[font=\scriptsize, below=0.28cm of gnn] {$\Delta\mathbf{x}$, proposals};
 \end{tikzpicture}}
@@ -470,6 +472,86 @@ NumPy \cite{harris2020numpy}, SciPy \cite{virtanen2020scipy}, and
 Matplotlib \cite{hunter2007matplotlib}; the front-end VLM is
 Qwen3-VL Flash \cite{bai2023qwen}.
 
+\subsection{End-to-End on Real VLM Output}\label{sec:endtoend}
+We deploy the trained model behind Qwen3-VL Flash on 200 real RICO
+screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN
+receives the VLM's noisy elements, detects violated constraints, and proposes
+missing elements; proposals are merged with non-maximum suppression. We
+evaluate with center-distance matching at threshold 0.1 against ground truth
+(Table~\ref{tab:real}, Fig.~\ref{fig:realvlm}).
+
+\begin{table}[htbp]
+\caption{End-to-end results on 200 real RICO screenshots (pooled).
+Checkpoints loaded with shape-filtering; numbers reflect correctly loaded
+weights.}
+\label{tab:real}
+\centering
+\begin{tabularx}{\textwidth}{Xccc}
+\toprule
+\textbf{Metric} & \textbf{VLM only} & \textbf{VLM + GNN} & \textbf{$\Delta$} \\
+\midrule
+Precision & 0.382 & 0.393 & $+1.1$pp \\
+Recall & 0.235 & 0.257 & $+2.2$pp \\
+F1 & 0.291 & 0.311 & $+2.0$pp \\
+TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
+  % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
+  \def\sc{14}
+  % legend (top center, above axis)
+  \fill[gray!60] (2.1,6.0) rectangle (2.5,6.25);
+  \node[anchor=west, font=\scriptsize] at (2.55,6.12) {VLM only};
+  \fill[blue!60] (4.3,6.0) rectangle (4.7,6.25);
+  \node[anchor=west, font=\scriptsize] at (4.75,6.12) {VLM + GNN};
+  % Precision
+  \fill[gray!60] (0.7,0) rectangle (1.3,{0.382*\sc});
+  \node[font=\scriptsize] at (1.0,{0.382*\sc+0.12}) {0.382};
+  \fill[blue!60] (1.7,0) rectangle (2.3,{0.393*\sc});
+  \node[font=\scriptsize] at (2.0,{0.393*\sc+0.12}) {0.393};
+  \node[font=\scriptsize] at (1.5,-0.28) {Precision};
+  % Recall
+  \fill[gray!60] (2.7,0) rectangle (3.3,{0.235*\sc});
+  \node[font=\scriptsize] at (3.0,{0.235*\sc+0.12}) {0.235};
+  \fill[blue!60] (3.7,0) rectangle (4.3,{0.257*\sc});
+  \node[font=\scriptsize] at (4.0,{0.257*\sc+0.12}) {0.257};
+  \node[font=\scriptsize] at (3.5,-0.28) {Recall};
+  % F1
+  \fill[gray!60] (4.7,0) rectangle (5.3,{0.291*\sc});
+  \node[font=\scriptsize] at (5.0,{0.291*\sc+0.12}) {0.291};
+  \fill[blue!60] (5.7,0) rectangle (6.3,{0.311*\sc});
+  \node[font=\scriptsize] at (6.0,{0.311*\sc+0.12}) {0.311};
+  \node[font=\scriptsize] at (5.5,-0.28) {F1};
+  % axes
+  \draw[thick,-{Stealth}] (0,-0.12) -- (0,5.8);
+  \draw[thick,-{Stealth}] (-0.15,0) -- (6.9,0);
+  \node[font=\footnotesize, rotate=90] at (-0.95,2.7) {Score};
+  \foreach \v in {0.1,0.2,0.3,0.4} {
+    \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
+    \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
+  }
+\end{tikzpicture}
+\caption{End-to-end: VLM only vs.\ VLM + GNN (corrected checkpoint loading).
+Recall and F1 improve while precision also rises slightly.}
+\label{fig:realvlm}
+\end{figure}
+
+The corrected pipeline recovers 106 previously missed elements ($+106$ TP,
+$+2.2$pp recall) at a cost of 84 additional false positives, improving F1 by
+2.0 points. Precision also improves slightly ($+1.1$pp), unlike earlier
+results reported with incorrectly loaded checkpoints, a subtle but
+important evaluation pitfall. An earlier evaluation loaded a checkpoint with
+mismatched hidden dimensions under non-strict weight loading, silently
+dropping 89\% of the weights and producing a spurious $+2.9$pp F1 gain from
+near-random weights. All results reported here use shape-filtered checkpoint
+loading, which only keeps weights whose shapes match, and we recommend this
+as a standard practice.
+
 \subsection{Constraint-Type Ablation}
 Which spatial rules matter most? We ablate the ten constraint types on the
 violation-detection task (Table~\ref{tab:ablation}, Fig.~\ref{fig:ablation}).
@@ -565,18 +647,27 @@ large proposal-quality gain, which matters for completion.
     \fill[blue!60] (2.0,0) rectangle (3.0,{0.898*\sc});
     % proposal-only
     \fill[blue!60] (3.4,0) rectangle (4.4,{0.489*\sc});
-    % error bars with caps (std: 0.019, 0.018, 0.071); labels above caps
-    \draw (1.1,{0.876*\sc+0.05}) -- (1.1,{0.876*\sc+0.05+0.019*\sc});
-    \draw (1.02,{0.876*\sc+0.05+0.019*\sc}) -- (1.18,{0.876*\sc+0.05+0.019*\sc});
-    \node[font=\scriptsize] at (1.1,{0.876*\sc+0.05+0.019*\sc+0.18}) {0.876};
-    \draw (2.5,{0.898*\sc+0.05}) -- (2.5,{0.898*\sc+0.05+0.018*\sc});
-    \draw (2.42,{0.898*\sc+0.05+0.018*\sc}) -- (2.58,{0.898*\sc+0.05+0.018*\sc});
-    \node[font=\scriptsize] at (2.5,{0.898*\sc+0.05+0.018*\sc+0.18}) {0.898};
-    \draw (3.9,{0.489*\sc+0.05}) -- (3.9,{0.489*\sc+0.05+0.071*\sc});
-    \draw (3.82,{0.489*\sc+0.05+0.071*\sc}) -- (3.98,{0.489*\sc+0.05+0.071*\sc});
-    \node[font=\scriptsize] at (3.9,{0.489*\sc+0.05+0.071*\sc+0.18}) {0.489};
+    % symmetric error bars (std: 0.019, 0.018, 0.071); labels above upper cap
+    \draw (1.1,{(0.876-0.019)*\sc}) -- (1.1,{(0.876+0.019)*\sc});
+    \draw (1.02,{(0.876-0.019)*\sc}) -- (1.18,{(0.876-0.019)*\sc});
+    \draw (1.02,{(0.876+0.019)*\sc}) -- (1.18,{(0.876+0.019)*\sc});
+    \node[font=\scriptsize] at (1.1,{(0.876+0.019)*\sc+0.18}) {0.876};
+    \draw (2.5,{(0.898-0.018)*\sc}) -- (2.5,{(0.898+0.018)*\sc});
+    \draw (2.42,{(0.898-0.018)*\sc}) -- (2.58,{(0.898-0.018)*\sc});
+    \draw (2.42,{(0.898+0.018)*\sc}) -- (2.58,{(0.898+0.018)*\sc});
+    \node[font=\scriptsize] at (2.5,{(0.898+0.018)*\sc+0.18}) {0.898};
+    \draw (3.9,{(0.489-0.071)*\sc}) -- (3.9,{(0.489+0.071)*\sc});
+    \draw (3.82,{(0.489-0.071)*\sc}) -- (3.98,{(0.489-0.071)*\sc});
+    \draw (3.82,{(0.489+0.071)*\sc}) -- (3.98,{(0.489+0.071)*\sc});
+    \node[font=\scriptsize] at (3.9,{(0.489+0.071)*\sc+0.18}) {0.489};
     \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
+    % y-axis ticks and label
+    \foreach \v in {0.25,0.50,0.75,1.00} {
+      \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
+      \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
+    }
+    \node[font=\scriptsize, rotate=90] at (-0.6,2.0) {Violation accuracy};
     \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.45) {joint};
     \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.45) {violation-only};
     \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.45) {proposal-only};
@@ -589,18 +680,27 @@ large proposal-quality gain, which matters for completion.
     \fill[blue!60] (0.6,0) rectangle (1.6,{0.051*\scm});
     \fill[blue!60] (2.0,0) rectangle (3.0,{0.116*\scm});
     \fill[blue!60] (3.4,0) rectangle (4.4,{0.051*\scm});
-    % error bars with caps (std: 0.009, 0.009, 0.010) *30; labels above caps
-    \draw (1.1,{0.051*\scm+0.05}) -- (1.1,{0.051*\scm+0.05+0.009*\scm});
-    \draw (1.02,{0.051*\scm+0.05+0.009*\scm}) -- (1.18,{0.051*\scm+0.05+0.009*\scm});
-    \node[font=\scriptsize] at (1.1,{0.051*\scm+0.05+0.009*\scm+0.18}) {0.051};
-    \draw (2.5,{0.116*\scm+0.05}) -- (2.5,{0.116*\scm+0.05+0.009*\scm});
-    \draw (2.42,{0.116*\scm+0.05+0.009*\scm}) -- (2.58,{0.116*\scm+0.05+0.009*\scm});
-    \node[font=\scriptsize] at (2.5,{0.116*\scm+0.05+0.009*\scm+0.18}) {0.116};
-    \draw (3.9,{0.051*\scm+0.05}) -- (3.9,{0.051*\scm+0.05+0.010*\scm});
-    \draw (3.82,{0.051*\scm+0.05+0.010*\scm}) -- (3.98,{0.051*\scm+0.05+0.010*\scm});
-    \node[font=\scriptsize] at (3.9,{0.051*\scm+0.05+0.010*\scm+0.18}) {0.051};
+    % symmetric error bars (std: 0.009, 0.009, 0.010) *30; labels above upper cap
+    \draw (1.1,{(0.051-0.009)*\scm}) -- (1.1,{(0.051+0.009)*\scm});
+    \draw (1.02,{(0.051-0.009)*\scm}) -- (1.18,{(0.051-0.009)*\scm});
+    \draw (1.02,{(0.051+0.009)*\scm}) -- (1.18,{(0.051+0.009)*\scm});
+    \node[font=\scriptsize] at (1.1,{(0.051+0.009)*\scm+0.18}) {0.051};
+    \draw (2.5,{(0.116-0.009)*\scm}) -- (2.5,{(0.116+0.009)*\scm});
+    \draw (2.42,{(0.116-0.009)*\scm}) -- (2.58,{(0.116-0.009)*\scm});
+    \draw (2.42,{(0.116+0.009)*\scm}) -- (2.58,{(0.116+0.009)*\scm});
+    \node[font=\scriptsize] at (2.5,{(0.116+0.009)*\scm+0.18}) {0.116};
+    \draw (3.9,{(0.051-0.010)*\scm}) -- (3.9,{(0.051+0.010)*\scm});
+    \draw (3.82,{(0.051-0.010)*\scm}) -- (3.98,{(0.051-0.010)*\scm});
+    \draw (3.82,{(0.051+0.010)*\scm}) -- (3.98,{(0.051+0.010)*\scm});
+    \node[font=\scriptsize] at (3.9,{(0.051+0.010)*\scm+0.18}) {0.051};
     \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
     \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
+    % y-axis ticks and label
+    \foreach \v in {0.04,0.08,0.12} {
+      \draw (-0.1,{\v*\scm}) -- (0.1,{\v*\scm});
+      \node[anchor=east, font=\tiny] at (-0.15,{\v*\scm}) {\v};
+    }
+    \node[font=\scriptsize, rotate=90] at (-0.6,2.0) {Proposal MSE};
     \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.45) {joint};
     \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.45) {violation-only};
     \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.45) {proposal-only};
@@ -640,35 +740,43 @@ than simple interpolation.
     \node[anchor=west, font=\scriptsize] at (5.35,5.42) {NN baseline};
     % group 1: drop 0.2
     \fill[blue!60] (0.7,0) rectangle (1.3,{0.047*\sc});
-    \draw (1.0,{0.047*\sc+0.04}) -- (1.0,{0.047*\sc+0.04+0.009*\sc});
-    \draw (0.92,{0.047*\sc+0.04+0.009*\sc}) -- (1.08,{0.047*\sc+0.04+0.009*\sc});
+    \draw (1.0,{(0.038)*\sc}) -- (1.0,{(0.056)*\sc});
+    \draw (0.92,{(0.038)*\sc}) -- (1.08,{(0.038)*\sc});
+    \draw (0.92,{(0.056)*\sc}) -- (1.08,{(0.056)*\sc});
     \fill[gray!60] (1.7,0) rectangle (2.3,{0.057*\sc});
-    \draw (2.0,{0.057*\sc+0.04}) -- (2.0,{0.057*\sc+0.04+0.031*\sc});
-    \draw (1.92,{0.057*\sc+0.04+0.031*\sc}) -- (2.08,{0.057*\sc+0.04+0.031*\sc});
+    \draw (2.0,{(0.026)*\sc}) -- (2.0,{(0.088)*\sc});
+    \draw (1.92,{(0.026)*\sc}) -- (2.08,{(0.026)*\sc});
+    \draw (1.92,{(0.088)*\sc}) -- (2.08,{(0.088)*\sc});
     \node[font=\scriptsize] at (1.5,-0.28) {0.2};
     % group 2: drop 0.4
     \fill[blue!60] (2.7,0) rectangle (3.3,{0.079*\sc});
-    \draw (3.0,{0.079*\sc+0.04}) -- (3.0,{0.079*\sc+0.04+0.014*\sc});
-    \draw (2.92,{0.079*\sc+0.04+0.014*\sc}) -- (3.08,{0.079*\sc+0.04+0.014*\sc});
+    \draw (3.0,{(0.065)*\sc}) -- (3.0,{(0.093)*\sc});
+    \draw (2.92,{(0.065)*\sc}) -- (3.08,{(0.065)*\sc});
+    \draw (2.92,{(0.093)*\sc}) -- (3.08,{(0.093)*\sc});
     \fill[gray!60] (3.7,0) rectangle (4.3,{0.110*\sc});
-    \draw (4.0,{0.110*\sc+0.04}) -- (4.0,{0.110*\sc+0.04+0.013*\sc});
-    \draw (3.92,{0.110*\sc+0.04+0.013*\sc}) -- (4.08,{0.110*\sc+0.04+0.013*\sc});
+    \draw (4.0,{(0.097)*\sc}) -- (4.0,{(0.123)*\sc});
+    \draw (3.92,{(0.097)*\sc}) -- (4.08,{(0.097)*\sc});
+    \draw (3.92,{(0.123)*\sc}) -- (4.08,{(0.123)*\sc});
     \node[font=\scriptsize] at (3.5,-0.28) {0.4};
     % group 3: drop 0.6
     \fill[blue!60] (4.7,0) rectangle (5.3,{0.122*\sc});
-    \draw (5.0,{0.122*\sc+0.04}) -- (5.0,{0.122*\sc+0.04+0.082*\sc});
-    \draw (4.92,{0.122*\sc+0.04+0.082*\sc}) -- (5.08,{0.122*\sc+0.04+0.082*\sc});
+    \draw (5.0,{(0.040)*\sc}) -- (5.0,{(0.204)*\sc});
+    \draw (4.92,{(0.040)*\sc}) -- (5.08,{(0.040)*\sc});
+    \draw (4.92,{(0.204)*\sc}) -- (5.08,{(0.204)*\sc});
     \fill[gray!60] (5.7,0) rectangle (6.3,{0.088*\sc});
-    \draw (6.0,{0.088*\sc+0.04}) -- (6.0,{0.088*\sc+0.04+0.011*\sc});
-    \draw (5.92,{0.088*\sc+0.04+0.011*\sc}) -- (6.08,{0.088*\sc+0.04+0.011*\sc});
+    \draw (6.0,{(0.077)*\sc}) -- (6.0,{(0.099)*\sc});
+    \draw (5.92,{(0.077)*\sc}) -- (6.08,{(0.077)*\sc});
+    \draw (5.92,{(0.099)*\sc}) -- (6.08,{(0.099)*\sc});
     \node[font=\scriptsize] at (5.5,-0.28) {0.6};
     % group 4: drop 0.8
     \fill[blue!60] (6.7,0) rectangle (7.3,{0.097*\sc});
-    \draw (7.0,{0.097*\sc+0.04}) -- (7.0,{0.097*\sc+0.04+0.047*\sc});
-    \draw (6.92,{0.097*\sc+0.04+0.047*\sc}) -- (7.08,{0.097*\sc+0.04+0.047*\sc});
+    \draw (7.0,{(0.050)*\sc}) -- (7.0,{(0.144)*\sc});
+    \draw (6.92,{(0.050)*\sc}) -- (7.08,{(0.050)*\sc});
+    \draw (6.92,{(0.144)*\sc}) -- (7.08,{(0.144)*\sc});
     \fill[gray!60] (7.7,0) rectangle (8.3,{0.062*\sc});
-    \draw (8.0,{0.062*\sc+0.04}) -- (8.0,{0.062*\sc+0.04+0.012*\sc});
-    \draw (7.92,{0.062*\sc+0.04+0.012*\sc}) -- (8.08,{0.062*\sc+0.04+0.012*\sc});
+    \draw (8.0,{(0.050)*\sc}) -- (8.0,{(0.074)*\sc});
+    \draw (7.92,{(0.050)*\sc}) -- (8.08,{(0.050)*\sc});
+    \draw (7.92,{(0.074)*\sc}) -- (8.08,{(0.074)*\sc});
     \node[font=\scriptsize] at (7.5,-0.28) {0.8};
     % axes
     \draw[thick,-{Stealth}] (0,-0.12) -- (0,4.9);
@@ -686,86 +794,6 @@ The GNN beats the nearest-neighbor baseline when substantial structure is
 missing (drop 0.6--0.8).}
 \label{fig:completion}
 \end{figure}
-
-\subsection{End-to-End on Real VLM Output}
-We deploy the trained model behind Qwen3-VL Flash on 200 real RICO
-screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN
-receives the VLM's noisy elements, detects violated constraints, and proposes
-missing elements; proposals are merged with non-maximum suppression. We
-evaluate with center-distance matching at threshold 0.1 against ground truth
-(Table~\ref{tab:real}, Fig.~\ref{fig:realvlm}).
-
-\begin{table}[htbp]
-\caption{End-to-end results on 200 real RICO screenshots (pooled).
-Checkpoints loaded with shape-filtering; numbers reflect correctly loaded
-weights.}
-\label{tab:real}
-\centering
-\begin{tabularx}{\textwidth}{Xccc}
-\toprule
-\textbf{Metric} & \textbf{VLM only} & \textbf{VLM + GNN} & \textbf{$\Delta$} \\
-\midrule
-Precision & 0.382 & 0.393 & $+1.1$pp \\
-Recall & 0.235 & 0.257 & $+2.2$pp \\
-F1 & 0.291 & 0.311 & $+2.0$pp \\
-TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[scale=1.0, transform shape]
-  % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
-  % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
-  \def\sc{14}
-  % legend (top center, above axis)
-  \fill[gray!60] (2.1,6.0) rectangle (2.5,6.25);
-  \node[anchor=west, font=\scriptsize] at (2.55,6.12) {VLM only};
-  \fill[blue!60] (4.3,6.0) rectangle (4.7,6.25);
-  \node[anchor=west, font=\scriptsize] at (4.75,6.12) {VLM + GNN};
-  % Precision
-  \fill[gray!60] (0.7,0) rectangle (1.3,{0.382*\sc});
-  \node[font=\scriptsize] at (1.0,{0.382*\sc+0.12}) {0.382};
-  \fill[blue!60] (1.7,0) rectangle (2.3,{0.393*\sc});
-  \node[font=\scriptsize] at (2.0,{0.393*\sc+0.12}) {0.393};
-  \node[font=\scriptsize] at (1.5,-0.28) {Precision};
-  % Recall
-  \fill[gray!60] (2.7,0) rectangle (3.3,{0.235*\sc});
-  \node[font=\scriptsize] at (3.0,{0.235*\sc+0.12}) {0.235};
-  \fill[blue!60] (3.7,0) rectangle (4.3,{0.257*\sc});
-  \node[font=\scriptsize] at (4.0,{0.257*\sc+0.12}) {0.257};
-  \node[font=\scriptsize] at (3.5,-0.28) {Recall};
-  % F1
-  \fill[gray!60] (4.7,0) rectangle (5.3,{0.291*\sc});
-  \node[font=\scriptsize] at (5.0,{0.291*\sc+0.12}) {0.291};
-  \fill[blue!60] (5.7,0) rectangle (6.3,{0.311*\sc});
-  \node[font=\scriptsize] at (6.0,{0.311*\sc+0.12}) {0.311};
-  \node[font=\scriptsize] at (5.5,-0.28) {F1};
-  % axes
-  \draw[thick,-{Stealth}] (0,-0.12) -- (0,5.8);
-  \draw[thick,-{Stealth}] (-0.15,0) -- (6.9,0);
-  \node[font=\footnotesize, rotate=90] at (-0.95,2.7) {Score};
-  \foreach \v in {0.1,0.2,0.3,0.4} {
-    \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
-    \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
-  }
-\end{tikzpicture}
-\caption{End-to-end: VLM only vs.\ VLM + GNN (corrected checkpoint loading).
-Recall and F1 improve while precision also rises slightly.}
-\label{fig:realvlm}
-\end{figure}
-
-The corrected pipeline recovers 106 previously missed elements ($+106$ TP,
-$+2.2$pp recall) at a cost of 84 additional false positives, improving F1 by
-2.0 points. Precision also improves slightly ($+1.1$pp), unlike earlier
-results reported with incorrectly loaded checkpoints, a subtle but
-important evaluation pitfall. An earlier evaluation loaded a checkpoint with
-mismatched hidden dimensions under non-strict weight loading, silently
-dropping 89\% of the weights and producing a spurious $+2.9$pp F1 gain from
-near-random weights. All results reported here use shape-filtered checkpoint
-loading, which only keeps weights whose shapes match, and we recommend this
-as a standard practice.
 
 \subsection{Performance}
 The correction network is small (57K parameters). Graph construction takes
@@ -786,7 +814,7 @@ only a few elements per screenshot, so the graph carried little structure;
 and a reweighted existence-only objective had no false positives to filter.
 Only when a substantial fraction of elements was missing did the constraint
 graph contain information that a per-element regressor could not access. For
-lightweight VLMs on realistic screenshots (which omit 10--30\% of elements),
+lightweight VLMs on realistic screenshots (which omit 38\% of elements),
 this regime is the relevant one for practical use.
 
 \subsection{Limitations}
