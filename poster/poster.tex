@@ -159,13 +159,19 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \begin{block}{4. Proposed Methodologies}
 
+    A screenshot is parsed by a lightweight VLM into a noisy element list,
+    which is converted into a heterogeneous bipartite graph. GraphSAGE
+    message passing then refines the elements, and the output is a corrected
+    JSON with refined boxes, new proposals for missed elements, and
+    per-element reliability scores.
+
     \begin{center}
     \begin{tikzpicture}[
         box/.style={draw, rounded corners=3pt, align=center,
                     minimum height=0.9cm, font=\small,
-                    fill=cuhk-purple!10, text=cuhk-purple!90},
+                    fill=cuhk-purple!10, text=black},
         arr/.style={-{Stealth[length=2.2mm]}, thick, cuhk-purple!70},
-        lab/.style={font=\scriptsize, cuhk-purple!80, align=center},
+        lab/.style={font=\scriptsize, black, align=center},
         xscale=2.4, yscale=1]
       % Row 1 (left to right)
       \node[box, fill=cuhk-yellow!40] (shot) at (0,0) {Screenshot};
@@ -191,9 +197,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{tikzpicture}
     \end{center}
 
-    A screenshot is parsed by a lightweight VLM into a noisy element list,
-    which we convert into a \textbf{heterogeneous bipartite graph}
-    $G=(\mathcal{V},\mathcal{E}_{\text{edge}},\phi,\psi)$: element nodes on one side,
+    Formally, $G=(\mathcal{V},\mathcal{E}_{\text{edge}},\phi,\psi)$: element nodes on one side,
     constraint nodes on the other, edges only across partitions.
 
     \begin{center}
