@@ -100,3 +100,15 @@ poster/*.pdf
 !poster/figures/
 !poster/figures/*.jpg
 !poster/logos/CUHK-Logo.png
+
+# Report build artifacts (EN + CN)
+report/*.aux
+report/*.log
+report/*.toc
+report/*.out
+report/*.pdf
+report-cn/*.aux
+report-cn/*.log
+report-cn/*.toc
+report-cn/*.out
+report-cn/*.pdf
