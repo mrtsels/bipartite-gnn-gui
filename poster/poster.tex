@@ -160,14 +160,13 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
   \begin{block}{4. Proposed Methodologies}
 
     \begin{center}
-    \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
         box/.style={draw, rounded corners=3pt, align=center,
                     minimum height=0.9cm, font=\small,
                     fill=cuhk-purple!10, text=cuhk-purple!90},
         arr/.style={-{Stealth[length=2.2mm]}, thick, cuhk-purple!70},
         lab/.style={font=\scriptsize, cuhk-purple!80, align=center},
-        scale=1.0, transform shape]
+        scale=2.5]
       % Row 1 (left to right)
       \node[box, fill=cuhk-yellow!40] (shot) at (0,0) {Screenshot};
       \node[box] (vlm) at (4.4,0) {Lightweight\\VLM};
@@ -189,7 +188,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \node[lab, align=center, below=0.22cm of noisy] {10--30\% omissions,\\box misalignment};
       \node[lab, below=0.22cm of graph] {constraint\\extraction};
       \node[lab, below=0.22cm of gnn] {$\Delta\mathbf{x}$,\\proposals};
-    \end{tikzpicture}}
+    \end{tikzpicture}
     \end{center}
 
     A screenshot is parsed by a lightweight VLM into a noisy element list,
@@ -198,14 +197,13 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     constraint nodes on the other, edges only across partitions.
 
     \begin{center}
-    \resizebox{0.5\linewidth}{!}{%
     \begin{tikzpicture}[
         elem/.style={draw, rounded corners=2pt, fill=cuhk-purple!12, minimum width=1.9cm,
                      minimum height=0.55cm, font=\footnotesize},
         cons/.style={draw, rounded corners=2pt, fill=cuhk-orange!15, minimum width=1.9cm,
                      minimum height=0.55cm, font=\footnotesize},
         edg/.style={cuhk-purple!50, thick},
-        scale=1.0, transform shape]
+        scale=3]
       % element nodes (left)
       \node[elem] (e1) at (0,2.6) {$e_1$: Button};
       \node[elem] (e2) at (0,1.6) {$e_2$: Text};
@@ -230,7 +228,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % partition labels
       \node[font=\small\itshape, above=0.25cm of e1] {Element nodes $V_e$};
       \node[font=\small\itshape, above=0.25cm of c1] {Constraint nodes $V_c$};
-    \end{tikzpicture}}
+    \end{tikzpicture}
     \end{center}
 
     \textbf{Ten spatial constraint types} are extracted (e.g.\
@@ -295,8 +293,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{itemize}
 
     \begin{center}
-    \resizebox{0.55\linewidth}{!}{%
-    \begin{tikzpicture}[scale=1.0, transform shape]
+    \begin{tikzpicture}[scale=2]
       % Left panel: violation accuracy (joint 0.876, vio-only 0.898, prop-only 0.489)
       % scale: 1.0 = 4cm, y = value*4
       \def\sc{4}
@@ -348,7 +345,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.45) {violation-only};
         \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.45) {proposal-only};
       \end{scope}
-    \end{tikzpicture}}
+    \end{tikzpicture}
     \end{center}
 
   \end{block}
@@ -368,8 +365,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     hurts most ($-$3.0pp).
 
     \begin{center}
-    \resizebox{0.48\linewidth}{!}{%
-    \begin{tikzpicture}[scale=1.0, transform shape]
+    \begin{tikzpicture}[scale=2.8]
       % horizontal bars: length = (value - 0.84) * 60 cm
       \def\sc{60}
       \def\base{0.0}
@@ -405,7 +401,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \foreach \v in {0.86,0.88,0.90,0.92,0.94} {
         \draw ({(\v-0.84)*\sc},-0.65) -- ++(0,-0.08) node[below, font=\tiny] {\v};
       }
-    \end{tikzpicture}}
+    \end{tikzpicture}
     \end{center}
 
     \textbf{Training-objective ablation} (5 seeds): joint training balances
@@ -418,8 +414,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     drop 0.8: 0.097 vs.\ 0.062 ($+56\%$).
 
     \begin{center}
-    \resizebox{0.48\linewidth}{!}{%
-    \begin{tikzpicture}[scale=1.0, transform shape]
+    \begin{tikzpicture}[scale=2.2]
       % grouped bars: 4 drop ratios x {GNN, NN}; y = value * 22 cm (max ~0.204 -> 4.5cm)
       \def\sc{22}
       % drop 0.2: GNN 0.047+/-0.009, NN 0.057+/-0.031
@@ -475,7 +470,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
           \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
         }
       \end{scope}
-    \end{tikzpicture}}
+    \end{tikzpicture}
     \end{center}
 
     \textbf{End-to-end} (200 real RICO screenshots, Qwen3-VL Flash):
@@ -485,8 +480,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     (57K parameters, CPU-only).
 
     \begin{center}
-    \resizebox{0.48\linewidth}{!}{%
-    \begin{tikzpicture}[scale=1.0, transform shape]
+    \begin{tikzpicture}[scale=2.8]
       % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
       % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
       \def\sc{14}
@@ -521,7 +515,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
         \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
       }
-    \end{tikzpicture}}
+    \end{tikzpicture}
     \end{center}
 
   \end{block}
