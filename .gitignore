@@ -112,3 +112,7 @@ report-cn/*.log
 report-cn/*.toc
 report-cn/*.out
 report-cn/*.pdf
+
+# Submission materials (kept local, not for the public repo)
+docs/ai-acknowledgement.*
+docs/reports/
