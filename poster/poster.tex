@@ -162,25 +162,33 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \begin{center}
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
-        box/.style={draw, rounded corners=2pt, align=center, minimum height=0.9cm,
-                    font=\small},
-        arr/.style={-{Stealth[length=2.2mm]}, thick},
+        box/.style={draw, rounded corners=3pt, align=center,
+                    minimum height=0.9cm, font=\small,
+                    fill=cuhk-purple!10, text=cuhk-purple!90},
+        arr/.style={-{Stealth[length=2.2mm]}, thick, cuhk-purple!70},
+        lab/.style={font=\scriptsize, cuhk-purple!80, align=center},
         scale=1.0, transform shape]
-      \node[box] (shot) at (0,0) {Screenshot};
-      \node[box] (vlm) at (3.0,0) {Lightweight\\VLM};
-      \node[box, fill=cuhk-lightorange] (noisy) at (6.2,0) {Noisy JSON};
-      \node[box, fill=cuhk-purple!20] (graph) at (9.6,0) {Heterogeneous\\bipartite graph};
-      \node[box, fill=cuhk-purple!20] (gnn) at (12.9,0) {GraphSAGE};
-      \node[box, fill=cuhk-yellow!70] (out) at (16.0,0) {Corrected JSON};
+      % Row 1 (left to right)
+      \node[box, fill=cuhk-yellow!40] (shot) at (0,0) {Screenshot};
+      \node[box] (vlm) at (4.4,0) {Lightweight\\VLM};
+      \node[box, fill=cuhk-orange!25] (noisy) at (8.8,0) {Noisy\\JSON};
+      % Row 2 (right to left, snake)
+      \node[box, fill=cuhk-purple!25] (graph) at (8.8,-3.4) {Bipartite\\Graph};
+      \node[box, fill=cuhk-purple!25] (gnn) at (4.4,-3.4) {GraphSAGE};
+      \node[box, fill=cuhk-yellow!40] (out) at (0,-3.4) {Corrected\\JSON};
+      % Row 1 arrows
       \draw[arr] (shot) -- (vlm);
       \draw[arr] (vlm) -- (noisy);
+      % Row 1 -> Row 2 (down)
       \draw[arr] (noisy) -- (graph);
+      % Row 2 arrows (right to left)
       \draw[arr] (graph) -- (gnn);
       \draw[arr] (gnn) -- (out);
-      \node[font=\scriptsize, below=0.28cm of vlm] {detection};
-      \node[font=\scriptsize, align=center, below=0.28cm of noisy] {10--30\% omissions,\\box misalignment};
-      \node[font=\scriptsize, below=0.28cm of graph] {constraint extraction};
-      \node[font=\scriptsize, below=0.28cm of gnn] {$\Delta\mathbf{x}$, proposals};
+      % Labels
+      \node[lab, below=0.22cm of vlm] {detection};
+      \node[lab, align=center, below=0.22cm of noisy] {10--30\% omissions,\\box misalignment};
+      \node[lab, below=0.22cm of graph] {constraint\\extraction};
+      \node[lab, below=0.22cm of gnn] {$\Delta\mathbf{x}$,\\proposals};
     \end{tikzpicture}}
     \end{center}
 
