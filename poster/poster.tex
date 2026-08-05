@@ -429,23 +429,23 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \pgfmathsetlengthmacro{\cardw}{\dimexpr(0.8\colwidth - 1.2cm)/3\relax}
     \begin{tikzpicture}[
         card/.style={rounded corners=4pt, text width=\cardw, align=left,
-                     inner sep=10pt, font=\footnotesize, text=cuhk-purple!90,
+                     inner sep=10pt, font=\footnotesize, text=black,
                      minimum height=3.0cm},
         node distance=0.6cm]
       % Row 1
       \node[card, fill=cuhk-purple!12] (a) {\textbf{All 10 types (control)}\\[6pt]
-        {\Large\bfseries 0.908}};
+        {\Large\bfseries\color{cuhk-purple!90}0.908}};
       \node[card, fill=cuhk-orange!15, right=of a] (b) {\texttt{CONTAINMENT}\\[6pt]
-        {\Large\bfseries 0.889}\quad{\scriptsize\bfseries\color{red!80!black}$-$1.9pp}};
+        {\Large\bfseries\color{cuhk-purple!90}0.889}\quad{\scriptsize\bfseries\color{red!80!black}$-$1.9pp}};
       \node[card, fill=cuhk-orange!15, right=of b] (c) {\texttt{SPACING}\\[6pt]
-        {\Large\bfseries 0.903}\quad{\scriptsize\bfseries\color{red!80!black}$-$0.5pp}};
+        {\Large\bfseries\color{cuhk-purple!90}0.903}\quad{\scriptsize\bfseries\color{red!80!black}$-$0.5pp}};
       % Row 2
       \node[card, fill=cuhk-purple!12, below=of a] (d) {\texttt{GRID}\\[6pt]
-        {\Large\bfseries 0.916}\quad{\scriptsize\bfseries\color{green!60!black}$+$0.8pp}};
+        {\Large\bfseries\color{cuhk-purple!90}0.916}\quad{\scriptsize\bfseries\color{green!60!black}$+$0.8pp}};
       \node[card, fill=cuhk-purple!12, right=of d] (e) {Remove all \texttt{ALIGNMENT}\\[6pt]
-        {\Large\bfseries 0.939}\quad{\scriptsize\bfseries\color{green!60!black}$+$3.1pp}};
+        {\Large\bfseries\color{cuhk-purple!90}0.939}\quad{\scriptsize\bfseries\color{green!60!black}$+$3.1pp}};
       \node[card, fill=cuhk-orange!15, right=of e] (f) {Only \texttt{ALIGNMENT}\\[6pt]
-        {\Large\bfseries 0.878}\quad{\scriptsize\bfseries\color{red!80!black}$-$3.0pp}};
+        {\Large\bfseries\color{cuhk-purple!90}0.878}\quad{\scriptsize\bfseries\color{red!80!black}$-$3.0pp}};
     \end{tikzpicture}
     \end{center}
 
