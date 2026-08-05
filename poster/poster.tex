@@ -482,7 +482,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         % axes
         \draw[thick,-{Stealth}] (0,-0.12) -- (0,4.9);
         \draw[thick,-{Stealth}] (-0.15,0) -- (8.7,0);
-        \node[font=\footnotesize] at (4.3,-0.75) {Drop ratio};
+        \node[font=\footnotesize] at (4.3,-1.6) {Drop ratio};
         \node[font=\footnotesize, rotate=90] at (-1.45,2.4) {Proposal IoU};
         \foreach \v in {0.05,0.10,0.15,0.20} {
           \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
@@ -503,11 +503,11 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % before/after: Precision 0.382->0.393, Recall 0.235->0.257, F1 0.291->0.311
       % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
       \def\sc{14}
-      % legend (top center, above axis)
-      \fill[cuhk-orange!45] (2.1,6.0) rectangle (2.5,6.25);
-      \node[anchor=west, font=\scriptsize] at (2.55,6.12) {VLM only};
-      \fill[cuhk-purple!75] (4.3,6.0) rectangle (4.7,6.25);
-      \node[anchor=west, font=\scriptsize] at (4.75,6.12) {VLM + GNN};
+      % legend (top center, above axis, clear of data labels)
+      \fill[cuhk-orange!45] (2.1,6.8) rectangle (2.5,7.05);
+      \node[anchor=west, font=\scriptsize] at (2.55,6.92) {VLM only};
+      \fill[cuhk-purple!75] (4.3,6.8) rectangle (4.7,7.05);
+      \node[anchor=west, font=\scriptsize] at (4.75,6.92) {VLM + GNN};
       % Precision
       \fill[cuhk-orange!45] (0.7,0) rectangle (1.3,{0.382*\sc});
       \node[font=\scriptsize] at (1.0,{0.382*\sc+0.5}) {0.382};
