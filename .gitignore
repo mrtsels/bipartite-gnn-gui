@@ -96,3 +96,4 @@ poster/*.snm
 poster/*.out
 poster/*.toc
 poster/*.pdf
+!poster/*.bbl

@@ -1,0 +1,104 @@
+\begin{thebibliography}{10}
+
+\bibitem{bai2023qwen}
+Jinze Bai, Shuai Bai, Yunfei Chu, Zeyu Cui, Kai Dang, Xiaodong Deng, et~al.
+\newblock \href{https://arxiv.org/abs/2309.16609}{{Qwen} Technical Report}.
+\newblock {\em arXiv preprint arXiv:2309.16609}, 2023.
+
+\bibitem{carion2020detr}
+Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander
+  Kirillov, and Sergey Zagoruyko.
+\newblock \href{https://arxiv.org/abs/2005.12872}{End-to-End Object Detection
+  with Transformers}.
+\newblock In {\em European Conference on Computer Vision (ECCV)}, pages
+  213--229, 2020.
+
+\bibitem{cheng2024seclick}
+Kanzhi Cheng, Qiushi Sun, Yougang Chu, Fangzhi Xu, Yantao Li, Jianbing Zhang,
+  and Zhiyong Wu.
+\newblock \href{https://arxiv.org/abs/2401.10935}{{SeeClick}: Harnessing {GUI}
+  Grounding for Advanced Visual {GUI} Agents}.
+\newblock In {\em Proceedings of the 62nd Annual Meeting of the Association for
+  Computational Linguistics (ACL)}, pages 9033--9049, 2024.
+
+\bibitem{dek.a17rico}
+Biplab Deka, Zifeng Huang, Chad Franzen, Joshua Hibschman, Daniel Afergan, Yang
+  Li, Jeffrey Nichols, and Ranjitha Kumar.
+\newblock \href{https://doi.org/10.1145/3126594.3126651}{{RICO}: A Mobile App
+  Dataset for Building Data-Driven Design Applications}.
+\newblock In {\em Proceedings of the 30th Annual ACM Symposium on User
+  Interface Software and Technology (UIST)}, pages 845--854, 2017.
+
+\bibitem{fey2019pyg}
+Matthias Fey and Jan~Eric Lenssen.
+\newblock \href{https://arxiv.org/abs/1903.02428}{Fast Graph Representation
+  Learning with {PyTorch Geometric}}.
+\newblock In {\em ICLR Workshop on Representation Learning on Graphs and
+  Manifolds}, 2019.
+
+\bibitem{gupta2021layouttransformer}
+Kamal Gupta, Justin Lazarow, Alessandro Achille, Larry~S. Davis, Dhruv Mahajan,
+  and Abhinav Shrivastava.
+\newblock \href{https://arxiv.org/abs/2006.14615}{{LayoutTransformer}: Layout
+  Generation and Completion with Self-Attention}.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 1004--1014, 2021.
+
+\bibitem{hamilton2017sage}
+William~L. Hamilton, Rex Ying, and Jure Leskovec.
+\newblock \href{https://arxiv.org/abs/1706.02216}{Inductive Representation
+  Learning on Large Graphs}.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)},
+  volume~30, 2017.
+
+\bibitem{harris2020numpy}
+Charles~R. Harris, K.~Jarrod Millman, St{\'e}fan~J. van~der Walt, Ralf Gommers,
+  Pauli Virtanen, David Cournapeau, et~al.
+\newblock \href{https://doi.org/10.1038/s41586-020-2649-2}{Array Programming
+  with {NumPy}}.
+\newblock {\em Nature}, 585:357--362, 2020.
+
+\bibitem{hunter2007matplotlib}
+John~D. Hunter.
+\newblock \href{https://doi.org/10.1109/MCSE.2007.55}{{Matplotlib}: A 2{D}
+  Graphics Environment}.
+\newblock {\em Computing in Science \& Engineering}, 9(3):90--95, 2007.
+
+\bibitem{li2019layoutgan}
+Jianan Li, Jimei Yang, Aaron Hertzmann, Jianming Zhang, and Tingfa Xu.
+\newblock \href{https://arxiv.org/abs/1901.06767}{{LayoutGAN}: Generating
+  Graphic Layouts with Wireframe Discriminators}.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2019.
+
+\bibitem{oquab2024dinov2}
+Maxime Oquab, Timoth{\'e}e Darcet, Th{\'e}o Moutakanni, Huy Vo, Marc
+  Szafraniec, Vasil Khalidov, et~al.
+\newblock \href{https://arxiv.org/abs/2304.07193}{{DINOv2}: Learning Robust
+  Visual Features without Supervision}.
+\newblock {\em Transactions on Machine Learning Research (TMLR)}, 2024.
+
+\bibitem{paszke2019pytorch}
+Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory
+  Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, et~al.
+\newblock \href{https://arxiv.org/abs/1912.01703}{{PyTorch}: An Imperative
+  Style, High-Performance Deep Learning Library}.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)},
+  volume~32, 2019.
+
+\bibitem{virtanen2020scipy}
+Pauli Virtanen, Ralf Gommers, Travis~E. Oliphant, Matt Haberland, Tyler Reddy,
+  David Cournapeau, et~al.
+\newblock \href{https://doi.org/10.1038/s41592-019-0686-2}{{SciPy} 1.0:
+  Fundamental Algorithms for Scientific Computing in {Python}}.
+\newblock {\em Nature Methods}, 17:261--272, 2020.
+
+\bibitem{wolf2020transformers}
+Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue,
+  Anthony Moi, et~al.
+\newblock \href{https://aclanthology.org/2020.emnlp-demos.6/}{Transformers:
+  State-of-the-Art Natural Language Processing}.
+\newblock In {\em Proceedings of the 2020 Conference on Empirical Methods in
+  Natural Language Processing: System Demonstrations}, pages 38--45, 2020.
+
+\end{thebibliography}
