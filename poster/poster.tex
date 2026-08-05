@@ -12,6 +12,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[orientation=portrait,size=a0,scale=1.0]{beamerposter}
+\setlength{\baselineskip}{14pt}
 
 % Modify the paper size here if needed
 % \usepackage[orientation=portrait, size=custom,width=42,height=84,scale=0.6]{beamerposter}
@@ -413,6 +414,16 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     The completion head is self-supervised: masking ground-truth layouts
     creates the dangling-edge signal, so no extra annotation is needed.
 
+  \end{block}
+
+  \begin{block}{6. Results}
+
+
+    \textbf{Training-objective ablation} (5 seeds): joint training balances
+    both heads (violation 0.876, proposal MSE 0.051); single-objective
+    training degrades the other head (violation-only: proposal MSE 0.116;
+    proposal-only: violation 0.489).
+
     \begin{center}
     \begin{tikzpicture}[xscale=2, yscale=1]
       % Left panel: violation accuracy (joint 0.876, vio-only 0.898, prop-only 0.489)
@@ -420,10 +431,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \def\sc{4}
       \begin{scope}[shift={(0,0)}]
 
-    \textbf{Training-objective ablation} (5 seeds): joint training balances
-    both heads (violation 0.876, proposal MSE 0.051); single-objective
-    training degrades the other head (violation-only: proposal MSE 0.116;
-    proposal-only: violation 0.489).
 
 
         \node[font=\footnotesize] at (2.4,5.4) {Violation head};
@@ -633,6 +640,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{center}
 
 
+
   \end{block}
 
 \end{column}
@@ -640,8 +648,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 \separatorcolumn
 
 \begin{column}{\colwidth}
-
-  \begin{block}{6. Results}
 
     \textbf{End-to-end} (200 real RICO screenshots, Qwen3-VL Flash):
     recovers 106 previously missed elements; F1 0.291 $\rightarrow$ 0.311
@@ -703,7 +709,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{tabularx}
     \end{center}
 
-  \end{block}
+
 
   \begin{block}{7. Conclusion}
 
