@@ -203,18 +203,18 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         cons/.style={draw, rounded corners=2pt, fill=cuhk-orange!15, minimum width=1.9cm,
                      minimum height=0.55cm, font=\footnotesize},
         edg/.style={cuhk-purple!50, thick},
-        xscale=3, yscale=1]
-      % element nodes (left)
-      \node[elem] (e1) at (0,2.6) {$e_1$: Button};
-      \node[elem] (e2) at (0,1.6) {$e_2$: Text};
-      \node[elem] (e3) at (0,0.6) {$e_3$: Icon};
-      \node[elem] (e4) at (0,-0.4) {$e_4$: Input};
-      \node[elem] (e5) at (0,-1.4) {$e_5$: Image};
-      % constraint nodes (right)
-      \node[cons] (c1) at (5.2,2.0) {$c_1$: \texttt{ALIGN\_LEFT}};
-      \node[cons] (c2) at (5.2,0.9) {$c_2$: \texttt{CONTAINMENT}};
-      \node[cons] (c3) at (5.2,-0.2) {$c_3$: \texttt{SPACING}};
-      \node[cons] (c4) at (5.2,-1.3) {$c_4$: \texttt{SAME\_SIZE}};
+        xscale=2.2, yscale=1]
+      % element nodes (top row)
+      \node[elem] (e1) at (0,1.5) {$e_1$: Button};
+      \node[elem] (e2) at (2.2,1.5) {$e_2$: Text};
+      \node[elem] (e3) at (4.4,1.5) {$e_3$: Icon};
+      \node[elem] (e4) at (6.6,1.5) {$e_4$: Input};
+      \node[elem] (e5) at (8.8,1.5) {$e_5$: Image};
+      % constraint nodes (bottom row)
+      \node[cons] (c1) at (0.55,-1.5) {$c_1$: \texttt{ALIGN\_LEFT}};
+      \node[cons] (c2) at (2.75,-1.5) {$c_2$: \texttt{CONTAINMENT}};
+      \node[cons] (c3) at (4.95,-1.5) {$c_3$: \texttt{SPACING}};
+      \node[cons] (c4) at (7.15,-1.5) {$c_4$: \texttt{SAME\_SIZE}};
       % edges: only cross-partition
       \draw[edg] (e1) -- (c1);
       \draw[edg] (e1) -- (c2);
@@ -227,7 +227,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \draw[edg] (e5) -- (c2);
       % partition labels
       \node[font=\small\itshape, above=0.25cm of e1] {Element nodes $V_e$};
-      \node[font=\small\itshape, above=0.25cm of c1] {Constraint nodes $V_c$};
+      \node[font=\small\itshape, below=0.25cm of c1] {Constraint nodes $V_c$};
     \end{tikzpicture}
     \end{center}
 
