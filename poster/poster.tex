@@ -279,9 +279,8 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
   \begin{block}{5. Models}
 
     A two-layer bipartite GraphSAGE encoder (hidden dim 128, AdamW + cosine
-    annealing) reads out four prediction heads, trained jointly with
-    $\mathcal{L}=w_c\mathcal{L}_{\text{coord}}+w_v\mathcal{L}_{\text{vio}}
-    +w_e\mathcal{L}_{\text{exist}}+w_p\mathcal{L}_{\text{prop}}$:
+    annealing) reads out four prediction heads, trained jointly on a
+    weighted sum of losses:
 
     \begin{itemize}
       \item \textbf{Coordinate correction:} predicts per-element delta
