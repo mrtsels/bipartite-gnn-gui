@@ -13,6 +13,7 @@
 \usepackage{lmodern}
 \usepackage[orientation=portrait,size=a0,scale=1.0]{beamerposter}
 \setlength{\baselineskip}{14pt}
+\linespread{0.97}
 
 % Modify the paper size here if needed
 % \usepackage[orientation=portrait, size=custom,width=42,height=84,scale=0.6]{beamerposter}
@@ -23,11 +24,39 @@
 \usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{tabularx}
+\usepackage{multicol}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.14}
 \usepackage{anyfontsize}
+
+% Beamer's itemize re-definition forces \raggedright inside lists, which
+% overrides the block body's \justifying. Redefine \itemize with
+% \justifying in place of \raggedright so all lists justify (GPT fix).
+\makeatletter
+\renewcommand{\itemize}[1][]{%
+  \beamer@ifempty{#1}{}{\def\beamer@defaultospec{#1}}%
+  \ifnum \@itemdepth >2\relax\@toodeep\else
+    \advance\@itemdepth\@ne
+    \beamer@computepref\@itemdepth%
+    \usebeamerfont{itemize/enumerate \beameritemnestingprefix body}%
+    \usebeamercolor[fg]{itemize/enumerate \beameritemnestingprefix body}%
+    \usebeamertemplate{itemize/enumerate \beameritemnestingprefix body begin}%
+    \list
+      {\usebeamertemplate{itemize \beameritemnestingprefix item}}
+      {\def\makelabel##1{{%
+          \hss\llap{{%
+            \usebeamerfont*{itemize \beameritemnestingprefix item}%
+            \usebeamercolor[fg]{itemize \beameritemnestingprefix item}##1}}%
+        }}%
+      }%
+  \fi%
+  \beamer@cramped%
+  \justifying%   % replaces the original \raggedright
+  \beamer@firstlineitemizeunskip%
+}
+\makeatother
 
 % Clear the bibliography entry templates that Beamer's \newblock state
 % machine switches through (author -> title -> location -> note). With the
@@ -106,21 +135,21 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \begin{block}{1. Introduction}
 
-    Programs that ``look at'' a phone screen (screen readers, automated UI
-    testers, software agents) need to know \emph{what} is on the screen and
-    \emph{where} it is. Lightweight vision-language models (VLMs, $<$3B
+    Screen readers, automated UI testers, and software agents that
+    ``look at'' a phone screen need to know \emph{what} is on the screen
+    and \emph{where} it is. Lightweight vision-language models (VLMs, $<$3B
     parameters) are fast enough for on-device use, but they make two kinds of
     systematic mistakes:
 
     \begin{itemize}
-      \item \textbf{Element omission:} 10--30\% of visible elements are never
+      \item \textbf{Element omission:} 38\% of visible elements are never
         reported (small icons, dividers, nested containers).
       \item \textbf{Misalignment:} bounding boxes deviate by tens of pixels
         from the true element positions.
     \end{itemize}
 
-    These errors are consequences of compressing a large model into a small
-    one. Training a bigger model is exactly what on-device constraints forbid.
+    These errors come from compressing a large model into a small one---training
+    a bigger model is exactly what on-device constraints forbid.
 
   \end{block}
 
@@ -140,29 +169,47 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % RICO screenshot (Android news/weather app, 1080x1920 portrait)
       % keep native aspect ratio: width 6.0cm -> height 10.66cm
       \begin{scope}
-        \clip[rounded corners=20pt] (0,0) rectangle (6.0,10.66);
+        \clip[rounded corners=20pt] (0,0) rectangle (4.2,7.47);
         \node[anchor=south west, inner sep=0] at (0,0)
-          {\includegraphics[width=6.0cm]{figures/rico_sample.jpg}};
-        \draw[frame] (0,0) rectangle (6.0,10.66);
+          {\includegraphics[width=4.2cm]{figures/rico_sample.jpg}};
+        \draw[frame] (0,0) rectangle (4.2,7.47);
       \end{scope}
-      \node[labcap] at (3.0,-1.3) {RICO};
+      \node[labcap] at (2.1,-1.3) {RICO};
       % ScreenSpot screenshot (iPad app library, 2360x1640 landscape)
-      % keep native aspect ratio: width 14.4cm -> height 10.02cm
-      \begin{scope}[xshift=7.0cm]
-        \clip[rounded corners=20pt] (0,0) rectangle (14.4,10.02);
+      % keep native aspect ratio: width 10.08cm -> height 7.01cm
+      \begin{scope}[xshift=5.2cm]
+        \clip[rounded corners=20pt] (0,0) rectangle (10.08,7.01);
         \node[anchor=south west, inner sep=0] at (0,0)
-          {\includegraphics[width=14.4cm]{figures/screenspot_sample.jpg}};
-        \draw[frame] (0,0) rectangle (14.4,10.02);
+          {\includegraphics[width=10.08cm]{figures/screenspot_sample.jpg}};
+        \draw[frame] (0,0) rectangle (10.08,7.01);
       \end{scope}
-      \node[labcap] at (7.0+7.2,-1.3) {ScreenSpot};
+      \node[labcap] at (5.2+5.04,-1.3) {ScreenSpot};
     \end{tikzpicture}
     \end{center}
 
     \begin{itemize}
-      \item \textbf{End-to-end setting:} 200 real RICO screenshots with a
-        Qwen3-VL Flash front end (4{,}789 ground-truth elements, 2{,}947 VLM
-        predictions), evaluated by center-distance matching at threshold 0.1.
+      \item \textbf{End-to-end setting:} 200 real RICO screenshots, Qwen3-VL
+        Flash front end (4{,}789 GT elements, 2{,}947 VLM predictions),
+        center-distance matching at threshold 0.1.
     \end{itemize}
+
+    \begin{center}
+    \begin{tikzpicture}[xscale=3, yscale=1]
+      % Fraction of GT elements missed by the VLM, per screenshot (200 RICO)
+      \def\sc{0.035}
+      \foreach \i/\c/\t in {1/4/30,2/12/45,3/36/60,4/54/75,5/94/90} {
+        \fill[cuhk-purple!\t] ({(\i-1)*1.0+0.2},0) rectangle ({(\i-1)*1.0+0.8},{\c*\sc});
+        \node[font=\scriptsize] at ({(\i-1)*1.0+0.5},{\c*\sc+0.35}) {\c};
+      }
+      \draw[thick,-{Stealth}] (0,-0.12) -- (0,3.55);
+      \draw[thick,-{Stealth}] (-0.15,0) -- (5.6,0);
+      \foreach \i/\l in {1/0.1,2/0.3,3/0.5,4/0.7,5/0.9} {
+        \node[font=\tiny] at ({(\i-1)*1.0+0.5},-0.4) {\l};
+      }
+      \node[font=\footnotesize] at (2.5,-0.95) {Missed fraction of GT elements};
+      \node[font=\footnotesize, rotate=90] at (-0.55,1.7) {\# of screenshots};
+    \end{tikzpicture}
+    \end{center}
 
   \end{block}
 
@@ -171,8 +218,8 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \begin{itemize}
       \item Correct the VLM's noisy element predictions \textbf{without
         retraining the VLM} or adding a second detector.
-      \item Exploit the spatial structure that all well-designed interfaces
-        share: alignment, containment, spacing, and grid membership.
+      \item Exploit the spatial structure shared by well-designed
+        interfaces: alignment, containment, spacing, grid membership.
       \item Fix both failure modes: \emph{repair} misplaced boxes and
         \emph{recover} entirely missed elements.
       \item Keep the correction cheap enough for on-device use
@@ -183,11 +230,10 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \begin{block}{4. Proposed Methodologies}
 
-    A screenshot is parsed by a lightweight VLM into a noisy element list,
-    which is converted into a heterogeneous bipartite graph. GraphSAGE
-    message passing then refines the elements, and the output is a corrected
-    JSON with refined boxes, new proposals for missed elements, and
-    per-element reliability scores.
+    A lightweight VLM parses the screenshot into a noisy element list,
+    converted into a heterogeneous bipartite graph. GraphSAGE message
+    passing then outputs a corrected JSON with repaired boxes, proposals
+    for missed elements, and reliability scores.
 
     \begin{center}
     \begin{tikzpicture}[
@@ -215,7 +261,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       \draw[arr] (gnn) -- (out);
       % Labels above top-row nodes, below bottom-row nodes
       \node[lab, above=0.22cm of vlm] {detection};
-      \node[lab, align=center, above=0.22cm of noisy] {10--30\% omissions,\\box misalignment};
+      \node[lab, align=center, above=0.22cm of noisy] {38\% omissions,\\box misalignment};
       \node[lab, below=0.22cm of graph] {constraint extraction};
       \node[lab, below=0.22cm of gnn] {$\Delta\mathbf{x}$, proposals};
     \end{tikzpicture}
@@ -262,26 +308,72 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{tikzpicture}
     \end{center}
 
-    \textbf{Ten spatial constraint types} are extracted, each defined by a
-    predicate that holds within a tolerance.
+    \textbf{Ten spatial constraint types} are extracted, each a predicate
+    holding within a tolerance.
+
+    \vspace{-6pt}
+    \begingroup
+    \setlength{\tabcolsep}{0pt}
+    \justifying
+    \hyphenpenalty=50
+    \begin{tabularx}{\linewidth}{@{} X X @{}}
+    \begin{itemize}
+      \item \texttt{ALIGN\_LEFT}: $|x_1-x_1'|<\varepsilon$
+      \item \texttt{ALIGN\_RIGHT}: $|x_2-x_2'|<\varepsilon$
+      \item \texttt{ALIGN\_TOP}: $|y_1-y_1'|<\varepsilon$
+      \item \texttt{ALIGN\_BOTTOM}: $|y_2-y_2'|<\varepsilon$
+      \item \texttt{CENTER\_X}: center-distance $<\varepsilon$
+      \item \texttt{CENTER\_Y}: center-distance $<\varepsilon$
+    \end{itemize}
+    &
+    \begin{itemize}
+      \item \texttt{SPACING}: consistent gaps
+      \item \texttt{CONTAINMENT}: one box inside another
+      \item \texttt{GRID}: row/column membership
+      \item \texttt{SAME\_SIZE}: similar widths/heights
+    \end{itemize}
+    \end{tabularx}
+    \endgroup
 
     \begin{center}
-    \begin{tabularx}{0.8\linewidth}{XX}
-    \toprule
-    \textbf{Type} & \textbf{Predicate} \\
-    \midrule
-    \texttt{ALIGN\_LEFT} & $|x_1-x_1'|<\varepsilon$ \\
-    \texttt{ALIGN\_RIGHT} & $|x_2-x_2'|<\varepsilon$ \\
-    \texttt{ALIGN\_TOP} & $|y_1-y_1'|<\varepsilon$ \\
-    \texttt{ALIGN\_BOTTOM} & $|y_2-y_2'|<\varepsilon$ \\
-    \texttt{CENTER\_X} & center-distance $<\varepsilon$ \\
-    \texttt{CENTER\_Y} & center-distance $<\varepsilon$ \\
-    \texttt{SPACING} & consistent gaps \\
-    \texttt{CONTAINMENT} & one box inside another \\
-    \texttt{GRID} & row/column membership \\
-    \texttt{SAME\_SIZE} & similar widths/heights \\
-    \bottomrule
-    \end{tabularx}
+    \begin{tikzpicture}[xscale=3.4, yscale=1]
+      % Avg constraints extracted per graph under each constraint set (500 graphs)
+      % horizontal bars: length = value * 0.12 cm
+      \def\sc{0.12}
+      \def\base{0.0}
+      % y positions for 6 rows (top to bottom), bar height 0.35; sorted desc by value
+      % All 10 types (control) 37.3 -> 4.48cm
+      \fill[cuhk-purple!75] (\base,5.0) rectangle ({(\base+37.3*\sc)},5.35);
+      \node[anchor=east, font=\footnotesize] at (\base-0.1,5.175) {All 10 types};
+      \node[font=\footnotesize, anchor=west] at ({(\base+37.3*\sc+0.4)},5.175) {\bfseries 37.3};
+      % Remove GRID 37.2 -> 4.46cm
+      \fill[cuhk-orange!30] (\base,4.0) rectangle ({(\base+37.2*\sc)},4.35);
+      \node[anchor=east, font=\footnotesize] at (\base-0.1,4.175) {Remove \texttt{GRID}};
+      \node[font=\footnotesize, anchor=west] at ({(\base+37.2*\sc+0.4)},4.175) {37.2};
+      % Remove SPACING 30.9 -> 3.71cm
+      \fill[cuhk-orange!30] (\base,3.0) rectangle ({(\base+30.9*\sc)},3.35);
+      \node[anchor=east, font=\footnotesize] at (\base-0.1,3.175) {Remove \texttt{SPACING}};
+      \node[font=\footnotesize, anchor=west] at ({(\base+30.9*\sc+0.4)},3.175) {30.9};
+      % Remove CONTAINMENT 28.7 -> 3.44cm
+      \fill[cuhk-orange!30] (\base,2.0) rectangle ({(\base+28.7*\sc)},2.35);
+      \node[anchor=east, font=\footnotesize] at (\base-0.1,2.175) {Remove \texttt{CONTAINMENT}};
+      \node[font=\footnotesize, anchor=west] at ({(\base+28.7*\sc+0.4)},2.175) {28.7};
+      % Only ALIGNMENT 22.4 -> 2.69cm
+      \fill[cuhk-orange!30] (\base,1.0) rectangle ({(\base+22.4*\sc)},1.35);
+      \node[anchor=east, font=\footnotesize] at (\base-0.1,1.175) {Only \texttt{ALIGNMENT}};
+      \node[font=\footnotesize, anchor=west] at ({(\base+22.4*\sc+0.4)},1.175) {22.4};
+      % Remove all ALIGNMENT 15.1 -> 1.81cm
+      \fill[cuhk-orange!30] (\base,0.0) rectangle ({(\base+15.1*\sc)},0.35);
+      \node[anchor=east, font=\footnotesize] at (\base-0.1,0.175) {Remove all \texttt{ALIGNMENT}};
+      \node[font=\footnotesize, anchor=west] at ({(\base+15.1*\sc+0.4)},0.175) {15.1};
+      % axis
+      \draw[thick,-{Stealth}] (\base,5.75) -- (\base,-0.5);
+      \draw[thick,-{Stealth}] (\base,-0.65) -- (5.4,-0.65);
+      \node[font=\footnotesize] at (2.6,-2.2) {Constraints per graph};
+      \foreach \v in {10,20,30,40} {
+        \draw ({\v*0.12},-0.9) -- ++(0,-0.08) node[below, font=\tiny] {\v};
+      }
+    \end{tikzpicture}
     \end{center}
 
   \end{block}
@@ -293,19 +385,22 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 \begin{column}{\colwidth}
 
-    Two alternating hops of \textbf{GraphSAGE message passing} (mean
-    aggregation):
+    \justifying
+    \hyphenpenalty=50
+    Two alternating hops of \textbf{mean-aggregation GraphSAGE
+    messaging}:
 
     \begin{itemize}
-      \item \emph{Hop 1:} element $\rightarrow$ constraint --- each constraint
+      \item \emph{Hop 1:} element $\rightarrow$ constraint---each constraint
         node aggregates its participating elements.
-      \item \emph{Hop 2:} constraint $\rightarrow$ element --- each element
+      \item \emph{Hop 2:} constraint $\rightarrow$ element---each element
         aggregates the constraints it shares, forming its ``spatial
-        neighbourhood.''
+        neighborhood.''
     \end{itemize}
 
-    Element features: 4 normalized box coordinates + normalized area
-    (5-d), optionally concatenated with frozen visual features (DINOv2).
+    \textbf{Element features:} a 5-d vector of 4 normalized box coordinates plus
+    normalized area, optionally concatenated with frozen DINOv2 visual
+    features.
 
 
 
@@ -407,51 +502,90 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
     \begin{itemize}
       \item \textbf{Coordinate correction:} predicts per-element delta
-        $\Delta\mathbf{x}_i$ (smooth L1) to repair misaligned boxes.
+        $\Delta\mathbf{x}_i$ with a smooth-L1 loss to repair misaligned
+        boxes.
       \item \textbf{Violation detection:} classifies whether each constraint
-        is broken --- makes the model ``understand'' layout rules.
-      \item \textbf{Existence scoring:} scores whether each detection is real
-        or hallucinated (binary cross-entropy).
+        is broken---makes the model ``understand'' layout rules.
+      \item \textbf{Existence scoring:} scores whether each detection is
+        real or hallucinated via binary cross-entropy.
       \item \textbf{Element completion:} randomly masks 20--80\% of
-        ground-truth elements during training; dangling edges are the
-        signature of missing elements, and the head proposes their boxes
-        (IoU loss) and types. \emph{Self-supervised} --- no extra annotation.
+        ground-truth elements; dangling edges signal missing elements, and
+        the head proposes their boxes (IoU loss) and types.
+        \emph{Self-supervised.}
     \end{itemize}
 
     Formally, the two hops are:
-
     \begin{equation*}
       \mathbf{h}_{c_j}^{(1)} = \sigma\!\Bigl(\mathbf{W}_1 \cdot
       \operatorname{MEAN}\!\bigl(\{\mathbf{h}_{e_i}^{(0)}: (e_i,c_j)\in
       \mathcal{E}_{\text{edge}}\}\bigr) + \mathbf{b}_1\Bigr),
     \end{equation*}
-
     \begin{equation*}
       \mathbf{h}_{e_i}^{(2)} = \sigma\!\Bigl(\mathbf{W}_2 \cdot
       \operatorname{MEAN}\!\bigl(\{\mathbf{h}_{c_j}^{(1)}: (e_i,c_j)\in
       \mathcal{E}_{\text{edge}}\}\bigr) + \mathbf{b}_2\Bigr),
     \end{equation*}
-
     All heads are trained jointly on the weighted sum
-
     \begin{equation*}
       \mathcal{L} = w_c\,\mathcal{L}_{\text{coord}} + w_v\,\mathcal{L}_{\text{vio}}
       + w_e\,\mathcal{L}_{\text{exist}} + w_p\,\mathcal{L}_{\text{prop}},
     \end{equation*}
-
     with default weights $w_c{=}1.0$, $w_v{=}0.5$, $w_e{=}0.5$, $w_p{=}0.5$.
-    The completion head is self-supervised: masking ground-truth layouts
-    creates the dangling-edge signal, so no extra annotation is needed.
+
+    \begin{center}
+    \begin{tikzpicture}[xscale=3, yscale=1.5]
+      % 5 seeds per training objective; x = violation acc, y = proposal MSE
+      % group ellipses (drawn first so dots stay on top)
+      \draw[cuhk-purple!60, line width=1pt] (4.207,2.022) ellipse (0.267 and 0.606);
+      \draw[cuhk-orange!60, line width=1pt] (4.386,4.656) ellipse (0.251 and 0.635);
+      \draw[cuhk-yellow!90!black, line width=1pt] (1.108,2.043) ellipse (1.025 and 0.632);
+      \node[circle, fill=cuhk-purple!75, inner sep=0pt, minimum size=0.20cm] at ({0.9062*8-2.8},{0.0614*40}) {};
+      \node[circle, fill=cuhk-purple!75, inner sep=0pt, minimum size=0.20cm] at ({0.8612*8-2.8},{0.0446*40}) {};
+      \node[circle, fill=cuhk-purple!75, inner sep=0pt, minimum size=0.20cm] at ({0.8568*8-2.8},{0.0494*40}) {};
+      \node[circle, fill=cuhk-purple!75, inner sep=0pt, minimum size=0.20cm] at ({0.8747*8-2.8},{0.0405*40}) {};
+      \node[circle, fill=cuhk-purple!75, inner sep=0pt, minimum size=0.20cm] at ({0.8803*8-2.8},{0.0569*40}) {};
+      \node[circle, fill=cuhk-orange!60, inner sep=0pt, minimum size=0.20cm] at ({0.9263*8-2.8},{0.1094*40}) {};
+      \node[circle, fill=cuhk-orange!60, inner sep=0pt, minimum size=0.20cm] at ({0.9003*8-2.8},{0.1202*40}) {};
+      \node[circle, fill=cuhk-orange!60, inner sep=0pt, minimum size=0.20cm] at ({0.8799*8-2.8},{0.1280*40}) {};
+      \node[circle, fill=cuhk-orange!60, inner sep=0pt, minimum size=0.20cm] at ({0.8871*8-2.8},{0.1183*40}) {};
+      \node[circle, fill=cuhk-orange!60, inner sep=0pt, minimum size=0.20cm] at ({0.8974*8-2.8},{0.1061*40}) {};
+      \node[circle, fill=cuhk-yellow!70, draw=cuhk-orange!60, line width=0.4pt, inner sep=0pt, minimum size=0.20cm] at ({0.4802*8-2.8},{0.0620*40}) {};
+      \node[circle, fill=cuhk-yellow!70, draw=cuhk-orange!60, line width=0.4pt, inner sep=0pt, minimum size=0.20cm] at ({0.4521*8-2.8},{0.0436*40}) {};
+      \node[circle, fill=cuhk-yellow!70, draw=cuhk-orange!60, line width=0.4pt, inner sep=0pt, minimum size=0.20cm] at ({0.5149*8-2.8},{0.0499*40}) {};
+      \node[circle, fill=cuhk-yellow!70, draw=cuhk-orange!60, line width=0.4pt, inner sep=0pt, minimum size=0.20cm] at ({0.5927*8-2.8},{0.0402*40}) {};
+      \node[circle, fill=cuhk-yellow!70, draw=cuhk-orange!60, line width=0.4pt, inner sep=0pt, minimum size=0.20cm] at ({0.4029*8-2.8},{0.0597*40}) {};
+      % legend
+      \fill[cuhk-purple!75] (5.1,4.6) rectangle (5.35,4.85);
+      \node[anchor=west, font=\scriptsize] at (5.4,4.72) {joint};
+      \fill[cuhk-orange!60] (5.1,4.1) rectangle (5.35,4.35);
+      \node[anchor=west, font=\scriptsize] at (5.4,4.22) {violation-only};
+      \fill[cuhk-yellow!70, draw=cuhk-orange!60, line width=0.4pt] (5.1,3.6) rectangle (5.35,3.85);
+      \node[anchor=west, font=\scriptsize] at (5.4,3.72) {proposal-only};
+      % axes
+      \draw[thick,-{Stealth}] (0.3,-0.15) -- (0.3,5.3);
+      \draw[thick,-{Stealth}] (-0.15,0.15) -- (5.4,0.15);
+      \foreach \v in {0.4,0.6,0.8,1.0} {
+        \draw ({\v*8-2.8},0.0) -- ++(0,-0.1);
+        \node[below, font=\tiny] at ({\v*8-2.8},-0.02) {\v};
+      }
+      \foreach \v in {0.04,0.08,0.12} {
+        \draw (0.15,{\v*40}) -- ++(-0.1,0);
+        \node[anchor=east, font=\tiny] at (0.1,{\v*40}) {\v};
+      }
+      \node[font=\footnotesize] at (2.85,-1.0167) {Violation accuracy};
+      \node[font=\footnotesize, rotate=90] at (-0.5667,2.7) {Proposal MSE};
+    \end{tikzpicture}
+    \end{center}
 
   \end{block}
 
   \begin{block}{6. Results}
 
 
-    \textbf{Training-objective ablation} (5 seeds): joint training balances
-    both heads (violation 0.876, proposal MSE 0.051); single-objective
-    training degrades the other head (violation-only: proposal MSE 0.116;
-    proposal-only: violation 0.489).
+    \textbf{Training-objective ablation} (5 seeds): joint training wins---%
+    it keeps both heads strong, whereas single-objective training lets the
+    unsupervised head collapse (proposal MSE \textbf{0.116}, violation
+    accuracy \textbf{0.489}).
 
     \begin{center}
     \begin{tikzpicture}[xscale=2, yscale=1]
@@ -464,50 +598,68 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
         \node[font=\footnotesize] at (2.4,5.4) {Violation head};
         % joint
-        \fill[cuhk-purple!75] (0.6,0) rectangle (1.6,{0.876*\sc});
+        \fill[cuhk-orange!30] (0.6,0) rectangle (1.6,{0.876*\sc});
         % violation-only
-        \fill[cuhk-purple!75] (2.0,0) rectangle (3.0,{0.898*\sc});
+        \fill[cuhk-orange!30] (2.0,0) rectangle (3.0,{0.898*\sc});
         % proposal-only
         \fill[cuhk-purple!75] (3.4,0) rectangle (4.4,{0.489*\sc});
-        % error bars with caps (std: 0.019, 0.018, 0.071); labels above caps
-        \draw (1.1,{0.876*\sc+0.05}) -- (1.1,{0.876*\sc+0.05+0.019*\sc});
-        \draw (1.02,{0.876*\sc+0.05+0.019*\sc}) -- (1.18,{0.876*\sc+0.05+0.019*\sc});
-        \node[font=\scriptsize] at (1.1,{0.876*\sc+0.05+0.019*\sc+0.45}) {0.876};
-        \draw (2.5,{0.898*\sc+0.05}) -- (2.5,{0.898*\sc+0.05+0.018*\sc});
-        \draw (2.42,{0.898*\sc+0.05+0.018*\sc}) -- (2.58,{0.898*\sc+0.05+0.018*\sc});
-        \node[font=\scriptsize] at (2.5,{0.898*\sc+0.05+0.018*\sc+0.45}) {0.898};
-        \draw (3.9,{0.489*\sc+0.05}) -- (3.9,{0.489*\sc+0.05+0.071*\sc});
-        \draw (3.82,{0.489*\sc+0.05+0.071*\sc}) -- (3.98,{0.489*\sc+0.05+0.071*\sc});
-        \node[font=\scriptsize] at (3.9,{0.489*\sc+0.05+0.071*\sc+0.45}) {0.489};
+        % symmetric error bars (std: 0.019, 0.018, 0.071); labels above upper cap
+        \draw (1.1,{(0.876-0.019)*\sc}) -- (1.1,{(0.876+0.019)*\sc});
+        \draw (1.02,{(0.876-0.019)*\sc}) -- (1.18,{(0.876-0.019)*\sc});
+        \draw (1.02,{(0.876+0.019)*\sc}) -- (1.18,{(0.876+0.019)*\sc});
+        \node[font=\scriptsize] at (1.1,{(0.876+0.019)*\sc+0.45}) {0.876};
+        \draw (2.5,{(0.898-0.018)*\sc}) -- (2.5,{(0.898+0.018)*\sc});
+        \draw (2.42,{(0.898-0.018)*\sc}) -- (2.58,{(0.898-0.018)*\sc});
+        \draw (2.42,{(0.898+0.018)*\sc}) -- (2.58,{(0.898+0.018)*\sc});
+        \node[font=\scriptsize] at (2.5,{(0.898+0.018)*\sc+0.45}) {0.898};
+        \draw (3.9,{(0.489-0.071)*\sc}) -- (3.9,{(0.489+0.071)*\sc});
+        \draw (3.82,{(0.489-0.071)*\sc}) -- (3.98,{(0.489-0.071)*\sc});
+        \draw (3.82,{(0.489+0.071)*\sc}) -- (3.98,{(0.489+0.071)*\sc});
+        \node[font=\scriptsize] at (3.9,{(0.489+0.071)*\sc+0.45}) {0.489};
         \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
         \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
-        \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.9) {joint};
-        \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.9) {violation-only};
-        \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.9) {proposal-only};
+        % y-axis ticks and label
+        \foreach \v in {0.25,0.50,0.75,1.00} {
+          \draw (-0.15,{\v*\sc}) -- ++(-0.1,0);
+          \node[anchor=east, font=\tiny] at (-0.2,{\v*\sc}) {\v};
+        }
+        \node[font=\scriptsize, rotate=90] at (-1.3,2.0) {Violation accuracy};
+        \node[font=\scriptsize, anchor=center] at (1.1,-0.9) {joint};
+        \node[font=\scriptsize, anchor=center, align=center] at (2.5,-0.9) {violation-\\only};
+        \node[font=\scriptsize, anchor=center, align=center] at (3.9,-0.9) {proposal-\\only};
       \end{scope}
       % Right panel: proposal MSE (joint 0.051, vio-only 0.116, prop-only 0.051)
       % MSE scale: 1.0 = 30cm, y = value*30 (0.116 -> 3.48cm, matches left panel)
       \def\scm{30}
       \begin{scope}[shift={(6.6,0)}]
         \node[font=\footnotesize] at (2.4,5.4) {Proposal head};
-        \fill[cuhk-purple!75] (0.6,0) rectangle (1.6,{0.051*\scm});
+        \fill[cuhk-orange!30] (0.6,0) rectangle (1.6,{0.051*\scm});
         \fill[cuhk-purple!75] (2.0,0) rectangle (3.0,{0.116*\scm});
-        \fill[cuhk-purple!75] (3.4,0) rectangle (4.4,{0.051*\scm});
-        % error bars with caps (std: 0.009, 0.009, 0.010) *30; labels above caps
-        \draw (1.1,{0.051*\scm+0.05}) -- (1.1,{0.051*\scm+0.05+0.009*\scm});
-        \draw (1.02,{0.051*\scm+0.05+0.009*\scm}) -- (1.18,{0.051*\scm+0.05+0.009*\scm});
-        \node[font=\scriptsize] at (1.1,{0.051*\scm+0.05+0.009*\scm+0.45}) {0.051};
-        \draw (2.5,{0.116*\scm+0.05}) -- (2.5,{0.116*\scm+0.05+0.009*\scm});
-        \draw (2.42,{0.116*\scm+0.05+0.009*\scm}) -- (2.58,{0.116*\scm+0.05+0.009*\scm});
-        \node[font=\scriptsize] at (2.5,{0.116*\scm+0.05+0.009*\scm+0.45}) {0.116};
-        \draw (3.9,{0.051*\scm+0.05}) -- (3.9,{0.051*\scm+0.05+0.010*\scm});
-        \draw (3.82,{0.051*\scm+0.05+0.010*\scm}) -- (3.98,{0.051*\scm+0.05+0.010*\scm});
-        \node[font=\scriptsize] at (3.9,{0.051*\scm+0.05+0.010*\scm+0.45}) {0.051};
+        \fill[cuhk-orange!30] (3.4,0) rectangle (4.4,{0.051*\scm});
+        % symmetric error bars (std: 0.009, 0.009, 0.010) *30; labels above upper cap
+        \draw (1.1,{(0.051-0.009)*\scm}) -- (1.1,{(0.051+0.009)*\scm});
+        \draw (1.02,{(0.051-0.009)*\scm}) -- (1.18,{(0.051-0.009)*\scm});
+        \draw (1.02,{(0.051+0.009)*\scm}) -- (1.18,{(0.051+0.009)*\scm});
+        \node[font=\scriptsize] at (1.1,{(0.051+0.009)*\scm+0.45}) {0.051};
+        \draw (2.5,{(0.116-0.009)*\scm}) -- (2.5,{(0.116+0.009)*\scm});
+        \draw (2.42,{(0.116-0.009)*\scm}) -- (2.58,{(0.116-0.009)*\scm});
+        \draw (2.42,{(0.116+0.009)*\scm}) -- (2.58,{(0.116+0.009)*\scm});
+        \node[font=\scriptsize] at (2.5,{(0.116+0.009)*\scm+0.45}) {0.116};
+        \draw (3.9,{(0.051-0.010)*\scm}) -- (3.9,{(0.051+0.010)*\scm});
+        \draw (3.82,{(0.051-0.010)*\scm}) -- (3.98,{(0.051-0.010)*\scm});
+        \draw (3.82,{(0.051+0.010)*\scm}) -- (3.98,{(0.051+0.010)*\scm});
+        \node[font=\scriptsize] at (3.9,{(0.051+0.010)*\scm+0.45}) {0.051};
         \draw[thick,-{Stealth}] (0,-0.15) -- (0,4.1);
         \draw[thick,-{Stealth}] (-0.15,0) -- (4.6,0);
-        \node[font=\scriptsize, rotate=45, anchor=east] at (1.1,-0.9) {joint};
-        \node[font=\scriptsize, rotate=45, anchor=east] at (2.5,-0.9) {violation-only};
-        \node[font=\scriptsize, rotate=45, anchor=east] at (3.9,-0.9) {proposal-only};
+        % y-axis ticks and label
+        \foreach \v in {0.04,0.08,0.12} {
+          \draw (-0.15,{\v*\scm}) -- ++(-0.1,0);
+          \node[anchor=east, font=\tiny] at (-0.2,{\v*\scm}) {\v};
+        }
+        \node[font=\scriptsize, rotate=90] at (-1.3,2.0) {Proposal MSE};
+        \node[font=\scriptsize, anchor=center] at (1.1,-0.9) {joint};
+        \node[font=\scriptsize, anchor=center, align=center] at (2.5,-0.9) {violation-\\only};
+        \node[font=\scriptsize, anchor=center, align=center] at (3.9,-0.9) {proposal-\\only};
       \end{scope}
     \end{tikzpicture}
     \end{center}
@@ -515,11 +667,11 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 
 
-    \textbf{Constraint-type ablation} (violation accuracy): removing
-    \texttt{CONTAINMENT} hurts most ($-$1.9pp), confirming containment is the
-    strongest structural signal; removing \emph{all} alignment types
-    \emph{helps} ($+3.1$pp $\rightarrow$ 93.9\%); keeping only alignment
-    hurts most ($-$3.0pp).
+    \textbf{Constraint-type ablation} on violation accuracy:
+    \texttt{CONTAINMENT} is the most valuable constraint, while
+    \texttt{ALIGNMENT} constraints actively hurt---dropping them all
+    improves accuracy by \textbf{+3.1pp}, and keeping only
+    \texttt{ALIGNMENT} is the worst configuration.
 
     \begin{center}
     \begin{tikzpicture}[xscale=2.8, yscale=1]
@@ -530,27 +682,41 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % Remove all ALIGNMENT 0.939 -> 5.94cm
       \fill[cuhk-orange!30] (\base,5.0) rectangle ({(\base+(0.939-0.84)*\sc)},5.35);
       \node[anchor=east, font=\footnotesize] at (\base-0.1,5.175) {Remove all \texttt{ALIGNMENT}};
-      \node[font=\footnotesize, anchor=west] at ({(\base+(0.939-0.84)*\sc+0.4)},5.175) {0.939};
+      \node[font=\footnotesize, anchor=west] at ({(\base+(0.939-0.84)*\sc+0.2)},5.175) {0.939};
       % Remove GRID 0.916 -> 4.56cm
       \fill[cuhk-orange!30] (\base,4.0) rectangle ({(\base+(0.916-0.84)*\sc)},4.35);
       \node[anchor=east, font=\footnotesize] at (\base-0.1,4.175) {Remove \texttt{GRID}};
-      \node[font=\footnotesize, anchor=west] at ({(\base+(0.916-0.84)*\sc+0.4)},4.175) {0.916};
+      \node[font=\footnotesize, anchor=west] at ({(\base+(0.916-0.84)*\sc+0.2)},4.175) {0.916};
       % All 10 types (control) 0.908 -> 4.08cm
       \fill[cuhk-purple!75] (\base,3.0) rectangle ({(\base+(0.908-0.84)*\sc)},3.35);
       \node[anchor=east, font=\footnotesize] at (\base-0.1,3.175) {All 10 types};
-      \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.4)},3.175) {\bfseries 0.908};
+      \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.2)},3.175) {\bfseries\color{cuhk-purple!90} 0.908 (control)};
       % Remove SPACING 0.903 -> 3.78cm
       \fill[cuhk-orange!30] (\base,2.0) rectangle ({(\base+(0.903-0.84)*\sc)},2.35);
       \node[anchor=east, font=\footnotesize] at (\base-0.1,2.175) {Remove \texttt{SPACING}};
-      \node[font=\footnotesize, anchor=west] at ({(\base+(0.903-0.84)*\sc+0.4)},2.175) {0.903};
+      \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.2)},2.175) {0.903};
       % Remove CONTAINMENT 0.889 -> 2.94cm
       \fill[cuhk-orange!30] (\base,1.0) rectangle ({(\base+(0.889-0.84)*\sc)},1.35);
       \node[anchor=east, font=\footnotesize] at (\base-0.1,1.175) {Remove \texttt{CONTAINMENT}};
-      \node[font=\footnotesize, anchor=west] at ({(\base+(0.889-0.84)*\sc+0.4)},1.175) {0.889};
+      \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.2)},1.175) {0.889};
       % Only ALIGNMENT 0.878 -> 2.28cm
       \fill[cuhk-orange!30] (\base,0.0) rectangle ({(\base+(0.878-0.84)*\sc)},0.35);
       \node[anchor=east, font=\footnotesize] at (\base-0.1,0.175) {Only \texttt{ALIGNMENT}};
-      \node[font=\footnotesize, anchor=west] at ({(\base+(0.878-0.84)*\sc+0.4)},0.175) {0.878};
+      \node[font=\footnotesize, anchor=west] at ({(\base+(0.908-0.84)*\sc+0.2)},0.175) {0.878};
+      % green overlay for bars exceeding control (0.908), black pp label on top
+      \fill[green!30] ({(\base+(0.908-0.84)*\sc)},5.0875) rectangle ({(\base+(0.939-0.84)*\sc)},5.2625);
+      \node[font=\scriptsize, black] at ({(\base+((0.908+0.939)/2-0.84)*\sc)},5.175) {+3.1pp};
+      \fill[green!30] ({(\base+(0.908-0.84)*\sc)},4.0875) rectangle ({(\base+(0.916-0.84)*\sc)},4.2625);
+      \node[font=\scriptsize, black] at ({(\base+((0.908+0.916)/2-0.84)*\sc)},4.175) {+0.8pp};
+      % red hollow boxes for bars below control (0.908), black pp label inside
+      \draw[red!45, line width=1pt] ({(\base+(0.903-0.84)*\sc)},2.0) rectangle ({(\base+(0.908-0.84)*\sc)},2.35);
+      \node[font=\scriptsize, black] at ({(\base+((0.903+0.908)/2-0.84)*\sc)},2.175) {--0.5pp};
+      \draw[red!45, line width=1pt] ({(\base+(0.889-0.84)*\sc)},1.0) rectangle ({(\base+(0.908-0.84)*\sc)},1.35);
+      \node[font=\scriptsize, black] at ({(\base+((0.889+0.908)/2-0.84)*\sc)},1.175) {--1.9pp};
+      \draw[red!45, line width=1pt] ({(\base+(0.878-0.84)*\sc)},0.0) rectangle ({(\base+(0.908-0.84)*\sc)},0.35);
+      \node[font=\scriptsize, black] at ({(\base+((0.878+0.908)/2-0.84)*\sc)},0.175) {--3.0pp};
+      % control reference line at 0.908
+      \draw[dashed, cuhk-purple!70, line width=1pt] ({(\base+(0.908-0.84)*\sc)},-0.5) -- ({(\base+(0.908-0.84)*\sc)},5.75);
       % axis
       \draw[thick,-{Stealth}] (\base,5.75) -- (\base,-0.5);
       \draw[thick,-{Stealth}] (\base,-0.65) -- (6.6,-0.65);
@@ -579,30 +745,87 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
     % KPI cards: one per constraint set (3x2 grid), light backgrounds,
     % value and delta on one line, delta green/red
+    % COMMENTED OUT — deltas now annotated directly on the bar chart
+    % \begin{center}
+    % \pgfmathsetlengthmacro{\cardw}{\dimexpr(0.8\colwidth - 1.2cm)/3\relax}
+    % \begin{tikzpicture}[
+    %     card/.style={rounded corners=4pt, text width=\cardw, align=left,
+    %                  inner sep=10pt, font=\footnotesize, text=black,
+    %                  minimum height=3.0cm},
+    %     node distance=0.6cm]
+    %   % Row 1
+    %   \node[card, fill=cuhk-purple!12] (a) {\textbf{All 10 types (control)}\\[6pt]
+    %     {\Large\bfseries\color{cuhk-purple!90}0.908}};
+    %   \node[card, fill=cuhk-orange!15, right=of a] (b) {\texttt{CONTAINMENT}\\[6pt]
+    %     {\Large\color{cuhk-purple!90}0.889}\quad{\scriptsize\color{red!80!black}$-$1.9pp}};
+    %   \node[card, fill=cuhk-orange!15, right=of b] (c) {\texttt{SPACING}\\[6pt]
+    %     {\Large\color{cuhk-purple!90}0.903}\quad{\scriptsize\color{red!80!black}$-$0.5pp}};
+    %   % Row 2
+    %   \node[card, fill=cuhk-purple!12, below=of a] (d) {\texttt{GRID}\\[6pt]
+    %     {\Large\color{cuhk-purple!90}0.916}\quad{\scriptsize\color{green!60!black}$+$0.8pp}};
+    %   \node[card, fill=cuhk-purple!12, right=of d] (e) {Remove all \texttt{ALIGNMENT}\\[6pt]
+    %     {\Large\color{cuhk-purple!90}0.939}\quad{\scriptsize\color{green!60!black}$+$3.1pp}};
+    %   \node[card, fill=cuhk-orange!15, right=of e] (f) {Only \texttt{ALIGNMENT}\\[6pt]
+    %     {\Large\color{cuhk-purple!90}0.878}\quad{\scriptsize\color{red!80!black}$-$3.0pp}};
+    % \end{tikzpicture}
+    % \end{center}
+
+    Violation counts track constraint counts, with correlation \textbf{0.96}
+    across 32 screenshots:
+
     \begin{center}
-    \pgfmathsetlengthmacro{\cardw}{\dimexpr(0.8\colwidth - 1.2cm)/3\relax}
-    \begin{tikzpicture}[
-        card/.style={rounded corners=4pt, text width=\cardw, align=left,
-                     inner sep=10pt, font=\footnotesize, text=black,
-                     minimum height=3.0cm},
-        node distance=0.6cm]
-      % Row 1
-      \node[card, fill=cuhk-purple!12] (a) {\textbf{All 10 types (control)}\\[6pt]
-        {\Large\bfseries\color{cuhk-purple!90}0.908}};
-      \node[card, fill=cuhk-orange!15, right=of a] (b) {\texttt{CONTAINMENT}\\[6pt]
-        {\Large\color{cuhk-purple!90}0.889}\quad{\scriptsize\color{red!80!black}$-$1.9pp}};
-      \node[card, fill=cuhk-orange!15, right=of b] (c) {\texttt{SPACING}\\[6pt]
-        {\Large\color{cuhk-purple!90}0.903}\quad{\scriptsize\color{red!80!black}$-$0.5pp}};
-      % Row 2
-      \node[card, fill=cuhk-purple!12, below=of a] (d) {\texttt{GRID}\\[6pt]
-        {\Large\color{cuhk-purple!90}0.916}\quad{\scriptsize\color{green!60!black}$+$0.8pp}};
-      \node[card, fill=cuhk-purple!12, right=of d] (e) {Remove all \texttt{ALIGNMENT}\\[6pt]
-        {\Large\color{cuhk-purple!90}0.939}\quad{\scriptsize\color{green!60!black}$+$3.1pp}};
-      \node[card, fill=cuhk-orange!15, right=of e] (f) {Only \texttt{ALIGNMENT}\\[6pt]
-        {\Large\color{cuhk-purple!90}0.878}\quad{\scriptsize\color{red!80!black}$-$3.0pp}};
+    \begin{tikzpicture}[xscale=3, yscale=1.5]
+      % Constraints extracted vs violated constraints per screenshot (32 RICO)
+      % OLS fit: y = 0.8299*x - 1.4884 (r^2 = 0.92); endpoints at x=0 and x=35
+      \draw[cuhk-orange!70, line width=1.2pt] (0,{-1.4884*0.16}) -- ({35*0.14},{(0.8299*35-1.4884)*0.16});
+      \node[font=\scriptsize, cuhk-orange!90!black] at (4.0,4.15) {r = 0.96};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({11*0.14},{10.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({9*0.14},{3.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({24*0.14},{20.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({12*0.14},{7.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({16*0.14},{15.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({26*0.14},{21.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({5*0.14},{0.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({8*0.14},{8.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({21*0.14},{16.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({6*0.14},{5.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({21*0.14},{16.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({34*0.14},{29.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({23*0.14},{15.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({9*0.14},{7.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({32*0.14},{20.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({14*0.14},{9.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({9*0.14},{3.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({4*0.14},{3.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({28*0.14},{23.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({15*0.14},{7.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({13*0.14},{9.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({33*0.14},{27.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({5*0.14},{5.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({10*0.14},{6.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({2*0.14},{0.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({7*0.14},{6.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({10*0.14},{9.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({9*0.14},{9.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({15*0.14},{12.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({9*0.14},{5.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({5*0.14},{0.00*0.16}) {};
+      \node[circle, fill=cuhk-purple!60, inner sep=0pt, minimum size=0.18cm] at ({4*0.14},{0.00*0.16}) {};
+      % axes
+      \draw[thick,-{Stealth}] (0,-0.15) -- (0,5.0);
+      \draw[thick,-{Stealth}] (-0.15,0) -- (5.1,0);
+      \foreach \v in {10,20,30} {
+        \draw ({\v*0.14},-0.12) -- ++(0,-0.1);
+        \node[below, font=\tiny] at ({\v*0.14},-0.15) {\v};
+      }
+      \foreach \v in {10,20} {
+        \draw (-0.12,{\v*0.16}) -- ++(-0.1,0);
+        \node[anchor=east, font=\tiny] at (-0.2,{\v*0.16}) {\v};
+      }
+      \node[font=\footnotesize] at (2.55,-1.0667) {Constraints per graph};
+      \node[font=\footnotesize, rotate=90] at (-0.6667,2.4) {Violated constraints};
     \end{tikzpicture}
     \end{center}
-
 
   \end{block}
 
@@ -612,9 +835,11 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 \begin{column}{\colwidth}
 
-    \textbf{Element completion} (proposal IoU): GNN beats nearest-neighbor
-    when structure is missing --- drop 0.6: 0.122 vs.\ 0.088 ($+39\%$);
-    drop 0.8: 0.097 vs.\ 0.062 ($+56\%$).
+    \justifying
+    \hyphenpenalty=50
+    \textbf{Element completion} (proposal IoU): gains grow with the drop
+    ratio---the more structure is missing, the more the graph exploits
+    it, reaching \textbf{+56\%} IoU over nearest-neighbor.
 
     \begin{center}
     \begin{tikzpicture}[xscale=2.2, yscale=1]
@@ -633,35 +858,43 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         \node[anchor=west, font=\scriptsize] at (5.35,5.42) {NN baseline};
         % group 1: drop 0.2
         \fill[cuhk-purple!75] (0.7,0) rectangle (1.3,{0.047*\sc});
-        \draw (1.0,{0.047*\sc+0.04}) -- (1.0,{0.047*\sc+0.04+0.009*\sc});
-        \draw (0.92,{0.047*\sc+0.04+0.009*\sc}) -- (1.08,{0.047*\sc+0.04+0.009*\sc});
+        \draw (1.0,{(0.038)*\sc}) -- (1.0,{(0.056)*\sc});
+        \draw (0.92,{(0.038)*\sc}) -- (1.08,{(0.038)*\sc});
+        \draw (0.92,{(0.056)*\sc}) -- (1.08,{(0.056)*\sc});
         \fill[cuhk-orange!45] (1.7,0) rectangle (2.3,{0.057*\sc});
-        \draw (2.0,{0.057*\sc+0.04}) -- (2.0,{0.057*\sc+0.04+0.031*\sc});
-        \draw (1.92,{0.057*\sc+0.04+0.031*\sc}) -- (2.08,{0.057*\sc+0.04+0.031*\sc});
+        \draw (2.0,{(0.026)*\sc}) -- (2.0,{(0.088)*\sc});
+        \draw (1.92,{(0.026)*\sc}) -- (2.08,{(0.026)*\sc});
+        \draw (1.92,{(0.088)*\sc}) -- (2.08,{(0.088)*\sc});
         \node[font=\scriptsize] at (1.5,-0.7) {0.2};
         % group 2: drop 0.4
         \fill[cuhk-purple!75] (2.7,0) rectangle (3.3,{0.079*\sc});
-        \draw (3.0,{0.079*\sc+0.04}) -- (3.0,{0.079*\sc+0.04+0.014*\sc});
-        \draw (2.92,{0.079*\sc+0.04+0.014*\sc}) -- (3.08,{0.079*\sc+0.04+0.014*\sc});
+        \draw (3.0,{(0.065)*\sc}) -- (3.0,{(0.093)*\sc});
+        \draw (2.92,{(0.065)*\sc}) -- (3.08,{(0.065)*\sc});
+        \draw (2.92,{(0.093)*\sc}) -- (3.08,{(0.093)*\sc});
         \fill[cuhk-orange!45] (3.7,0) rectangle (4.3,{0.110*\sc});
-        \draw (4.0,{0.110*\sc+0.04}) -- (4.0,{0.110*\sc+0.04+0.013*\sc});
-        \draw (3.92,{0.110*\sc+0.04+0.013*\sc}) -- (4.08,{0.110*\sc+0.04+0.013*\sc});
+        \draw (4.0,{(0.097)*\sc}) -- (4.0,{(0.123)*\sc});
+        \draw (3.92,{(0.097)*\sc}) -- (4.08,{(0.097)*\sc});
+        \draw (3.92,{(0.123)*\sc}) -- (4.08,{(0.123)*\sc});
         \node[font=\scriptsize] at (3.5,-0.7) {0.4};
         % group 3: drop 0.6
         \fill[cuhk-purple!75] (4.7,0) rectangle (5.3,{0.122*\sc});
-        \draw (5.0,{0.122*\sc+0.04}) -- (5.0,{0.122*\sc+0.04+0.082*\sc});
-        \draw (4.92,{0.122*\sc+0.04+0.082*\sc}) -- (5.08,{0.122*\sc+0.04+0.082*\sc});
+        \draw (5.0,{(0.040)*\sc}) -- (5.0,{(0.204)*\sc});
+        \draw (4.92,{(0.040)*\sc}) -- (5.08,{(0.040)*\sc});
+        \draw (4.92,{(0.204)*\sc}) -- (5.08,{(0.204)*\sc});
         \fill[cuhk-orange!45] (5.7,0) rectangle (6.3,{0.088*\sc});
-        \draw (6.0,{0.088*\sc+0.04}) -- (6.0,{0.088*\sc+0.04+0.011*\sc});
-        \draw (5.92,{0.088*\sc+0.04+0.011*\sc}) -- (6.08,{0.088*\sc+0.04+0.011*\sc});
+        \draw (6.0,{(0.077)*\sc}) -- (6.0,{(0.099)*\sc});
+        \draw (5.92,{(0.077)*\sc}) -- (6.08,{(0.077)*\sc});
+        \draw (5.92,{(0.099)*\sc}) -- (6.08,{(0.099)*\sc});
         \node[font=\scriptsize] at (5.5,-0.7) {0.6};
         % group 4: drop 0.8
         \fill[cuhk-purple!75] (6.7,0) rectangle (7.3,{0.097*\sc});
-        \draw (7.0,{0.097*\sc+0.04}) -- (7.0,{0.097*\sc+0.04+0.047*\sc});
-        \draw (6.92,{0.097*\sc+0.04+0.047*\sc}) -- (7.08,{0.097*\sc+0.04+0.047*\sc});
+        \draw (7.0,{(0.050)*\sc}) -- (7.0,{(0.144)*\sc});
+        \draw (6.92,{(0.050)*\sc}) -- (7.08,{(0.050)*\sc});
+        \draw (6.92,{(0.144)*\sc}) -- (7.08,{(0.144)*\sc});
         \fill[cuhk-orange!45] (7.7,0) rectangle (8.3,{0.062*\sc});
-        \draw (8.0,{0.062*\sc+0.04}) -- (8.0,{0.062*\sc+0.04+0.012*\sc});
-        \draw (7.92,{0.062*\sc+0.04+0.012*\sc}) -- (8.08,{0.062*\sc+0.04+0.012*\sc});
+        \draw (8.0,{(0.050)*\sc}) -- (8.0,{(0.074)*\sc});
+        \draw (7.92,{(0.050)*\sc}) -- (8.08,{(0.050)*\sc});
+        \draw (7.92,{(0.074)*\sc}) -- (8.08,{(0.074)*\sc});
         \node[font=\scriptsize] at (7.5,-0.7) {0.8};
         % axes
         \draw[thick,-{Stealth}] (0,-0.12) -- (0,4.9);
@@ -678,11 +911,12 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 
 
-    \textbf{End-to-end} (200 real RICO screenshots, Qwen3-VL Flash):
-    recovers 106 previously missed elements; F1 0.291 $\rightarrow$ 0.311
-    ($+2.0$pp), recall 0.235 $\rightarrow$ 0.257 ($+2.2$pp), precision
-    $+1.1$pp. Runs after the VLM, adding $<$1~ms per screenshot
-    (57K parameters, CPU-only).
+    \textbf{End-to-end} (200 RICO screenshots, Qwen3-VL Flash): the
+    framework recovers \textbf{106} missed elements and lifts recall most
+    (\textbf{+2.2pp})---exactly the failure mode it was designed for.
+    Precision rises less (\textbf{+1.1pp}): aggressive completion trades
+    some false positives for the recall gain, at under 1~ms per
+    screenshot.
 
     \begin{center}
     \begin{tikzpicture}[xscale=2.8, yscale=1]
@@ -690,32 +924,41 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % y = value * 14 cm (0.393 -> 5.5cm); axis top 6.2 to leave room for labels
       \def\sc{14}
       % legend (top center, above axis, clear of data labels)
-      \fill[cuhk-orange!45] (2.1,6.8) rectangle (2.5,7.05);
-      \node[anchor=west, font=\scriptsize] at (2.55,6.92) {VLM only};
-      \fill[cuhk-purple!75] (4.3,6.8) rectangle (4.7,7.05);
-      \node[anchor=west, font=\scriptsize] at (4.75,6.92) {VLM + GNN};
+      \fill[cuhk-orange!45] (2.1,8.1) rectangle (2.5,8.35);
+      \node[anchor=west, font=\scriptsize] at (2.55,8.22) {VLM only};
+      \fill[cuhk-purple!75] (4.3,8.1) rectangle (4.7,8.35);
+      \node[anchor=west, font=\scriptsize] at (4.75,8.22) {VLM + GNN};
       % Precision
       \fill[cuhk-orange!45] (0.7,0) rectangle (1.3,{0.382*\sc});
       \node[font=\scriptsize] at (1.0,{0.382*\sc+0.5}) {0.382};
       \fill[cuhk-purple!75] (1.7,0) rectangle (2.3,{0.393*\sc});
       \node[font=\scriptsize] at (2.0,{0.393*\sc+0.5}) {0.393};
+      % up-right-down arrow: orange top -> purple top (gain, green), above data labels
+      \draw[green!60!black, line width=1pt, -{Stealth}] (1.0,{0.382*\sc+0.9}) -- (1.0,{0.393*\sc+1.3}) -- (2.0,{0.393*\sc+1.3}) -- (2.0,{0.393*\sc+0.9});
+      \node[font=\scriptsize, green!60!black] at (1.5,{0.393*\sc+1.65}) {+1.1pp};
       \node[font=\scriptsize] at (1.5,-0.7) {Precision};
       % Recall
       \fill[cuhk-orange!45] (2.7,0) rectangle (3.3,{0.235*\sc});
       \node[font=\scriptsize] at (3.0,{0.235*\sc+0.5}) {0.235};
       \fill[cuhk-purple!75] (3.7,0) rectangle (4.3,{0.257*\sc});
       \node[font=\scriptsize] at (4.0,{0.257*\sc+0.5}) {0.257};
+      % up-right-down arrow: orange top -> purple top (gain, green), above data labels
+      \draw[green!60!black, line width=1pt, -{Stealth}] (3.0,{0.235*\sc+0.9}) -- (3.0,{0.257*\sc+1.3}) -- (4.0,{0.257*\sc+1.3}) -- (4.0,{0.257*\sc+0.9});
+      \node[font=\scriptsize, green!60!black] at (3.5,{0.257*\sc+1.65}) {+2.2pp};
       \node[font=\scriptsize] at (3.5,-0.7) {Recall};
       % F1
       \fill[cuhk-orange!45] (4.7,0) rectangle (5.3,{0.291*\sc});
       \node[font=\scriptsize] at (5.0,{0.291*\sc+0.5}) {0.291};
       \fill[cuhk-purple!75] (5.7,0) rectangle (6.3,{0.311*\sc});
       \node[font=\scriptsize] at (6.0,{0.311*\sc+0.5}) {0.311};
+      % up-right-down arrow: orange top -> purple top (gain, green), above data labels
+      \draw[green!60!black, line width=1pt, -{Stealth}] (5.0,{0.291*\sc+0.9}) -- (5.0,{0.311*\sc+1.3}) -- (6.0,{0.311*\sc+1.3}) -- (6.0,{0.311*\sc+0.9});
+      \node[font=\scriptsize, green!60!black] at (5.5,{0.311*\sc+1.65}) {+2.0pp};
       \node[font=\scriptsize] at (5.5,-0.7) {F1};
       % axes
-      \draw[thick,-{Stealth}] (0,-0.12) -- (0,5.8);
+      \draw[thick,-{Stealth}] (0,-0.12) -- (0,7.9);
       \draw[thick,-{Stealth}] (-0.15,0) -- (6.9,0);
-      \node[font=\footnotesize, rotate=90] at (-0.95,2.7) {Score};
+      \node[font=\footnotesize, rotate=90] at (-0.95,3.95) {Score};
       \foreach \v in {0.1,0.2,0.3,0.4} {
         \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
         \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\v};
@@ -723,19 +966,72 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{tikzpicture}
     \end{center}
 
+    % COMMENTED OUT — TP/FP/FN chart above carries the same numbers
+    % \begin{center}
+    % \begin{tabularx}{0.8\linewidth}{XXXX}
+    % \toprule
+    % \textbf{Metric} & \textbf{VLM only} & \textbf{VLM + GNN} & \textbf{$\Delta$} \\
+    % \midrule
+    % Precision & 0.382 & 0.393 & $+1.1$pp \\
+    % Recall & 0.235 & 0.257 & $+2.2$pp \\
+    % F1 & 0.291 & 0.311 & $+2.0$pp \\
+    % TP & 1126 & 1232 & $+106$ \\
+    % FP & 1821 & 1905 & $+84$ \\
+    % FN & 3663 & 3557 & $-106$ \\
+    % \bottomrule
+    % \end{tabularx}
+    % \end{center}
+
+    The recovered elements are real: \textbf{106} more true positives,
+    \textbf{106} fewer false negatives, at the price of \textbf{84} new
+    false positives.
+
     \begin{center}
-    \begin{tabularx}{0.8\linewidth}{XXXX}
-    \toprule
-    \textbf{Metric} & \textbf{VLM only} & \textbf{VLM + GNN} & \textbf{$\Delta$} \\
-    \midrule
-    Precision & 0.382 & 0.393 & $+1.1$pp \\
-    Recall & 0.235 & 0.257 & $+2.2$pp \\
-    F1 & 0.291 & 0.311 & $+2.0$pp \\
-    TP & 1126 & 1232 & $+106$ \\
-    FP & 1821 & 1905 & $+84$ \\
-    FN & 3663 & 3557 & $-106$ \\
-    \bottomrule
-    \end{tabularx}
+    \begin{tikzpicture}[xscale=2.8, yscale=1]
+      % before/after counts: TP 1126->1232 (+106, good), FP 1821->1905 (+84, bad), FN 3663->3557 (-106, good)
+      % y = value * 0.0015 cm (3663 -> 5.49cm)
+      \def\sc{0.0015}
+      % legend (top center, above axis)
+      \fill[cuhk-orange!45] (2.1,8.1) rectangle (2.5,8.35);
+      \node[anchor=west, font=\scriptsize] at (2.55,8.22) {VLM only};
+      \fill[cuhk-purple!75] (4.3,8.1) rectangle (4.7,8.35);
+      \node[anchor=west, font=\scriptsize] at (4.75,8.22) {VLM + GNN};
+      % TP (good gain -> green)
+      \fill[cuhk-orange!45] (0.7,0) rectangle (1.3,{1126*\sc});
+      \node[font=\scriptsize] at (1.0,{1126*\sc+0.5}) {1{,}126};
+      \fill[cuhk-purple!75] (1.7,0) rectangle (2.3,{1232*\sc});
+      \node[font=\scriptsize] at (2.0,{1232*\sc+0.5}) {1{,}232};
+      % up-right-down arrow: orange top -> purple top (gain, green), above data labels
+      \draw[green!60!black, line width=1pt, -{Stealth}] (1.0,{1126*\sc+0.9}) -- (1.0,{1232*\sc+1.3}) -- (2.0,{1232*\sc+1.3}) -- (2.0,{1232*\sc+0.9});
+      \node[font=\scriptsize, green!60!black] at (1.5,{1232*\sc+1.65}) {+106};
+      \node[font=\scriptsize] at (1.5,-0.7) {TP};
+      % FP (bad gain -> red)
+      \fill[cuhk-orange!45] (2.7,0) rectangle (3.3,{1821*\sc});
+      \node[font=\scriptsize] at (3.0,{1821*\sc+0.5}) {1{,}821};
+      \fill[cuhk-purple!75] (3.7,0) rectangle (4.3,{1905*\sc});
+      \node[font=\scriptsize] at (4.0,{1905*\sc+0.5}) {1{,}905};
+      % up-right-down arrow: orange top -> purple top (gain bad, red), above data labels
+      \draw[red!70!black, line width=1pt, -{Stealth}] (3.0,{1821*\sc+0.9}) -- (3.0,{1905*\sc+1.3}) -- (4.0,{1905*\sc+1.3}) -- (4.0,{1905*\sc+0.9});
+      \node[font=\scriptsize, red!70!black] at (3.5,{1905*\sc+1.65}) {+84};
+      \node[font=\scriptsize] at (3.5,-0.7) {FP};
+      % FN (decrease, good -> green on the gap)
+      \fill[cuhk-orange!45] (4.7,0) rectangle (5.3,{3663*\sc});
+      \node[font=\scriptsize] at (5.0,{3663*\sc+0.5}) {3{,}663};
+      \fill[cuhk-purple!75] (5.7,0) rectangle (6.3,{3557*\sc});
+      \node[font=\scriptsize] at (6.0,{3557*\sc+0.5}) {3{,}557};
+      % up-right-down arrow: orange top -> purple top (decrease good, green), above data labels
+      \draw[green!60!black, line width=1pt, -{Stealth}] (5.0,{3663*\sc+0.9}) -- (5.0,{3663*\sc+1.3}) -- (6.0,{3663*\sc+1.3}) -- (6.0,{3557*\sc+0.9});
+      \node[font=\scriptsize, green!60!black] at (5.5,{3663*\sc+1.65}) {--106};
+      \node[font=\scriptsize] at (5.5,-0.7) {FN};
+      % axes
+      \draw[thick,-{Stealth}] (0,-0.12) -- (0,7.9);
+      \draw[thick,-{Stealth}] (-0.15,0) -- (6.9,0);
+      \node[font=\footnotesize, rotate=90] at (-0.95,3.95) {Count};
+      \foreach \v/\l in {1000/1{,}000, 2000/2{,}000, 3000/3{,}000, 4000/4{,}000} {
+        \draw (-0.1,{\v*\sc}) -- (0.1,{\v*\sc});
+        \node[anchor=east, font=\tiny] at (-0.15,{\v*\sc}) {\l};
+      }
+    \end{tikzpicture}
     \end{center}
 
 
@@ -749,12 +1045,30 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
     \begin{itemize}
       \item 90--94\% violation accuracy on RICO.
-      \item $+56\%$ IoU over nearest-neighbor completion at high drop
+      \item +56\% IoU over nearest-neighbor completion at high drop
         ratios.
-      \item $+2.0$pp F1 on 200 real Qwen3-VL Flash screenshots.
+      \item +2.0pp F1 on 200 real Qwen3-VL Flash screenshots.
     \end{itemize}
 
-    The gains appear when the VLM output is sparse; the framework inherits
+    \begin{center}
+    \pgfmathsetlengthmacro{\cardwsum}{\dimexpr(0.8\colwidth - 1.2cm)/3\relax}
+    \begin{tikzpicture}[
+        card/.style={rounded corners=4pt, text width=\cardwsum, align=left,
+                     inner sep=10pt, font=\footnotesize, text=black,
+                     minimum height=2.6cm},
+        node distance=0.6cm]
+      \node[card, fill=cuhk-purple!12] (a) {\textbf{Violation accuracy}\\[6pt]
+        {\Large\bfseries\color{cuhk-purple!90}90--94\%}};
+      \node[card, fill=cuhk-orange!15, right=of a] (b) {\textbf{Completion IoU}\\[6pt]
+        {\Large\color{cuhk-purple!90}+56\%}};
+      \node[card, fill=cuhk-purple!12, right=of b] (c) {\textbf{End-to-end F1}\\[6pt]
+        {\Large\color{cuhk-purple!90}+2.0pp}};
+    \end{tikzpicture}
+    \end{center}
+
+
+
+    The gains show up when the VLM output is sparse; the framework inherits
     the VLM's initial detections and does not fix purely semantic errors.
     Generalization to desktop and web interfaces remains to be tested.
 
