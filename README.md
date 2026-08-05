@@ -2,7 +2,7 @@
 
 **Heterogeneous Bipartite GNN for GUI Structure Error Correction**
 
-*异构二分图神经网络用于GUI结构错误修正*
+*异构二分图神经网络用于 GUI 结构错误修正*
 
 ---
 
@@ -10,49 +10,29 @@
 
 **English**
 
-Bipartite-GNN-GUI is a research project that addresses errors in GUI element parsing from lightweight Vision-Language Models (VLMs). When lightweight VLMs (Qwen3.5-2B, MiniMax-VL-01) parse GUI screenshots into structured JSON, they suffer from **element omission** (missing UI elements) and **misalignment** (incorrect bounding box coordinates). This project proposes a post-correction framework that:
+Bipartite-GNN-GUI is a post-correction framework for GUI element parsing errors from lightweight Vision-Language Models (VLMs). Lightweight VLMs (Qwen3-VL Flash, MiniMax-VL-01) parse GUI screenshots into structured JSON quickly and cheaply, but suffer from two systematic failure modes:
 
-1. Takes the initial (noisy) JSON output from a lightweight VLM.
-2. Constructs a **heterogeneous bipartite graph** with two node types:
-   - *Element nodes* – each representing a detected GUI element (button, text, image, etc.).
-   - *Constraint nodes* – representing spatial & structural priors (alignment, containment, spacing, grid).
-3. Applies **GraphSAGE message passing** across the bipartite structure to propagate constraint information to element nodes.
-4. Predicts a **coordinate refinement vector** Δ𝐱ᵢ = (Δx, Δy, Δw, Δh) for every element, correcting the VLM's initial bounding box prediction.
+- **Element omission** — 10–30% of visible elements are missed, especially small icons, dividers, and nested containers.
+- **Misalignment** — bounding boxes of detected elements can deviate by 10–50+ pixels, breaking downstream layout reasoning.
 
-**中文**
+The framework takes the noisy VLM JSON and treats GUI correction as **structured prediction on a heterogeneous bipartite graph**:
 
-Bipartite-GNN-GUI 是一个研究项目，旨在解决轻量级视觉语言模型 (VLM) 在 GUI 元素解析中产生的错误。当轻量级 VLM（如 Qwen3.5-2B、MiniMax-VL-01）将 GUI 截图解析为结构化的 JSON 时，经常出现**元素遗漏**（缺少 UI 元素）和**位置偏移**（边界框坐标错误）。本项目提出了一个后修正框架：
-
-1. 接收轻量级 VLM 输出的初始（含噪声）JSON 结果。
-2. 构建**异构二分图**，包含两种节点类型：
-   - *元素节点* – 每个检测到的 GUI 元素（按钮、文本、图片等）。
-   - *约束节点* – 表示空间和结构先验知识（对齐、包含、间距、网格）。
-3. 通过二分图结构进行 **GraphSAGE 消息传递**，将约束信息传播到元素节点。
-4. 为每个元素预测**坐标修正向量** Δ𝐱ᵢ = (Δx, Δy, Δw, Δh)，从而修正 VLM 预测的初始边界框。
-
----
-
-## Background / 背景
-
-**English**
-
-Lightweight VLMs (under 3B parameters) are attractive for on-device GUI understanding due to their low latency and memory footprint. However, our empirical analysis shows that:
-
-- **Element omission**: Models frequently miss 10–30% of visible GUI elements, especially small icons, dividers, and nested containers.
-- **Misalignment**: Even when the model detects elements, bounding box coordinates can be off by 10–50+ pixels, leading to broken layout trees and incorrect downstream action prediction.
-- **Structural inconsistencies**: Detected layouts often violate basic GUI design principles (misaligned groups, inconsistent spacing, overlapping elements).
-
-Existing approaches rely on fine-tuning larger VLMs (7B+) or cascading object detectors, both of which are computationally expensive. Our method instead treats GUI correction as a **structured prediction on a bipartite graph**, leveraging spatial constraints without requiring additional detection models or VLM fine-tuning.
+1. Elements become *element nodes*; extracted spatial relationships (alignment, containment, spacing, grid) become *constraint nodes*; edges only connect the two partitions.
+2. Two hops of GraphSAGE message passing propagate constraint information to element nodes.
+3. Four prediction heads read out: coordinate refinement Δ𝐱, constraint violation detection, element existence (reliability) scoring, and proposals for *missing* elements.
 
 **中文**
 
-轻量级 VLM（<3B 参数）因其低延迟和低内存占用而在设备端 GUI 理解中具有吸引力。然而，我们的实证分析表明：
+Bipartite-GNN-GUI 是一个针对轻量级视觉语言模型 (VLM) GUI 元素解析错误的后修正框架。轻量级 VLM(如 Qwen3-VL Flash、MiniMax-VL-01)能快速廉价地将 GUI 截图解析为结构化 JSON,但存在两类系统性错误:
 
-- **元素遗漏**：模型经常遗漏 10–30% 的可见 GUI 元素，尤其是小图标、分割线和嵌套容器。
-- **位置偏移**：即使检测到元素，边界框坐标也可能偏离 10–50+ 像素，导致布局树破损和下游动作预测错误。
-- **结构不一致**：检测到的布局经常违反基本 GUI 设计原则（组对齐错误、间距不一致、元素重叠）。
+- **元素遗漏** — 10–30% 的可见元素被漏检,尤其是小图标、分割线和嵌套容器。
+- **位置偏移** — 已检测元素的边界框可能偏离真实位置 10–50+ 像素,破坏下游布局推理。
 
-现有方法依赖于微调更大的 VLM（7B+）或级联目标检测器，两者计算成本都很高。我们的方法将 GUI 修正视为**二分图上的结构化预测**，利用空间约束，无需额外的检测模型或 VLM 微调。
+框架接收含噪声的 VLM JSON,将 GUI 修正建模为**异构二分图上的结构化预测**:
+
+1. 元素作为*元素节点*,提取的空间关系(对齐、包含、间距、网格)作为*约束节点*,边只存在于两个分区之间。
+2. 两跳 GraphSAGE 消息传递将约束信息传播到元素节点。
+3. 四个预测头分别输出:坐标修正量 Δ𝐱、约束违反检测、元素存在性(可靠性)打分、缺失元素提案。
 
 ---
 
@@ -61,144 +41,142 @@ Existing approaches rely on fine-tuning larger VLMs (7B+) or cascading object de
 ```
 ┌─────────────────┐     ┌──────────────────────┐     ┌───────────────────────┐
 │  Lightweight VLM │────▶│  Initial Noisy JSON   │────▶│  Bipartite Graph      │
-│  (Qwen3.5-2B /   │     │  (elements w/ coords) │     │  (Element × Constraint)│
-│   MiniMax-VL-01) │     └──────────────────────┘     └───────────┬───────────┘
-└─────────────────┘                                               │
+│ (Qwen3-VL Flash)│     │  (elements w/ coords) │     │  (Element × Constraint)│
+└─────────────────┘     └──────────────────────┘     └───────────┬───────────┘
                                                                   ▼
 ┌──────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐
-│  Corrected GUI JSON  │◀────│  Coordinate Refinement │◀────│  GraphSAGE            │
-│  (refined bboxes)    │     │  Δ𝐱ᵢ = (Δx,Δy,Δw,Δh) │     │  Message Passing      │
+│  Corrected GUI JSON  │◀────│   4 Prediction Heads   │◀────│  2-hop GraphSAGE      │
+│  (refined bboxes,    │     │  coord / violation /   │     │  Message Passing      │
+│  proposals, scores)  │     │  existence / proposal  │     │  (e → c → e)          │
 └──────────────────────┘     └───────────────────────┘     └───────────────────────┘
 ```
 
-### Key Components / 关键组件
+### Graph Construction
 
-| Component | Description |
-|-----------|-------------|
-| **Lightweight VLM** | Produces initial JSON with predicted element types and bounding boxes (x, y, w, h). |
-| **Bipartite Graph** | Heterogeneous graph `G = (V_e ∪ V_c, E)` where `V_e` = element nodes, `V_c` = constraint nodes. Edges encode spatial relationships. |
-| **GraphSAGE** | Inductive message-passing layers that aggregate neighbor information to refine node representations. |
-| **Refinement Head** | MLP that predicts Δ𝐱ᵢ from the final element node embeddings. |
-| **Loss Function** | `ℒ = ℒ_coord + λ₁ℒ_violation + λ₂ℒ_alignment` — combines coordinate regression, structural violation penalty, and alignment consistency. |
+A screenshot yields $N$ detected elements, each with a normalized bounding box and a type label. From these, $M$ spatial constraints are extracted — each constraint is a typed relationship between a source and a target set of elements, present when its predicate holds within a tolerance:
+
+| Constraint | Meaning |
+|---|---|
+| `ALIGN_LEFT / RIGHT / TOP / BOTTOM` | Elements share a common edge |
+| `CENTER_X / CENTER_Y` | Elements are horizontally/vertically centered |
+| `SPACING` | Consistent gaps between consecutive items |
+| `CONTAINMENT` | One element's box sits inside another's |
+| `GRID` | Elements form a regular row/column grid |
+| `SAME_SIZE` | Elements share width and/or height |
+
+The resulting graph is bipartite by construction: $G = (V_e \cup V_c, E)$ with $E \subseteq V_e \times V_c$. Elements communicate only through the constraints they share — there are no element–element edges. Element node features are the normalized box coordinates plus area (optionally concatenated with a frozen visual feature); constraint node features embed the type one-hot plus spatial statistics of the participating elements.
+
+### Message Passing
+
+Two alternating GraphSAGE hops: *element → constraint* (each constraint aggregates its incident elements), then *constraint → element* (each element gathers the updated constraint states). After two hops, every element's representation carries information from all elements that share a constraint with it.
+
+### Prediction Heads
+
+The training objective is a weighted sum of four losses, $\mathcal{L} = w_c \mathcal{L}_{coord} + w_v \mathcal{L}_{vio} + w_e \mathcal{L}_{exist} + w_p \mathcal{L}_{prop}$:
+
+| Head | Output | Loss |
+|---|---|---|
+| Coordinate refinement | per-element delta Δ𝐱ᵢ = (Δx, Δy, Δw, Δh) | smooth L1 |
+| Violation detection | per-constraint violated / satisfied | binary cross-entropy |
+| Existence scoring | per-element reliability score (hallucination filter) | binary cross-entropy |
+| Element completion | box + type proposals for missing elements | IoU-based box loss + CE |
+
+The completion head is **self-supervised**: during training a fraction of ground-truth elements is randomly dropped, and the head learns to propose them back from the dangling constraints they leave behind — no additional annotation required.
+
+---
+
+## Results / 实验结果
+
+Reported on RICO (real Android screenshots) and ScreenSpot; details in [`docs/algorithm.md`](docs/algorithm.md) and the final report ([`report/`](report/)).
+
+| Experiment | Result |
+|---|---|
+| Constraint violation detection (all 10 types) | 90–94% accuracy (0.908 full control) |
+| Ablation: removing `CONTAINMENT` | −1.9 pp accuracy |
+| Joint training objective | violation acc 0.876, proposal MSE 0.051 |
+| Element completion @ high drop ratio (0.6 / 0.8) | IoU **+39% / +56%** vs nearest-neighbor baseline |
+| End-to-end on 200 real Qwen3-VL Flash screenshots | F1 0.291 → **0.311** (+2.0 pp), recall +2.2 pp, precision +1.1 pp; **106 previously missed elements recovered** |
+| Inference cost | 57K parameters, ~5 ms graph build, ~0.53 ms inference per screenshot (CPU) |
+
+## Web Demo / 网页演示
+
+A working interactive demo ships with the repo (`api/` FastAPI backend + `web/` single-page frontend):
+
+- Five curated RICO cases with precomputed overlays (existence scoring + element completion)
+- Upload your own screenshot and run the VLM → graph → GNN pipeline
+- Endpoints: `/api/predict`, `/api/gnn-only`, `/api/cases`, `/api/demo/*`
+
+```bash
+pip install -e ".[demo]"
+python api/main.py          # serves the frontend at http://localhost:8765
+```
 
 ---
 
 ## Installation / 安装
 
-### Prerequisites / 前置要求
-
-- Python 3.10+
-- CUDA-capable GPU (recommended, but CPU inference is supported)
-
-### Setup
-
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/bipartite-gnn-gui.git
+git clone https://github.com/mrtsels/bipartite-gnn-gui.git
 cd bipartite-gnn-gui
+python -m venv venv && source venv/bin/activate
 
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
-pip install torch-geometric
-pip install -r requirements.txt
-
-# Install the package in development mode
-pip install -e .
+pip install -e .            # core package
+pip install -e ".[test]"    # + test dependencies
+pip install -e ".[demo]"    # + web demo (FastAPI)
 ```
 
----
+Requires Python ≥ 3.10, PyTorch ≥ 2.1, and PyTorch Geometric ≥ 2.4. CPU-only inference is supported; training benefits from a GPU.
 
 ## Datasets / 数据集
 
-| Dataset | Description | GUI Elements | Screenshots |
-|---------|-------------|-------------|-------------|
-| **GUI-360°** | 360° comprehensive GUI understanding dataset with pixel-level annotations. | ~50K | ~3.5K |
-| **ScreenSpot** | GUI grounding dataset with fine-grained element annotations across mobile, web, and desktop. | ~30K | ~5K |
+| Dataset | Description | Use |
+|---|---|---|
+| **RICO** | Real Android screenshots with view-hierarchy annotations | Main training & evaluation |
+| **ScreenSpot** | GUI grounding across mobile / web / desktop | Cross-domain evaluation |
+| **GUI-360°** | Pixel-level annotated GUI screenshots | Optional, via download script |
 
----
-
-## Metrics / 评估指标
-
-| Metric | Formula | Description |
-|--------|---------|-------------|
-| **PositionError** | `‖(x̂, ŷ) − (x, y)‖₂` | Euclidean distance between predicted and ground-truth top-left corner. |
-| **SizeError** | `‖(ŵ, ĥ) − (w, h)‖₂` | Euclidean distance between predicted and ground-truth width & height. |
-| **AlignmentError** | `∑₍ᵢ,ⱼ₎∈A |dxᵢ − dxⱼ| + |dyᵢ − dyⱼ|` | Deviation from expected alignment groups. |
-
----
+`scripts/download_datasets.py` downloads GUI-360° and ScreenSpot from HuggingFace (requires `HF_TOKEN`).
 
 ## Project Structure / 项目结构
 
 ```
 bipartite-gnn-gui/
-├── README.md
-├── TASK.md
-├── pyproject.toml
-├── .gitignore
-├── requirements.txt
-├── scripts/
-│   ├── run_experiment.py       # Standardized training pipeline
-│   ├── sweep.py                # Hyperparameter sweep
-│   └── generate_vlm_predictions.py  # Qwen3-VL API inference
-├── experiments/
-│   └── results.json            # Sweep results
-├── configs/
-│   └── experiment.yaml         # Experiment config template
+├── src/bipartite_gnn_gui/     # package: data / graph / model / eval / utils
+├── tests/                     # 942 tests (pytest)
+├── scripts/                   # training, evaluation, data-prep scripts
+├── experiments/               # experiment scripts and result JSONs
+├── configs/                   # YAML experiment configs
+├── api/                       # FastAPI backend for the web demo
+├── web/                       # single-page frontend
+├── demo_data/                 # precomputed demo cases and overlays
 ├── docs/
-│   └── requirements/
-│       ├── gt_format.md        # Ground truth data format spec
-│       └── vlm_inference.md    # VLM prediction generation
-├── src/
-│   └── bipartite_gnn_gui/
-│       ├── __init__.py
-│       ├── data/          # Dataset loading & preprocessing
-│       ├── graph/         # Heterogeneous bipartite graph construction
-│       ├── model/         # GraphSAGE GNN model & refinement head
-│       ├── eval/          # Evaluation metrics (PositionError, SizeError, AlignmentError)
-│       └── utils/         # Utility functions
-└── tests/
-    └── __init__.py
+│   ├── algorithm.md           # mathematical formulation
+│   ├── schema.md              # graph schema reference
+│   ├── requirements/          # VLM / ground-truth data format specs
+│   └── research/              # research directions
+├── report/  report-cn/        # final report sources (EN / 中文)
+├── poster/                    # conference poster
+└── pyproject.toml
 ```
 
----
+## Testing / 测试
 
-## Research Directions / 研究方向
-
-Phase 4 实验揭示了坐标修正方向的瓶颈（VLM 要么太准要么太弱）。详见 `docs/research/direction_confidence_completion.md`。
-
-### 方向 1: 约束感知置信度打分
-
-GNN 预测每个 VLM 检测的可靠性分数，基于空间上下文和约束满足度的自动过滤。
-
-- 无需改 VLM，兼容所有预测精度水平
-- 指标: AUROC, Precision@K, filtered F1
-
-### 方向 2: 结构性元素补全
-
-GNN 检测约束图中的"空洞"——缺失元素导致的不完整约束——并提议缺失元素的位置和类型。
-
-- 自监督训练: RICO GT 随机删除 60% 元素 → GNN 预测缺失元素
-- 完全可控实验，不依赖任何 VLM
-
-见 `docs/research/direction_confidence_completion.md` 获取完整分析和实施计划。
-
----
-
-## License / 许可证
-
-MIT License
+```bash
+pip install -e ".[test]"
+pytest tests/ -v
+```
 
 ## Citation / 引用
 
 ```bibtex
 @software{bipartite_gnn_gui,
-  title = {Bipartite-GNN-GUI: Heterogeneous Bipartite GNN for GUI Structure Error Correction},
-  year = {2026},
-  url = {https://github.com/your-org/bipartite-gnn-gui}
+  title  = {Bipartite-GNN-GUI: Heterogeneous Bipartite GNN for GUI Structure Error Correction},
+  author = {Xie, Licheng},
+  year   = {2026},
+  url    = {https://github.com/mrtsels/bipartite-gnn-gui}
 }
 ```
+
+## License / 许可证
+
+MIT License — see [LICENSE](LICENSE).
