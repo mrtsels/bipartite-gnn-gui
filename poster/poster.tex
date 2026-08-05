@@ -282,6 +282,93 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
   \begin{block}{5. Models}
 
+
+        \begin{center}
+
+\begin{tikzpicture}[
+    >=Latex,
+    line cap=round,
+    line join=round
+]
+
+% Left panel: x = 0 ... 6.8  /  Right panel: x = 8.6 ... 15.4
+% No resizebox, no transform shape.
+
+% Panel titles
+\node[anchor=south, font=\scriptsize\bfseries] at (4.59,9.33) {VLM output};
+\node[anchor=south, font=\scriptsize\bfseries] at (16.2,9.33) {After GNN};
+
+% Vertical separator
+\draw[black!45, line width=0.5pt] (10.4,0.22) -- (10.4,9.11);
+
+% ===== LEFT PANEL - VLM output =====
+\draw[black, line width=0.7pt] (0.0,0.56) rectangle (9.18,8.95);
+\draw[black, line width=0.6pt] (0.54,8.11) rectangle (8.64,8.66);
+\node[font=\scriptsize] at (4.59,8.38) {Recipe App};
+\draw[black, line width=0.6pt] (0.54,5.53) rectangle (8.64,7.72);
+\node[font=\scriptsize] at (4.59,6.62) {img};
+
+% Buttons
+\draw[black, line width=0.6pt] (0.88,4.02) rectangle (2.9,4.75);
+\node[font=\scriptsize] at (1.89,4.39) {OK};
+\draw[black, line width=0.6pt] (3.58,4.02) rectangle (5.6,4.75);
+\node[font=\scriptsize] at (4.59,4.39) {Cancel};
+\draw[black, line width=0.6pt] (6.28,4.02) rectangle (8.3,4.75);
+\node[font=\scriptsize] at (7.29,4.39) {Share};
+
+% MISALIGNMENT: gray correct box + red wrong box (shifted, rotated)
+\draw[gray!60, line width=0.45pt] (0.88,4.02) rectangle (2.9,4.75);
+\begin{scope}[shift={(0.14,0.09)}, rotate=3]
+    \draw[red!80!black, line width=1.0pt] (0.88,4.02) rectangle (2.9,4.75);
+\end{scope}
+% Error label (right of the arrow), arrow points left-up to the red box
+\node[anchor=west, font=\scriptsize, text=red!75!black] at (2.30,3.36) {box misalignment};
+\draw[->, red!75!black, line width=0.7pt] (2.25,3.45) -- (1.85,3.96);
+
+% OMISSION: dashed circle + question mark on Share (circle sits on button top edge)
+\draw[red!75!black, dashed, line width=0.8pt] (7.29,5.15) circle (0.30);
+\node[font=\scriptsize\bfseries, text=red!75!black] at (7.29,5.15) {\raisebox{0.3ex}{?}};
+
+% Text rows
+\draw[black, line width=0.6pt] (0.54,2.3) rectangle (8.64,2.85);
+\draw[gray!65, line width=0.7pt] (0.94,2.58) -- (3.58,2.58);
+\draw[black, line width=0.6pt] (0.54,1.46) rectangle (8.64,2.02);
+\draw[gray!65, line width=0.7pt] (0.94,1.74) -- (3.58,1.74);
+\draw[black, line width=0.6pt] (0.54,0.62) rectangle (8.64,1.18);
+\draw[gray!65, line width=0.7pt] (0.94,0.9) -- (3.58,0.9);
+
+% ===== RIGHT PANEL - After GNN (same geometry, x+8.6) =====
+\draw[black, line width=0.7pt] (11.61,0.56) rectangle (20.79,8.95);
+\draw[cuhk-purple, fill=cuhk-purple!25, line width=0.9pt] (12.15,8.11) rectangle (20.25,8.66);
+\node[font=\scriptsize] at (16.2,8.38) {Recipe App};
+\node[font=\scriptsize\bfseries, text=cuhk-purple] at (20.00,8.16) {$\checkmark$};
+\draw[cuhk-purple, fill=cuhk-purple!25, line width=0.9pt] (12.15,5.53) rectangle (20.25,7.72);
+\node[font=\scriptsize] at (16.2,6.62) {img};
+\node[font=\scriptsize\bfseries, text=cuhk-purple] at (20.00,5.59) {$\checkmark$};
+
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.49,4.02) rectangle (14.51,4.75);
+\node[font=\scriptsize] at (13.5,4.39) {OK};
+\node[font=\scriptsize\bfseries, text=green!45!black] at (14.26,4.08) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (15.19,4.02) rectangle (17.21,4.75);
+\node[font=\scriptsize] at (16.2,4.39) {Cancel};
+\node[font=\scriptsize\bfseries, text=green!45!black] at (16.96,4.08) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (17.89,4.02) rectangle (19.91,4.75);
+\node[font=\scriptsize] at (18.9,4.39) {Share};
+\node[font=\scriptsize\bfseries, text=green!45!black] at (19.66,4.08) {$\checkmark$};
+
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,2.3) rectangle (20.25,2.85);
+\draw[gray!65, line width=0.7pt] (12.56,2.58) -- (15.19,2.58);
+\node[font=\scriptsize\bfseries, text=green!45!black] at (20.00,2.36) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,1.46) rectangle (20.25,2.02);
+\draw[gray!65, line width=0.7pt] (12.56,1.74) -- (15.19,1.74);
+\node[font=\scriptsize\bfseries, text=green!45!black] at (20.00,1.52) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,0.62) rectangle (20.25,1.18);
+\draw[gray!65, line width=0.7pt] (12.56,0.9) -- (15.19,0.9);
+\node[font=\scriptsize\bfseries, text=green!45!black] at (20.00,0.69) {$\checkmark$};
+
+\end{tikzpicture}
+    \end{center}
+
     A two-layer bipartite GraphSAGE encoder (hidden dim 128, AdamW + cosine
     annealing) reads out four prediction heads, trained jointly on a
     weighted sum of losses:
@@ -381,90 +468,6 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     \end{center}
 
 
-        \begin{center}
-
-\begin{tikzpicture}[
-    >=Latex,
-    line cap=round,
-    line join=round
-]
-
-% Left panel: x = 0 ... 6.8  /  Right panel: x = 8.6 ... 15.4
-% No resizebox, no transform shape.
-
-% Panel titles
-\node[anchor=south, font=\scriptsize\bfseries] at (4.59,8.11) {VLM output};
-\node[anchor=south, font=\scriptsize\bfseries] at (16.2,8.11) {After GNN};
-
-% Vertical separator
-\draw[black!45, line width=0.5pt] (10.4,0.19) -- (10.4,7.92);
-
-% ===== LEFT PANEL - VLM output =====
-\draw[black, line width=0.7pt] (0.0,0.49) rectangle (9.18,7.78);
-\draw[black, line width=0.6pt] (0.54,7.05) rectangle (8.64,7.53);
-\node[font=\scriptsize] at (4.59,7.29) {Recipe App};
-\draw[black, line width=0.6pt] (0.54,4.81) rectangle (8.64,6.71);
-\node[font=\scriptsize] at (4.59,5.76) {img};
-
-% Buttons
-\draw[black, line width=0.6pt] (0.88,3.5) rectangle (2.9,4.13);
-\node[font=\scriptsize] at (1.89,3.82) {OK};
-\draw[black, line width=0.6pt] (3.58,3.5) rectangle (5.6,4.13);
-\node[font=\scriptsize] at (4.59,3.82) {Cancel};
-\draw[black, line width=0.6pt] (6.28,3.5) rectangle (8.3,4.13);
-\node[font=\scriptsize] at (7.29,3.82) {Share};
-
-% MISALIGNMENT: gray correct box + red wrong box (shifted, rotated)
-\draw[gray!60, line width=0.45pt] (0.88,3.5) rectangle (2.9,4.13);
-\begin{scope}[shift={(0.14,0.08)}, rotate=3]
-    \draw[red!80!black, line width=1.0pt] (0.88,3.5) rectangle (2.9,4.13);
-\end{scope}
-\node[anchor=east, font=\scriptsize, text=red!75!black] at (2.63,2.92) {box misalignment};
-\draw[->, red!75!black, line width=0.7pt] (2.63,3.0) -- (2.09,3.44);
-
-% OMISSION: dashed circle + question mark on Share
-\draw[red!75!black, dashed, line width=0.8pt] (7.29,4.62) circle (0.30);
-\node[font=\scriptsize\bfseries, text=red!75!black] at (7.29,4.62) {?};
-
-% Text rows
-\draw[black, line width=0.6pt] (0.54,2.0) rectangle (8.64,2.48);
-\draw[gray!65, line width=0.7pt] (0.94,2.24) -- (3.58,2.24);
-\draw[black, line width=0.6pt] (0.54,1.27) rectangle (8.64,1.76);
-\draw[gray!65, line width=0.7pt] (0.94,1.51) -- (3.58,1.51);
-\draw[black, line width=0.6pt] (0.54,0.54) rectangle (8.64,1.03);
-\draw[gray!65, line width=0.7pt] (0.94,0.78) -- (3.58,0.78);
-
-% ===== RIGHT PANEL - After GNN (same geometry, x+8.6) =====
-\draw[black, line width=0.7pt] (11.61,0.49) rectangle (20.79,7.78);
-\draw[cuhk-purple, fill=cuhk-purple!25, line width=0.9pt] (12.15,7.05) rectangle (20.25,7.53);
-\node[font=\scriptsize] at (16.2,7.29) {Recipe App};
-\node[font=\scriptsize\bfseries, text=cuhk-purple] at (19.87,7.29) {$\checkmark$};
-\draw[cuhk-purple, fill=cuhk-purple!25, line width=0.9pt] (12.15,4.81) rectangle (20.25,6.71);
-\node[font=\scriptsize] at (16.2,5.76) {img};
-\node[font=\scriptsize\bfseries, text=cuhk-purple] at (19.87,5.05) {$\checkmark$};
-
-\draw[green!55!black, fill=green!30, line width=0.9pt] (12.49,3.5) rectangle (14.51,4.13);
-\node[font=\scriptsize] at (13.5,3.82) {OK};
-\node[font=\scriptsize\bfseries, text=green!45!black] at (14.15,3.82) {$\checkmark$};
-\draw[green!55!black, fill=green!30, line width=0.9pt] (15.19,3.5) rectangle (17.21,4.13);
-\node[font=\scriptsize] at (16.2,3.82) {Cancel};
-\node[font=\scriptsize\bfseries, text=green!45!black] at (16.85,3.82) {$\checkmark$};
-\draw[green!55!black, fill=green!30, line width=0.9pt] (17.89,3.5) rectangle (19.91,4.13);
-\node[font=\scriptsize] at (18.9,3.82) {Share};
-\node[font=\scriptsize\bfseries, text=green!45!black] at (19.55,3.82) {$\checkmark$};
-
-\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,2.0) rectangle (20.25,2.48);
-\draw[gray!65, line width=0.7pt] (12.56,2.24) -- (15.19,2.24);
-\node[font=\scriptsize\bfseries, text=green!45!black] at (19.87,2.24) {$\checkmark$};
-\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,1.27) rectangle (20.25,1.76);
-\draw[gray!65, line width=0.7pt] (12.56,1.51) -- (15.19,1.51);
-\node[font=\scriptsize\bfseries, text=green!45!black] at (19.87,1.51) {$\checkmark$};
-\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,0.54) rectangle (20.25,1.03);
-\draw[gray!65, line width=0.7pt] (12.56,0.78) -- (15.19,0.78);
-\node[font=\scriptsize\bfseries, text=green!45!black] at (19.87,0.78) {$\checkmark$};
-
-\end{tikzpicture}
-    \end{center}
 
   \end{block}
 
