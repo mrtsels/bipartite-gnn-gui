@@ -97,3 +97,5 @@ poster/*.out
 poster/*.toc
 poster/*.pdf
 !poster/*.bbl
+!poster/figures/
+!poster/figures/*.jpg
