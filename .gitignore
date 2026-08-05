@@ -88,3 +88,11 @@ scripts/download_datasets.py
 .env
 tmp/
 .gitignore
+# Poster build artifacts
+poster/*.aux
+poster/*.log
+poster/*.nav
+poster/*.snm
+poster/*.out
+poster/*.toc
+poster/*.pdf
