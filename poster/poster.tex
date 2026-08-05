@@ -183,11 +183,11 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
       % Row 2 arrows (right to left)
       \draw[arr] (graph) -- (gnn);
       \draw[arr] (gnn) -- (out);
-      % Labels
-      \node[lab, below=0.22cm of vlm] {detection};
-      \node[lab, align=center, below=0.22cm of noisy] {10--30\% omissions,\\box misalignment};
-      \node[lab, below=0.22cm of graph] {constraint\\extraction};
-      \node[lab, below=0.22cm of gnn] {$\Delta\mathbf{x}$,\\proposals};
+      % Labels above nodes, clear of the arrows
+      \node[lab, above=0.22cm of vlm] {detection};
+      \node[lab, align=center, above=0.22cm of noisy] {10--30\% omissions,\\box misalignment};
+      \node[lab, above=0.22cm of graph] {constraint\\extraction};
+      \node[lab, above=0.22cm of gnn] {$\Delta\mathbf{x}$,\\proposals};
     \end{tikzpicture}
     \end{center}
 
