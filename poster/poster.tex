@@ -172,7 +172,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
                     fill=cuhk-purple!10, text=black},
         arr/.style={-{Stealth[length=2.2mm]}, thick, cuhk-purple!70},
         lab/.style={font=\scriptsize, black, align=center},
-        xscale=2.4, yscale=1]
+        xscale=2.15, yscale=1]
       % Row 1 (left to right)
       \node[box, fill=cuhk-yellow!40] (shot) at (0,0) {Screenshot};
       \node[box] (vlm) at (4.4,0) {Lightweight VLM};
@@ -295,6 +295,31 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
         signature of missing elements, and the head proposes their boxes
         (IoU loss) and types. \emph{Self-supervised} --- no extra annotation.
     \end{itemize}
+
+    Formally, the two hops are:
+
+    \begin{equation*}
+      \mathbf{h}_{c_j}^{(1)} = \sigma\!\Bigl(\mathbf{W}_1 \cdot
+      \operatorname{MEAN}\!\bigl(\{\mathbf{h}_{e_i}^{(0)}: (e_i,c_j)\in
+      \mathcal{E}_{\text{edge}}\}\bigr) + \mathbf{b}_1\Bigr),
+    \end{equation*}
+
+    \begin{equation*}
+      \mathbf{h}_{e_i}^{(2)} = \sigma\!\Bigl(\mathbf{W}_2 \cdot
+      \operatorname{MEAN}\!\bigl(\{\mathbf{h}_{c_j}^{(1)}: (e_i,c_j)\in
+      \mathcal{E}_{\text{edge}}\}\bigr) + \mathbf{b}_2\Bigr),
+    \end{equation*}
+
+    All heads are trained jointly on the weighted sum
+
+    \begin{equation*}
+      \mathcal{L} = w_c\,\mathcal{L}_{\text{coord}} + w_v\,\mathcal{L}_{\text{vio}}
+      + w_e\,\mathcal{L}_{\text{exist}} + w_p\,\mathcal{L}_{\text{prop}},
+    \end{equation*}
+
+    with default weights $w_c{=}1.0$, $w_v{=}0.5$, $w_e{=}0.5$, $w_p{=}0.5$.
+    The completion head is self-supervised: masking ground-truth layouts
+    creates the dangling-edge signal, so no extra annotation is needed.
 
     \begin{center}
     \begin{tikzpicture}[xscale=2, yscale=1]
