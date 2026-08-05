@@ -99,3 +99,4 @@ poster/*.pdf
 !poster/*.bbl
 !poster/figures/
 !poster/figures/*.jpg
+!poster/logos/CUHK-Logo.png
