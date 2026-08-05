@@ -38,17 +38,15 @@ Bipartite-GNN-GUI 是一个针对轻量级视觉语言模型 (VLM) GUI 元素解
 
 ## Method / 方法
 
-```
-┌─────────────────┐     ┌──────────────────────┐     ┌───────────────────────┐
-│  Lightweight VLM │────▶│  Initial Noisy JSON   │────▶│  Bipartite Graph      │
-│ (Qwen3-VL Flash)│     │  (elements w/ coords) │     │  (Element × Constraint)│
-└─────────────────┘     └──────────────────────┘     └───────────┬───────────┘
-                                                                  ▼
-┌──────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐
-│  Corrected GUI JSON  │◀────│   4 Prediction Heads   │◀────│  2-hop GraphSAGE      │
-│  (refined bboxes,    │     │  coord / violation /   │     │  Message Passing      │
-│  proposals, scores)  │     │  existence / proposal  │     │  (e → c → e)          │
-└──────────────────────┘     └───────────────────────┘     └───────────────────────┘
+```mermaid
+flowchart LR
+    VLM["Lightweight VLM<br/>(Qwen3-VL Flash)"]
+    JSON["Initial Noisy JSON<br/>(elements w/ coords)"]
+    GRAPH["Bipartite Graph<br/>(Element × Constraint)"]
+    GNN["2-hop GraphSAGE<br/>Message Passing<br/>(e → c → e)"]
+    HEADS["4 Prediction Heads<br/>coord · violation<br/>existence · proposal"]
+    OUT["Corrected GUI JSON<br/>(refined bboxes,<br/>proposals, scores)"]
+    VLM --> JSON --> GRAPH --> GNN --> HEADS --> OUT
 ```
 
 ### Graph Construction
