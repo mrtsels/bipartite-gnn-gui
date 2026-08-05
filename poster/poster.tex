@@ -711,7 +711,7 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
 
 
-  \begin{block}{7. Conclusion}
+  \begin{block}{7. Conclusion \& Future Work}
 
     A heterogeneous bipartite GraphSAGE framework corrects noisy GUI element
     predictions from lightweight VLMs by encoding ten spatial constraint
@@ -728,6 +728,11 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
     The gains appear when the VLM output is sparse; the framework inherits
     the VLM's initial detections and does not fix purely semantic errors.
     Generalization to desktop and web interfaces remains to be tested.
+
+    \textbf{Future work:} visual feature fusion with cross-attention (early
+    experiments show 18--22\% proposal-MSE improvement), domain adaptation
+    to ScreenSpot, and temporal context to distinguish missing elements
+    from elements hidden by UI state.
 
   \end{block}
 
