@@ -177,7 +177,7 @@ We compare the GNN proposal head against a nearest-neighbor baseline that copies
 
 ### 4.6 Performance
 
-The correction network is small (57K parameters). Graph construction takes about 5 ms and inference about 0.53 ms (p50) per screenshot on a CPU-only M3 MacBook Pro, negligible compared with VLM inference at roughly two seconds per image. Training 2,000 samples × 50 epochs completes in under five minutes on CPU.
+The correction network is small (57K parameters). Graph construction takes about 5 ms and inference about 0.53 ms (p50) per screenshot on a CPU-only MacBook Pro powered by an M4 Pro chip, negligible compared with VLM inference at roughly two seconds per image. Training 2,000 samples × 50 epochs completes in under five minutes on CPU.
 
 ## 5. Discussion
 
