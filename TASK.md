@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ✅ → P13 ✅ → P14 ✅ → P15 ⬜**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ✅ → P13 ✅ → P14 ✅**
 
 ---
 
@@ -567,6 +567,8 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 
 **重要更正:** 原 `experiments/eval_real_vlm_pipeline.py` 用 hd=128 加载 hd=16 checkpoint（strict=False 丢弃 89% 权重）→ 文档中记录的 +2.9pp F1 为随机权重假象。正确加载 joint 模型后全量 200 图 F1 +1pp；精选案例 ΔF1 +0.15~0.26（10027: +0.156, 10043: +0.260）。
 
+**范围说明:** HTML/CSS 代码生成（原 Phase 15: `web/codegen/html_generator.py` + `POST /api/generate-html` 端点 + 前端 HTML 预览区）未纳入 demo 范围，条目已关闭，不追踪。
+
 ---
 
 ## Phase 12: 论文写作 ✅ [优先级 2]
@@ -639,17 +641,6 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 |---|------|--------|-------|
 || 14.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
 || 14.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
-
----
-
-## Phase 15: HTML/CSS 代码生成 ⬜ [优先级 4]
-
-| # | Item | Status |
-|---|------|--------|
-|| 15.1 | `web/codegen/html_generator.py` | ⬜ |
-|| 15.2 | `POST /api/generate-html` 端点 | ⬜ |
-|| 15.3 | 前端: HTML 预览区 | ⬜ |
-|| 15.4 | 单元测试 | ⬜ |
 
 ---
 
