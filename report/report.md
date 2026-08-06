@@ -61,15 +61,15 @@ A screenshot is fed to a lightweight VLM, which produces a noisy JSON list of de
 
 #### 3.2.1 Elements
 
-Let a screenshot yield N detected elements E = {e_1, ..., e_N}, each with a normalized bounding box b_i = (x_1^(i), y_1^(i), x_2^(i), y_2^(i)) in [0,1]^4 (the box coordinates, scaled so the image is a unit square) and a type label t_i in T from the element taxonomy (button, text field, icon, image, etc.).
+Let a screenshot yield N detected elements $\mathcal{E} = \{e_i\}_{i=1}^{N}$, each with a normalized bounding box $\mathbf{b}_i = (x_1^{(i)}, y_1^{(i)}, x_2^{(i)}, y_2^{(i)}) \in [0,1]^4$ (the box coordinates, scaled so the image is a unit square) and a type label $t_i \in \mathcal{T}$ from the element taxonomy (button, text field, icon, image, etc.).
 
 #### 3.2.2 Spatial Constraints
 
-From these elements we extract M spatial constraints C = {c_1, ..., c_M}, where each constraint is a typed relationship between elements. The ten constraint types are: ALIGN_LEFT, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM, CENTER_X, CENTER_Y, SPACING, CONTAINMENT, GRID, and SAME_SIZE. Each constraint c_j has a type tau_j, a source index set S_j subset of {1, ..., N}, and a target index set T_j subset of {1, ..., N}; the constraint exists when its predicate P_tau(b_Sj, b_Tj) holds within a tolerance epsilon. For example, ALIGN_LEFT asserts |x_1 - x_1'| < epsilon (buttons share a left edge), CONTAINMENT asserts that one box sits inside another (an icon inside a container), and SPACING asserts consistent gaps between items.
+From these elements we extract M spatial constraints $\mathcal{C} = \{c_j\}_{j=1}^{M}$, where each constraint is a typed relationship between elements. The ten constraint types are: ALIGN_LEFT, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM, CENTER_X, CENTER_Y, SPACING, CONTAINMENT, GRID, and SAME_SIZE. Each constraint $c_j$ has a type $\tau_j$, a source index set $S_j \subseteq \{1, \dots, N\}$, and a target index set $T_j \subseteq \{1, \dots, N\}$; the constraint exists when its predicate $P_\tau(\mathbf{b}_{S_j}, \mathbf{b}_{T_j})$ holds within a tolerance $\varepsilon$. For example, ALIGN_LEFT asserts $|x_1 - x_1'| < \varepsilon$ (buttons share a left edge), CONTAINMENT asserts that one box sits inside another (an icon inside a container), and SPACING asserts consistent gaps between items.
 
 #### 3.2.3 The Bipartite Graph
 
-The GUI structure is a *heterogeneous bipartite graph* G = (V, E_edge, phi, psi), where V = E ∪ C is the node set, partitioned into element nodes V_e (|V_e| = N) and constraint nodes V_c (|V_c| = M); phi maps each node to its partition; edges exist only between partitions; an edge (e_i, c_j) connects element e_i to constraint c_j iff e_i is in S_j ∪ T_j; and psi weights each edge by the normalized distance between the element and the constraint's subspace. There are no element–element or constraint–constraint edges: elements never connect directly and communicate only through the constraints they share.
+The GUI structure is a *heterogeneous bipartite graph* $G = (\mathcal{V}, \mathcal{E}_{\text{edge}}, \phi, \psi)$, where $\mathcal{V} = \mathcal{E} \cup \mathcal{C}$ is the node set, partitioned into element nodes $V_e$ ($|V_e| = N$) and constraint nodes $V_c$ ($|V_c| = M$); $\phi: \mathcal{V} \to \{0,1\}$ labels each node's partition; edges exist only between partitions; an edge $(e_i, c_j)$ connects element $e_i$ to constraint $c_j$ iff $e_i \in S_j \cup T_j$; and $\psi$ weights each edge by the normalized distance between the element and the constraint's subspace. There are no element–element or constraint–constraint edges: elements never connect directly and communicate only through the constraints they share.
 
 ### 3.3 Message Passing
 
@@ -79,61 +79,61 @@ A graph neural network propagates information along the edges. We use two altern
 
 Each constraint node collects information from the elements it involves:
 
-h_cj^(1) = sigma(W_1 · MEAN({h_ei^(0) : (e_i, c_j) in E_edge}) + b_1),
+$\mathbf{h}_{c_j}^{(1)} = \sigma\!\left( \mathbf{W}_1 \cdot \operatorname{MEAN}\!\left( \left\{\mathbf{h}_{e_i}^{(0)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\} \right) + \mathbf{b}_1 \right)$,
 
-where h_ei^(0) is the initial element feature vector and sigma is the ReLU activation. Intuitively, the constraint node now "knows" the aggregate state of the elements that share it.
+where $\mathbf{h}_{e_i}^{(0)}$ is the initial element feature vector and $\sigma$ is the ReLU activation. Intuitively, the constraint node now "knows" the aggregate state of the elements that share it.
 
 #### 3.3.2 Hop 2: Constraint to Element
 
 Each element node collects the updated constraint states back:
 
-h_ei^(2) = sigma(W_2 · MEAN({h_cj^(1) : (e_i, c_j) in E_edge}) + b_2).
+$\mathbf{h}_{e_i}^{(2)} = \sigma\!\left( \mathbf{W}_2 \cdot \operatorname{MEAN}\!\left( \left\{\mathbf{h}_{c_j}^{(1)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\} \right) + \mathbf{b}_2 \right)$.
 
 After this hop, every element's representation carries information from all elements that share a constraint with it, its "spatial neighbourhood." Elements that share no constraint never exchange messages, which keeps the inductive bias strong and computation local.
 
 ### 3.4 Node Features
 
-Each element's initial feature h_ei^(0) is 5-dimensional: the four normalized box coordinates plus the normalized area a_i = (x_2 - x_1)(y_2 - y_1). An optional frozen visual feature v_i in R^d (192-d ViT-Tiny or 768-d DINOv2 [6]) can be concatenated. Constraint node features embed the constraint type as a 10-d one-hot vector plus spatial statistics of the participating elements (mean pairwise distance, containment overlap ratio, alignment residual).
+Each element's initial feature $\mathbf{h}_{e_i}^{(0)}$ is 5-dimensional: the four normalized box coordinates plus the normalized area $a_i = (x_2 - x_1)(y_2 - y_1)$. An optional frozen visual feature $\mathbf{v}_i \in \mathbb{R}^d$ (192-d ViT-Tiny or 768-d DINOv2 [6]) can be concatenated. Constraint node features embed the constraint type as a 10-d one-hot vector plus spatial statistics of the participating elements (mean pairwise distance, containment overlap ratio, alignment residual).
 
 ### 3.5 Four Prediction Heads
 
 After message passing, four heads read out the result. The total training objective is a weighted sum
 
-L = w_c · L_coord + w_v · L_vio + w_e · L_exist + w_p · L_prop,
+$\mathcal{L} = w_c\,\mathcal{L}_{\text{coord}} + w_v\,\mathcal{L}_{\text{vio}} + w_e\,\mathcal{L}_{\text{exist}} + w_p\,\mathcal{L}_{\text{prop}}$,
 
-with default weights w_c = 1.0, w_v = 0.5, w_e = 0.5, w_p = 0.5.
+with default weights $w_c = 1.0$, $w_v = 0.5$, $w_e = 0.5$, $w_p = 0.5$.
 
 #### 3.5.1 Coordinate Correction
 
-The first head predicts a per-element delta vector Δx_i = MLP_coord(h_ei^(2)), the amount by which the VLM's box should move, optimized with a smooth L1 loss:
+The first head predicts a per-element delta vector $\Delta\mathbf{x}_i = \operatorname{MLP}_{\text{coord}}(\mathbf{h}_{e_i}^{(2)})$, the amount by which the VLM's box should move, optimized with a smooth L1 loss:
 
-L_coord = (1/N) Σ_i smooth_L1(Δx_i − Δx_i*),
+$\mathcal{L}_{\text{coord}} = \frac{1}{N}\sum_{i=1}^{N} \operatorname{smooth}_{L_1}(\Delta\mathbf{x}_i - \Delta\mathbf{x}_i^*)$,
 
-where Δx_i* is the ground-truth correction.
+where $\Delta\mathbf{x}_i^*$ is the ground-truth correction.
 
 #### 3.5.2 Violation Detection
 
-The second head classifies whether each constraint is violated (broken), with v̂_j = sigma(MLP_vio(h_cj^(1))):
+The second head classifies whether each constraint is violated (broken), with $\hat{v}_j = \sigma(\operatorname{MLP}_{\text{vio}}(\mathbf{h}_{c_j}^{(1)}))$:
 
-L_vio = −(1/M) Σ_j [ v_j* log v̂_j + (1 − v_j*) log(1 − v̂_j) ],
+$\mathcal{L}_{\text{vio}} = -\frac{1}{M}\sum_{j=1}^{M}\left[ v_j^* \log \hat{v}_j + (1 - v_j^*) \log(1 - \hat{v}_j) \right]$,
 
-where v_j* in {0,1} indicates whether constraint c_j is genuinely violated in the ground-truth layout. This head is what makes the model "understand" layout rules: it must learn what a broken alignment or containment looks like from the graph alone.
+where $v_j^* \in \{0,1\}$ indicates whether constraint $c_j$ is genuinely violated in the ground-truth layout. This head is what makes the model "understand" layout rules: it must learn what a broken alignment or containment looks like from the graph alone.
 
 #### 3.5.3 Existence Scoring
 
-The third head scores whether each detected element is real or hallucinated, predicting ê_i with a binary classifier on the element embedding and training with binary cross-entropy:
+The third head scores whether each detected element is real or hallucinated, predicting $\hat{e}_i$ with a binary classifier on the element embedding and training with binary cross-entropy:
 
-L_exist = −(1/N) Σ_i [ e_i* log ê_i + (1 − e_i*) log(1 − ê_i) ],
+$\mathcal{L}_{\text{exist}} = -\frac{1}{N}\sum_{i=1}^{N}\left[ e_i^* \log \hat{e}_i + (1 - e_i^*) \log(1 - \hat{e}_i) \right]$,
 
-where e_i* is the ground-truth existence label. Downstream, this score can filter false positives or rank elements by reliability.
+where $e_i^*$ is the ground-truth existence label. Downstream, this score can filter false positives or rank elements by reliability.
 
 #### 3.5.4 Element Completion
 
-The fourth head, the one that addresses the omission problem, proposes *missing* elements. During training, we randomly drop a fraction rho in [0.2, 0.8] of the ground-truth elements. A constraint that referenced a dropped element now has a "hole" (a dangling edge), which is exactly the signature a missing element leaves in the graph. The head predicts the missing element's box and type from the aggregated constraint embedding:
+The fourth head, the one that addresses the omission problem, proposes *missing* elements. During training, we randomly drop a fraction $\rho \in [0.2, 0.8]$ of the ground-truth elements. A constraint that referenced a dropped element now has a "hole" (a dangling edge), which is exactly the signature a missing element leaves in the graph. The head predicts the missing element's box and type from the aggregated constraint embedding:
 
-b̂_k, t̂_k = MLP_proposal(h_cj^(1)),  L_prop = (1/K) Σ_k [ L_IoU(b̂_k, b_k*) + alpha · CE(t̂_k, t_k*) ],
+$\hat{\mathbf{b}}_k, \hat{t}_k = \operatorname{MLP}_{\text{proposal}}(\mathbf{h}_{c_j}^{(1)}), \qquad \mathcal{L}_{\text{prop}} = \frac{1}{K}\sum_{k=1}^{K}\left[ \mathcal{L}_{\text{IoU}}(\hat{\mathbf{b}}_k, \mathbf{b}_k^*) + \alpha\,\mathrm{CE}(\hat{t}_k, t_k^*) \right]$,
 
-where K is the number of violated constraints with a missing target and L_IoU is the IoU-based box loss. Note that the training signal is derived purely by masking ground-truth layouts; the completion head is *self-supervised*: it needs no additional human annotation.
+where $K$ is the number of violated constraints with a missing target and $\mathcal{L}_{\text{IoU}}$ is the IoU-based box loss. Note that the training signal is derived purely by masking ground-truth layouts; the completion head is *self-supervised*: it needs no additional human annotation.
 
 ## 4. Experiments and Results
 
