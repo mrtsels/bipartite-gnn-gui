@@ -159,6 +159,26 @@
 **Script:** `scripts/evaluate_vlm_completion.py`
 Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致仅 32/193 图产生有效图。**基础设施就绪**，需更好 GT 数据（ScreenSpot / 人工标注）才能评估。
 
+### 4.11 DINOv2 视觉特征升级 ✅
+
+**Goal:** 用 DINOv2-base 替换 vit_tiny，评估视觉特征升级的收益。
+
+| # | Item | Status |
+|---|------|--------|
+| 4.11.1 | 下载/缓存 DINOv2-base (~346MB) | ✅ |
+| 4.11.2 | 预计算 500 RICO 特征（`scripts/precompute_dinov2_features.py`） | ✅ |
+| 4.11.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ✅ |
+
+**结果 (500 RICO, seed=42, hd=128, drop=0.4):**
+
+| Metric | +vit_tiny (192-d) | +DINOv2 (768-d) | Δ |
+|--------|:-----------------:|:---------------:|:-:|
+| Violation Acc | 0.846 | 0.854 | +0.008 |
+| Proposal MSE | 0.081 | 0.085 | −0.005 |
+| Type Acc | 0.405 | 0.403 | −0.002 |
+
+**结论:** DINOv2 无明显优势：violation +0.8pp，proposal/type 持平；参数 +30% (245K→319K)，预计算慢 6 倍 (30s vs 173s)。**vit_tiny 仍是推荐选择**。
+
 ---
 
 ## Phase 5: 集成测试 ✅
@@ -366,28 +386,6 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 ---
 
-## Phase 10A: DINOv2 视觉特征升级 ✅
-
-**Goal:** 用 DINOv2-base 替换 vit_tiny，评估视觉特征升级的收益。
-
-| # | Item | Status |
-|---|------|--------|
-| 10A.1 | 下载/缓存 DINOv2-base (~346MB) | ✅ |
-| 10A.2 | 预计算 500 RICO 特征（`scripts/precompute_dinov2_features.py`） | ✅ |
-| 10A.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ✅ |
-
-**结果 (500 RICO, seed=42, hd=128, drop=0.4):**
-
-| Metric | +vit_tiny (192-d) | +DINOv2 (768-d) | Δ |
-|--------|:-----------------:|:---------------:|:-:|
-| Violation Acc | 0.846 | 0.854 | +0.008 |
-| Proposal MSE | 0.081 | 0.085 | −0.005 |
-| Type Acc | 0.405 | 0.403 | −0.002 |
-
-**结论:** DINOv2 无明显优势：violation +0.8pp，proposal/type 持平；参数 +30% (245K→319K)，预计算慢 6 倍 (30s vs 173s)。**vit_tiny 仍是推荐选择**。
-
----
-
 ## Phase 11: Web Demo ✅ [优先级 1]
 
 **Goal:** 单页 web app：上传截图 → VLM + GNN → 双栏 bbox overlay。
@@ -494,7 +492,7 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 4. **Phase 7 依赖 Phase 4-6 全部完成**: 实验使用完整的系统
 5. **PR 每 checkbox 一个**: 推分支 → PR → 合并 (Ship Incrementally)
 6. **Phase 9 依赖 4.4.6 (InferencePipeline) + checkpoint**: mock 模式可并行开发
-7. **Phase 10A 可独立开发**: 纯函数, 无 ML 依赖
+7. **Phase 4.11 (视觉特征预计算) 可独立开发**: 纯函数, 无 ML 依赖
 
 ---
 
