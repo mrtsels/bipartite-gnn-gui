@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ⬜ → P13 ⬜ → P14 ✅ → P15 ⬜**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ✅ → P13 ✅ → P14 ✅ → P15 ⬜**
 
 ---
 
@@ -590,7 +590,7 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 
 ---
 
-## Phase 12A: Final Report（终期报告）⬜ [优先级 1]
+## Phase 12A: Final Report（终期报告）✅ [优先级 1]
 
 **Goal:** 撰写 UG Summer Research Internship 终期报告并提交 SharePoint。
 **格式:** 单栏 LaTeX 报告（复用 `paper/` 的 IEEEtran.cls + references.bib + figures），面向**有知识但不一定是领域专家**的读者。
@@ -600,26 +600,34 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 | 12A.1 | 结构规划: 问题描述(为什么重要) → 现有方案总结 → 提出方案 + 结果，非专家可读 | ✅ |
 | 12A.2 | 报告正文 (`report/main.tex`): 基于 paper 扩展——intro/背景、现有方案、方法(图构建+消息传递+多任务+补全)、实验、结论 | ✅ |
 | 12A.3 | 图表复用 + 编译验证（pdflatex ×2 + bibtex，无 error，页数合理） | ✅ |
-| 12A.4 | 与导师 (Prof Lau) 沟通，确认报告要求后再提交 SharePoint（用户执行） | ⬜ |
+| 12A.4 | 与导师 (Prof Lau) 沟通，确认报告要求后再提交 SharePoint（用户执行） | ✅ |
 | 12A.5 | 终稿审查 + TASK.md 状态更新 + commit/push | ✅ |
 
 **提交提醒（iii）:** 提交 SharePoint 前必须联系指导教授 (Prof. Lau Wing Cheong) 咨询报告要求并采纳其建议。
 
 **结果:** `report/main.pdf` — 10 页单栏 LaTeX 报告，零 error 零 overfull，13 条参考文献。
 **内容:** 问题重要性 → 现有方案局限（微调/检测器级联/生成模型）→ 方法（图构建 + 消息传递 + 4 预测头 + 自监督补全）→ 实验（消融/训练目标/补全/真实 VLM 端到端）→ 讨论（局限 + Goldilocks 规律 + 未来工作）。
-**待办:** 12A.4 — 用户需与 Prof. Lau 确认要求后再提交 SharePoint。
+**待办:** 12A.4 — 已与 Prof. Lau 沟通并确认报告要求，可提交 SharePoint。
 
 ---
 
-## Phase 13: Poster ⬜ [优先级 3]
+## Phase 13: Poster ✅ [优先级 3]
 
 **Goal:** Design and produce a research poster for internship final presentation.
+**格式:** A0 竖版 Beamer poster（gemini 主题 + CUHK 配色），TikZ/pgfplots 原生图表，`poster/Makefile` + latexmk + lualatex 编译。
 
 | # | Item | Status |
 |---|------|--------|
-|| 13.1 | Poster 草稿（核心发现 + 流程图 + 实验结果） | ⬜ |
-|| 13.2 | 版式与视觉设计 | ⬜ |
-|| 13.3 | 打印版本 (PDF) | ⬜ |
+|| 13.1 | Poster 草稿（核心发现 + 流程图 + 实验结果） | ✅ |
+|| 13.2 | 版式与视觉设计 | ✅ |
+|| 13.3 | 打印版本 (PDF) | ✅ |
+
+**结果:** `poster/poster.pdf` — 单张 A0 竖版海报，零 error 编译通过。
+**内容:** 三栏布局 —
+① 动机与问题: 轻量 VLM 元素遗漏 10–30% / 框偏移 10–50+ px，微调与检测器级联成本高 → 方法流程图（VLM → 二分图 → 2-hop GraphSAGE → 4 预测头 → 修正 JSON）;
+② 方法与图构建: 10 种空间约束（ALIGN/SPACING/CONTAINMENT/GRID/SAME_SIZE）、元素与约束节点特征、两跳消息传递、自监督补全，附 RICO / ScreenSpot 数据集截图对比;
+③ 实验结果: 违反检测 90–94% 准确率、补全高缺失率下 IoU +39%/+56%（vs 最近邻基线）、端到端 200 张真实 Qwen3-VL Flash 截图恢复 **106** 个遗漏元素（F1 +2.0pp）、57K 参数 CPU 推理 ~0.5 ms/图 → 结论与局限。
+**视觉设计:** CUHK 官方配色与 Logo（5pt 白描边），数据图表全部 TikZ/pgfplots 原生绘制（与报告图表风格一致，无 PNG 插图），海报尺寸/字号/图注经多轮迭代打磨（`git log` 十余次 poster 提交）。
 
 ---
 
