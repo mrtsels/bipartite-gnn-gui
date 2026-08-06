@@ -2,7 +2,7 @@
 
 *A Post-Correction Framework for Lightweight Vision-Language Models*
 
-Alex Licheng Xie, Summer Research Intern Project, August 2026
+Alex Licheng Xie, Summer Research Internship Project, August 2026
 
 ## Abstract
 
