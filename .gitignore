@@ -64,6 +64,7 @@ demo_data/
 *.out
 *.log
 *.pdf
+*.xdv
 *.svg
 
 # Config (keep template, ignore local overrides)
