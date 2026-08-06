@@ -720,6 +720,54 @@ most critical single type.}
 \label{fig:ablation}
 \end{figure}
 
+Fig.~\ref{fig:constraints} quantifies the graph sizes behind
+Table~\ref{tab:ablation}: removing all alignment types leaves 15.1
+constraints per graph versus 37.3 for the full set, which is why the
+remaining violations are easier to classify.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % Avg constraints extracted per graph under each constraint set (500 graphs)
+  \def\sc{0.12}
+  \def\base{0.0}
+  % All 10 types (control) 37.3 -> 4.48cm
+  \fill[blue!60] (\base,5.0) rectangle ({(\base+37.3*\sc)},5.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,5.175) {All 10 types};
+  \node[font=\footnotesize, anchor=west] at ({(\base+37.3*\sc+0.4)},5.175) {\bfseries 37.3};
+  % Remove GRID 37.2 -> 4.46cm
+  \fill[gray!50] (\base,4.0) rectangle ({(\base+37.2*\sc)},4.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,4.175) {Remove \texttt{GRID}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+37.2*\sc+0.4)},4.175) {37.2};
+  % Remove SPACING 30.9 -> 3.71cm
+  \fill[gray!50] (\base,3.0) rectangle ({(\base+30.9*\sc)},3.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,3.175) {Remove \texttt{SPACING}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+30.9*\sc+0.4)},3.175) {30.9};
+  % Remove CONTAINMENT 28.7 -> 3.44cm
+  \fill[gray!50] (\base,2.0) rectangle ({(\base+28.7*\sc)},2.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,2.175) {Remove \texttt{CONTAINMENT}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+28.7*\sc+0.4)},2.175) {28.7};
+  % Only ALIGNMENT 22.4 -> 2.69cm
+  \fill[gray!50] (\base,1.0) rectangle ({(\base+22.4*\sc)},1.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,1.175) {Only \texttt{ALIGNMENT}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+22.4*\sc+0.4)},1.175) {22.4};
+  % Remove all ALIGNMENT 15.1 -> 1.81cm
+  \fill[gray!50] (\base,0.0) rectangle ({(\base+15.1*\sc)},0.35);
+  \node[anchor=east, font=\footnotesize] at (\base-0.1,0.175) {Remove all \texttt{ALIGNMENT}};
+  \node[font=\footnotesize, anchor=west] at ({(\base+15.1*\sc+0.4)},0.175) {15.1};
+  % axis
+  \draw[thick,-{Stealth}] (\base,5.75) -- (\base,-0.5);
+  \draw[thick,-{Stealth}] (\base,-0.65) -- (5.4,-0.65);
+  \node[font=\footnotesize] at (2.6,-2.2) {Constraints per graph};
+  \foreach \v in {10,20,30,40} {
+    \draw ({\v*0.12},-0.9) -- ++(0,-0.08) node[below, font=\tiny] {\v};
+  }
+\end{tikzpicture}
+\caption{Average number of constraints extracted per graph under each
+constraint set (n=500, drop=0.6).}
+\label{fig:constraints}
+\end{figure}
+
 \subsection{Training-Objective Ablation}
 We compare joint training against single-objective training (5 seeds,
 Fig.~\ref{fig:phase9}). Joint training achieves the best balance: violation
