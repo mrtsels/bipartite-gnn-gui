@@ -137,7 +137,7 @@ bipartite-gnn-gui/
 │   ├── schema.md              # 图 schema 参考
 │   ├── requirements/          # VLM / 真实数据格式规范
 │   └── research/              # 研究方向
-├── report/  report-cn/        # 终期报告源码 (EN / 中文)
+├── report/                    # 终期报告源码
 ├── poster/                    # 会议海报
 └── pyproject.toml
 ```

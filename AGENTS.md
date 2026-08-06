@@ -106,7 +106,7 @@ Rules:
 - Model: HeteroGraphSAGE encoder, 4 prediction heads (coord / violation / existence / proposal), losses, trainer, inference, cross-attention fusion
 - Eval: metrics (PositionError, AlignmentError, Recall, Precision, F1, IoU), evaluator, baselines (NoOp, Identity, RandomJitter), qualitative viz
 - Web demo: FastAPI backend (`api/`) + single-page frontend (`web/`)
-- Deliverables: final report (EN `report/`, CN `report-cn/`), poster (`poster/`)
+- Deliverables: final report (`report/`), poster (`poster/`)
 
 ## Commands
 

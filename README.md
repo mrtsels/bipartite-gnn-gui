@@ -137,7 +137,7 @@ bipartite-gnn-gui/
 │   ├── schema.md              # graph schema reference
 │   ├── requirements/          # VLM / ground-truth data format specs
 │   └── research/              # research directions
-├── report/  report-cn/        # final report sources (EN / 中文)
+├── report/                    # final report sources
 ├── poster/                    # conference poster
 └── pyproject.toml
 ```
