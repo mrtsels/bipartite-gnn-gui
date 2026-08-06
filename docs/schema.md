@@ -1,77 +1,77 @@
-# Graph Schema Design
+# 图 Schema 设计
 
-## Overview
+## 概述
 
-This document defines the heterogeneous bipartite graph schema for the GUI structure correction task.
+本文档定义 GUI 结构修正任务的异构二分图 schema。
 
-## Node Types
+## 节点类型
 
-The graph has two node types:
-- **Element nodes**: represent detected GUI elements.
-- **Constraint nodes**: represent spatial constraints between elements.
+图包含两种节点类型:
+- **元素节点**:表示检测到的 GUI 元素。
+- **约束节点**:表示元素之间的空间约束。
 
-### Element Node Features
+### 元素节点特征
 
-| Feature | Type | Description |
+| 特征 | 类型 | 描述 |
 |---------|------|-------------|
-| bbox | float32[5] | (cx, cy, w, h) normalized coordinates |
-| type | int64 | One-hot encoded element type index |
+| bbox | float32[5] | (cx, cy, w, h) 归一化坐标 |
+| type | int64 | 元素类型索引 |
 
-### Constraint Node Features
+### 约束节点特征
 
-| Feature | Type | Description |
+| 特征 | 类型 | 描述 |
 |---------|------|-------------|
-| constraint_type | float32[10] | One-hot encoding of the constraint type (align, space, contain, same-size, grid) |
-| tolerance | float32 | Detection threshold for this constraint |
+| constraint_type | float32[10] | 约束类型 one-hot 编码(align, space, contain, same-size, grid) |
+| tolerance | float32 | 该约束的检测阈值 |
 
-## Edge Types
+## 边类型
 
-The graph has two edge types for message passing:
-- **element_to_constraint**: `(element, constraint)` — connects each element to its incident constraints.
-- **constraint_to_element**: `(constraint, element)` — reverse direction for the second message-passing hop.
+图包含两种用于消息传递的边类型:
+- **element_to_constraint**: `(element, constraint)` — 将每个元素连接到其关联约束。
+- **constraint_to_element**: `(constraint, element)` — 反向,用于第二跳消息传递。
 
-### Edge Attributes
+### 边属性
 
-| Attribute | Type | Description |
+| 属性 | 类型 | 描述 |
 |-----------|------|-------------|
-| weight | float32 | Constraint confidence or strength |
+| weight | float32 | 约束置信度或强度 |
 
-## HeteroData Structure
+## HeteroData 结构
 
 ```python
 data = HeteroData()
 
-# Node stores
-data["element"].x = torch.randn(N_elements, 5)       # bbox features
-data["constraint"].x = torch.randn(N_constraints, 11) # type + tolerance features
+# 节点存储
+data["element"].x = torch.randn(N_elements, 5)       # bbox 特征
+data["constraint"].x = torch.randn(N_constraints, 11) # 类型 + 容差特征
 
-# Edge stores
-data["element", "to", "constraint"].edge_index = ...  # adjacency
-data["element", "to", "constraint"].weight = ...      # edge weights
-data["constraint", "to", "element"].edge_index = ...  # reversed
-data["constraint", "to", "element"].weight = ...      # reversed weights
+# 边存储
+data["element", "to", "constraint"].edge_index = ...  # 邻接
+data["element", "to", "constraint"].weight = ...      # 边权重
+data["constraint", "to", "element"].edge_index = ...  # 反向
+data["constraint", "to", "element"].weight = ...      # 反向权重
 ```
 
-## Message Passing Flow
+## 消息传递流程
 
-The encoder performs two alternating hops:
+编码器执行两跳交替:
 
-1. **Hop 1 (element to constraint)**: Each constraint node aggregates features from its incident elements.
-2. **Hop 2 (constraint to element)**: Each element node aggregates the updated constraint representations.
+1. **跳 1(元素 → 约束)**: 每个约束节点聚合其关联元素的特征。
+2. **跳 2(约束 → 元素)**: 每个元素节点聚合更新后的约束表示。
 
-## Augmentation
+## 数据增强
 
-During training, the augmenter applies:
+训练期间,增强器应用:
 
-| Augmentation | Description | Parameters |
+| 增强 | 描述 | 参数 |
 |-------------|-------------|------------|
-| Bbox jitter | Adds Gaussian noise to element bbox coordinates | `jitter_std` |
-| Drop constraint | Randomly removes a fraction of constraints | `drop_ratio` |
+| Bbox jitter | 向元素 bbox 坐标添加高斯噪声 | `jitter_std` |
+| Drop constraint | 随机移除一部分约束 | `drop_ratio` |
 
-## Visualization
+## 可视化
 
-The `plot_graph` function renders the graph structure overlaid on the screenshot:
+`plot_graph` 函数将图结构叠加渲染在截图上:
 
-- Element nodes: red rectangles with type label
-- Constraint nodes: blue circles with type abbreviation
-- Edges: gray lines with transparency proportional to edge weight
+- 元素节点: 红色矩形,带类型标签
+- 约束节点: 蓝色圆点,带类型缩写
+- 边: 灰色线段,透明度与边权重成正比

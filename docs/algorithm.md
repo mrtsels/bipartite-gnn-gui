@@ -1,85 +1,54 @@
-# Algorithm: Heterogeneous Bipartite GNN for GUI Spatial Error Correction
+# 算法:用于 GUI 空间错误修正的异构二分图 GNN
 
-> **Mathematical basis and core logic.**
-> Maps directly to `src/bipartite_gnn_gui/`.
-
----
-
-## 1. Problem Formulation
-
-A lightweight VLM (for example, Qwen3.5-2B) takes a screenshot and outputs a list of
-predicted GUI elements with bounding boxes. These predictions are **noisy**: the
-VLM's spatial understanding is approximate, with typical errors of 5–25 px in
-position and 3–15% in size, even when semantic labeling is correct.
-
-We treat this as a **structured refinement problem**. The input is a set of N
-noisy element predictions. The output is a set of per-element correction deltas
-$\Delta\mathbf{x}_i = (\Delta x, \Delta y, \Delta w, \Delta h)_i$ that, when
-applied, produce a corrected layout consistent with GUI spatial design
-principles.
-
-The key insight: GUI layouts are **not random**. They obey predictable spatial
-rules — alignment, equal spacing, containment, uniform sizing. These rules are
-the priors that allow us to correct VLM noise that would otherwise be
-unrecoverable from a single element in isolation.
+> **数学基础与核心逻辑。**
+> 与 `src/bipartite_gnn_gui/` 直接对应。
 
 ---
 
-## 2. Why a Bipartite Heterogeneous Graph?
+## 1. 问题定义
 
-### 2.1 Representational Argument
+轻量级 VLM(例如 Qwen3-VL Flash)输入截图,输出带边界框的 GUI 元素列表。这些预测是**有噪声的**:VLM 的空间理解是近似的,即使语义标注正确,位置也常存在 5–25 px 的误差、尺寸存在 3–15% 的误差。
 
-A GUI layout has two kinds of entities with fundamentally different semantics:
+我们将此视为**结构化精修问题**。输入是 N 个含噪声的元素预测;输出是每个元素的修正量 $\Delta\mathbf{x}_i = (\Delta x, \Delta y, \Delta w, \Delta h)_i$,施加后得到与 GUI 空间设计原则一致的修正布局。
 
-| Entity type | What it represents | Feature space |
+关键洞察:GUI 布局**并非随机**。它们遵循可预测的空间规则——对齐、等间距、包含、统一尺寸。这些规则是先验,使我们能够修正单看单个元素无法恢复的 VLM 噪声。
+
+---
+
+## 2. 为什么用异构二分图?
+
+### 2.1 表示论依据
+
+GUI 布局包含两类语义完全不同的实体:
+
+| 实体类型 | 表示什么 | 特征空间 |
 |---|---|---|
-| **Element node** | A concrete UI widget | Spatial position (cx, cy, w, h), type one-hot, confidence |
-| **Constraint node** | A spatial relationship | Constraint type one-hot, tolerance, geometric params |
+| **元素节点** | 具体的 UI 控件 | 空间位置 (cx, cy, w, h)、类型 one-hot、置信度 |
+| **约束节点** | 一种空间关系 | 约束类型 one-hot、容差、几何参数 |
 
-A homogeneous graph (for example, all-element with pairwise edges) conflates these.
-Element–element edges encode pairwise relations implicitly. Constraint nodes
-make relations **explicit, typed, and learnable** — each constraint is a
-first-class object with its own embedding that can be updated through message
-passing.
+同构图(例如全元素 + 两两连边)会混淆这两者。元素–元素边隐式地编码两两关系;而约束节点使关系**显式、带类型、可学习**——每个约束都是一等对象,拥有自己的嵌入,可通过消息传递更新。
 
-### 2.2 Bipartite Structure: Why Two Sets?
+### 2.2 二分结构:为什么要两个集合?
 
-The graph is bipartite by construction:
+图按构造即为二分:
 
 $$
 G = (V_e \cup V_c,\; E),\qquad E \subseteq V_e \times V_c
 $$
 
-Edges only go between elements and constraints, **never** element–element or
-constraint–constraint. This enforces an inductive bias:
+边只存在于元素与约束之间,**绝无**元素–元素或约束–约束边。这带来一种归纳偏置:
 
-1. **Elements communicate only through shared constraints.** Two buttons don't
-   directly message each other — they message through the "ALIGN_LEFT"
-   constraint they both participate in. This forces the model to justify any
-   coordinate change in terms of a named spatial rule.
+1. **元素只能通过共享约束通信。** 两个按钮不会直接互传消息——它们通过共同参与的 "ALIGN_LEFT" 约束传递。这迫使模型以具名空间规则的形式为任何坐标变更提供依据。
 
-2. **Constraints aggregate local evidence.** A constraint node sees all the
-   elements that allegedly satisfy it. If three buttons are supposedly
-   left-aligned but one is 10 px off, the constraint embedding encodes that
-   discrepancy.
+2. **约束聚合局部证据。** 一个约束节点看到所有声称满足它的元素。若三个按钮声称左对齐但其中一个偏了 10 px,该差异就被编码进约束嵌入。
 
-3. **Two-hop message passing is sufficient.** One hop from element → constraint
-   (constraint aggregates), one hop from constraint → element (element
-   updates). Every element sees every other element that shares a constraint
-   with it, exactly two hops away.
+3. **两跳消息传递足够。** 一跳元素 → 约束(约束聚合),一跳约束 → 元素(元素更新)。每个元素都能看到与之共享约束的其他元素,恰好相距两跳。
 
-### 2.3 Heterogeneous vs. Homogeneous
+### 2.3 异构 vs 同构
 
-A homogeneous graph assigns every node the same feature space and the same
-update function. This fails for our setting because an element node
-$\mathbf{h}_e \in \mathbb{R}^{D_e}$ and a constraint node $\mathbf{h}_c \in
-\mathbb{R}^{D_c}$ have different dimensionalities and semantics. A heterogeneous
-GNN applies **type-specific linear transformations** before message passing,
-ensuring each node type is projected into a compatible space without losing its
-type-specific structure.
+同构图给所有节点分配相同的特征空间和更新函数。这不适用于我们的场景,因为元素节点 $\mathbf{h}_e \in \mathbb{R}^{D_e}$ 与约束节点 $\mathbf{h}_c \in \mathbb{R}^{D_c}$ 维度不同、语义不同。异构 GNN 在消息传递前施加**类型特定的线性变换**,确保每种节点类型被投影到兼容空间,同时保留其类型特定结构。
 
-Concretely, the encoder applies separate MLPs to element and constraint features
-**before** any message passing:
+具体地,编码器在**任何消息传递之前**对元素与约束特征分别应用独立的 MLP:
 
 $$
 \mathbf{h}_e^{(0)} = \text{MLP}_e(\mathbf{x}_e),\qquad
@@ -88,63 +57,51 @@ $$
 
 ---
 
-## 3. Node and Edge Feature Spaces
+## 3. 节点与边特征空间
 
-### 3.1 Element Node Features
+### 3.1 元素节点特征
 
-Each element $e_i$ carries a raw feature vector:
-
-$$
-\mathbf{x}_{e_i} = [x_1, y_1, x_2, y_2, p_i] \in \mathbb{R}^5
-$$
-
-where $(x_1, y_1, x_2, y_2)$ is the predicted bounding box (normalized to
-$[0, 1]^4$) and $p_i \in [0, 1]$ is the VLM's detection confidence.
-
-> **Planned:** The feature dimension grows to 23-d with one-hot type
-> encoding (18+ element types: button, text, image, input, icon, container,
-> list, and others) and explicit spatial features (cx, cy, w, h) instead of raw
-> xyxy corners.
-
-### 3.2 Constraint Node Features
-
-Each constraint $c_j$ carries a parameter vector. The current stub
-implementation uses a 1-d tolerance value. The planned fixed dimension is:
+每个元素 $e_i$ 携带原始特征向量:
 
 $$
-\mathbf{x}_{c_j} = [\underbrace{t_1, \ldots, t_{10}}_{\text{type one-hot}},\;
-                     \varepsilon_j,\; w_j] \in \mathbb{R}^{12}
+\mathbf{x}_{e_i} = [x_1, y_1, x_2, y_2, a_i] \in \mathbb{R}^5
 $$
 
-where $\varepsilon_j$ is the tolerance and $w_j$ is a weight (1.0 for
-GT-derived constraints in training, lower for heuristic constraints at
-inference).
+其中 $(x_1, y_1, x_2, y_2)$ 是预测边界框(归一化到 $[0, 1]^4$),$a_i$ 是归一化面积 $(x_2 - x_1)(y_2 - y_1)$。可选地拼接一个冻结的视觉特征 $v_i \in \mathbb{R}^d$(192 维 ViT-Tiny 或 768 维 DINOv2)。
 
-### 3.3 Edge Features (Planned)
+### 3.2 约束节点特征
 
-Edges carry 4-d geometric features describing the spatial relationship between
-the connected element and the constraint:
+每个约束 $c_j$ 携带参数向量:
+
+$$
+\mathbf{x}_{c_j} = [\underbrace{t_1, \ldots, t_{10}}_{\text{类型 one-hot}},\;
+             \text{spatial statistics}] 
+$$
+
+其中类型 one-hot 编码 10 种约束类型,空间统计量包括参与元素的平均两两距离、包含重叠率、对齐残差等。
+
+### 3.3 边特征
+
+边携带几何特征,描述连接元素与约束之间的空间关系:
 
 $$
 \mathbf{e}_{ij} = [d_{ij},\; \Delta x_{ij},\; \Delta y_{ij},\;
                    \text{IoU}_{ij}] \in \mathbb{R}^4
 $$
 
-These are computed from the element's predicted bbox and the constraint's
-parameters. Currently, `edge_attr` is **not set** — the stub uses topology
-alone.
+这些由元素预测框与约束参数计算得到。
 
 ---
 
-## 4. Message Passing Architecture
+## 4. 消息传递架构
 
-### 4.1 The Two-Hop Bipartite Flow
+### 4.1 两跳二分图消息流
 
 ```
-           hop 1                  hop 2
+          跳 1                   跳 2
     ┌───────────────────┐   ┌───────────────────┐
-    │ Element → Constraint │   │ Constraint → Element │
-    │ (aggregate evidence) │   │ (update positions)   │
+    │ 元素 → 约束          │   │ 约束 → 元素          │
+    │ (聚合证据)          │   │ (更新位置)          │
     └───────────────────┘   └───────────────────┘
 
     e₁ ──┐                        e₁' ←──┐
@@ -152,8 +109,7 @@ alone.
     e₃ ──┘                        e₃' ←──┘
 ```
 
-**Hop 1 — Constraint aggregation:** Each constraint $c_j$ gathers features from
-all elements linked to it:
+**跳 1 — 约束聚合:** 每个约束 $c_j$ 从所有与之相连的元素收集特征:
 
 $$
 \mathbf{h}_{c_j}^{(k+1)} = \sigma\!\left(
@@ -163,8 +119,7 @@ $$
 \right)
 $$
 
-**Hop 2 — Element refinement:** Each element $e_i$ gathers features from all
-constraints it participates in:
+**跳 2 — 元素精修:** 每个元素 $e_i$ 从它参与的所有约束收集特征:
 
 $$
 \mathbf{h}_{e_i}^{(k+1)} = \sigma\!\left(
@@ -174,330 +129,275 @@ $$
 \right)
 $$
 
-In PyG, this is implemented as `SAGEConv` layers wrapped with `to_hetero`,
-which automatically dispatches the correct message function to each edge type.
+在 PyG 中,这通过 `SAGEConv` 层实现(`BipartiteGraphSAGE`,见 `src/bipartite_gnn_gui/model/encoder.py`):元素 → 约束与约束 → 元素各一组卷积,交替进行。
 
-### 4.2 Current Stub Implementation
+### 4.2 层数
 
-The current encoder (`BipartiteGraphSAGE`) is a feed-forward stand-in:
-independent MLPs for element and constraint nodes with **no message passing**.
-The full `SAGEConv + to_hetero` implementation is the next development
-milestone.
-
-### 4.3 Number of Layers
-
-Two bipartite message-passing rounds (`n_layers = 2`) means each element sees
-constraints that are 2 hops away. Since the graph is strictly bipartite, 2 hops
-covers the entire receptive field — every element can see every other element
-that shares a constraint. Additional layers would allow higher-order effects
-(constraints influencing other constraints through shared elements), but this
-is a secondary effect unlikely to help for the core spatial correction task.
+两轮二分消息传递(`n_layers = 2`)意味着每个元素看到两跳之内的约束。由于图严格二分,2 跳即覆盖整个感受野——每个元素都能看到与之共享约束的所有其他元素。增加层数可带来高阶效应(约束通过共享元素影响其他约束),但对核心空间修正任务帮助有限,属于次要效应。
 
 ---
 
-## 5. Formal Constraint Definitions
+## 5. 约束的正式定义
 
-Each constraint type defines a mathematical predicate over element bounding
-boxes. The constraint is **satisfied** when the predicate value is below a
-tolerance $\varepsilon$.
+每种约束类型定义元素边界框上的数学谓词。当谓词值低于容差 $\varepsilon$ 时,约束**成立**。
 
-### 5.1 Alignment Constraints
+### 5.1 对齐约束
 
-For two elements with boxes $(x_1, y_1, x_2, y_2)$ and
-$(x_1', y_1', x_2', y_2')$:
+两个元素,框分别为 $(x_1, y_1, x_2, y_2)$ 与 $(x_1', y_1', x_2', y_2')$:
 
-| Constraint | Predicate | Interpretation |
+| 约束 | 谓词 | 含义 |
 |---|---|---|
-| ALIGN_LEFT | $|x_1 - x_1'|$ | Left edges aligned |
-| ALIGN_RIGHT | $|x_2 - x_2'|$ | Right edges aligned |
-| ALIGN_TOP | $|y_1 - y_1'|$ | Top edges aligned |
-| ALIGN_BOTTOM | $|y_2 - y_2'|$ | Bottom edges aligned |
-| CENTER_X | $|(x_1 + x_2)/2 - (x_1' + x_2')/2|$ | Horizontal centers aligned |
-| CENTER_Y | $|(y_1 + y_2)/2 - (y_1' + y_2')/2|$ | Vertical centers aligned |
+| ALIGN_LEFT | $|x_1 - x_1'|$ | 左边缘对齐 |
+| ALIGN_RIGHT | $|x_2 - x_2'|$ | 右边缘对齐 |
+| ALIGN_TOP | $|y_1 - y_1'|$ | 上边缘对齐 |
+| ALIGN_BOTTOM | $|y_2 - y_2'|$ | 下边缘对齐 |
+| CENTER_X | $|(x_1 + x_2)/2 - (x_1' + x_2')/2|$ | 水平中心对齐 |
+| CENTER_Y | $|(y_1 + y_2)/2 - (y_1' + y_2')/2|$ | 垂直中心对齐 |
 
-### 5.2 Size Constraints
+### 5.2 尺寸约束
 
-| Constraint | Predicate | Interpretation |
+| 约束 | 谓词 | 含义 |
 |---|---|---|
-| SAME_SIZE | $\max\left(\frac{|w - w'|}{w'},\; \frac{|h - h'|}{h'}\right)$ | Width and height equal within relative tolerance |
+| SAME_SIZE | $\max\left(\frac{|w - w'|}{w'},\; \frac{|h - h'|}{h'}\right)$ | 相对容差内宽度、高度相等 |
 
-### 5.3 Spatial Configuration Constraints
+### 5.3 空间配置约束
 
-| Constraint | Predicate | Interpretation |
+| 约束 | 谓词 | 含义 |
 |---|---|---|
-| SPACING | $\vert\text{gap}_{i,i+1} - \text{gap}_{i+1,i+2}\vert$ | Consistent gap between consecutive elements |
-| CONTAINMENT | $x_1' \leq x_1 \;\wedge\; y_1' \leq y_1 \;\wedge\; x_2 \leq x_2' \;\wedge\; y_2 \leq y_2'$ | Element $i$ is fully inside element $j$ |
-| GRID | Row/column membership from clustering element centers | Elements form a regular 2D array |
+| SPACING | $\vert\text{gap}_{i,i+1} - \text{gap}_{i+1,i+2}\vert$ | 相邻元素间距一致 |
+| CONTAINMENT | $x_1' \leq x_1 \;\wedge\; y_1' \leq y_1 \;\wedge\; x_2 \leq x_2' \;\wedge\; y_2 \leq y_2'$ | 元素 $i$ 完全位于元素 $j$ 内 |
+| GRID | 由元素中心聚类得到的行/列归属 | 元素构成规则的二维阵列 |
 
-### 5.4 Constraint Extraction: Train vs. Inference
+### 5.4 约束提取:训练 vs 推理
 
-| Aspect | Training | Inference |
+| 方面 | 训练 | 推理 |
 |---|---|---|
-| Element source | Ground-truth bboxes | VLM predicted bboxes |
-| Tolerance $\varepsilon$ | 0.02 (tight, from clean GT) | 0.05 (loose, accomodates VLM noise) |
-| Constraint filter | Keep all | Drop constraints with $w_j < 0.3$ |
-| Constraint weight $w_j$ | 1.0 (known-correct) | Heuristic confidence score |
+| 元素来源 | 真实标注框 | VLM 预测框 |
+| 容差 $\varepsilon$ | 0.02(紧,来自干净 GT) | 0.05(松,容纳 VLM 噪声) |
+| 约束过滤 | 保留全部 | 丢弃 $w_j < 0.3$ 的约束 |
+| 约束权重 $w_j$ | 1.0(已知正确) | 启发式置信度分数 |
 
-In training, the system extracts constraints from ground-truth annotations — they are
-the "correct" spatial rules that the model learns to enforce. At
-inference, the system proposes constraints heuristically from VLM predictions. These constraints may
-be erroneous. The system drops low-weight constraints to prevent propagating bad
-structural information.
-
-> **Note:** The current stub does not implement this train/inference split.
-> `extract_all_constraints` operates identically in all modes and returns a
-> single ALIGN_LEFT constraint on the first two elements when N ≥ 2.
+训练时,系统从真实标注中提取约束——它们是模型学习去执行的"正确"空间规则。推理时,系统从 VLM 预测中启发式地提出约束,这些约束可能有误,因此丢弃低权重约束以防止传播错误的结构信息。
 
 ---
 
-## 6. Prediction Heads
+## 6. 预测头
 
-Three independent MLP heads operate on the refined element/constraint
-embeddings produced by the encoder:
+多个 MLP 头作用于编码器产生的精修嵌入(实现见 `src/bipartite_gnn_gui/model/heads.py`):
 
-### 6.1 Coordinate Refinement Head
+### 6.1 坐标修正头
 
-Maps each element embedding to a 4-d delta:
+将每个元素嵌入映射到 4 维修正量:
 
 $$
 \Delta\mathbf{x}_i = \text{MLP}_{\text{coord}}(\mathbf{h}_{e_i}^{(L)})
     \in \mathbb{R}^4
 $$
 
-The corrected bounding box is:
+修正后的边界框为:
 
 $$
 \hat{\mathbf{x}}_i = \mathbf{x}_i + \Delta\mathbf{x}_i
 $$
 
-No activation on the output — deltas can be positive or negative. At inference,
-deltas are optionally clamped to $[-0.5, 0.5]$ to prevent blowup on extremely
-noisy inputs.
+输出不加激活——修正量可正可负。推理时,修正量可选地限制在 $[-0.5, 0.5]$ 以防止在极端噪声输入上爆炸。
 
-### 6.2 Violation Prediction Head
+### 6.2 违反检测头
 
-Maps each constraint embedding to a scalar probability:
+将每个约束嵌入映射到标量概率:
 
 $$
 v_j = \sigma(\text{MLP}_{\text{vio}}(\mathbf{h}_{c_j}^{(L)}))
     \in [0, 1]
 $$
 
-$v_j \approx 1$ means the constraint is likely violated (the bounding boxes
-that triggered this constraint don't actually satisfy it). This auxiliary
-signal helps the model learn which constraints are informative vs.
-coincidental.
+$v_j \approx 1$ 表示约束很可能被违反(触发该约束的边界框实际上并不满足它)。这个辅助信号帮助模型学会区分有信息量的约束与偶然的约束。
 
-### 6.3 Existence Prediction Head
+### 6.3 存在性打分头
 
-Maps each element embedding to a scalar probability:
+将每个元素嵌入映射到标量概率:
 
 $$
 p_i = \sigma(\text{MLP}_{\text{exist}}(\mathbf{h}_{e_i}^{(L)}))
     \in [0, 1]
 $$
 
-$p_i \approx 0$ means the element is likely a hallucination (VLM predicted
-something that doesn't exist). This head enables the model to suppress false
-detections as an alternative to correcting their coordinates.
+$p_i \approx 0$ 表示元素很可能是幻觉(VLM 预测了不存在的东西)。该头使模型能够抑制误检,作为修正坐标之外的另一种手段。
 
-### 6.4 Architecture
+### 6.4 元素补全头
 
-Each head is a 2-layer MLP:
+检测约束图中的"空洞",提出缺失元素的框与类型:
+
+$$
+\hat{\mathbf{b}}_k, \hat{t}_k = \text{MLP}_{\text{proposal}}(\mathbf{h}_{c_j}^{(L)})
+$$
+
+训练时随机删除一部分真实元素;被删元素留下的悬空约束正是缺失元素在图中留下的特征。该头从聚合的约束嵌入中预测缺失元素的框和类型,是**自监督**的——无需额外人工标注。
+
+### 6.5 头结构
+
+每个 MLP 头均为两层:
 
 $$
 \text{MLP}(\mathbf{h}) = \mathbf{W}_2 \cdot \text{ReLU}(\mathbf{W}_1 \cdot \mathbf{h} + \mathbf{b}_1) + \mathbf{b}_2
 $$
 
-The coordinate head outputs 4 dimensions, violation and existence heads output
-1 (followed by sigmoid).
+坐标头输出 4 维;违反与存在性头输出 1 维(后接 sigmoid);补全头输出框坐标与类型 logits。
 
 ---
 
-## 7. Loss Function
+## 7. 损失函数
 
-The total loss is a weighted sum of three component losses:
+总损失是四项损失的加权和:
 
 $$
 \mathcal{L} = w_c \cdot \mathcal{L}_{\text{coord}}
              + w_v \cdot \mathcal{L}_{\text{vio}}
              + w_e \cdot \mathcal{L}_{\text{exist}}
+             + w_p \cdot \mathcal{L}_{\text{prop}}
 $$
 
-### 7.1 Coordinate Loss
+默认权重 $w_c = 1.0, w_v = 0.5, w_e = 0.5, w_p = 0.5$(见 `src/bipartite_gnn_gui/model/losses.py`)。
 
-Mean squared error between predicted and ground-truth deltas:
+### 7.1 坐标损失
+
+预测修正量与真实修正量之间的均方误差:
 
 $$
 \mathcal{L}_{\text{coord}} = \frac{1}{N} \sum_{i=1}^{N}
     \|\Delta\mathbf{x}_i - \Delta\mathbf{x}_i^{\text{gt}}\|_2^2
 $$
 
-The ground-truth delta is the difference between the VLM's predicted bbox and
-the annotated bbox: $\Delta\mathbf{x}_i^{\text{gt}} = \mathbf{x}_i^{\text{gt}}
-- \mathbf{x}_i^{\text{pred}}$.
+真实修正量是 VLM 预测框与标注框之差:$\Delta\mathbf{x}_i^{\text{gt}} = \mathbf{x}_i^{\text{gt}} - \mathbf{x}_i^{\text{pred}}$。
 
-**Why MSE rather than Smooth L1 or IoU loss?** For GUI coordinate correction,
-MSE penalizes large errors quadratically, which is appropriate — a 20 px error
-is more than twice as bad as a 10 px error in terms of perceived layout
-quality. Smooth L1 would underweight large corrections.
+**为什么用 MSE 而非 Smooth L1 或 IoU 损失?** 对于 GUI 坐标修正,MSE 对较大误差按二次方惩罚,这正合适——从感知布局质量看,20 px 误差远不止 10 px 误差的两倍。Smooth L1 会低估大修正。
 
-### 7.2 Violation Loss
+### 7.2 违反损失
 
-Binary cross-entropy between predicted violation scores and ground-truth labels:
+预测违反分数与真实标签之间的二元交叉熵:
 
 $$
 \mathcal{L}_{\text{vio}} = -\frac{1}{M} \sum_{j=1}^{M}
     \left[ y_j \log v_j + (1 - y_j) \log(1 - v_j) \right]
 $$
 
-where $y_j = \mathbf{1}[\text{constraint } c_j \text{ is actually violated}]$.
-In training, violation labels are derived by comparing GT-derived constraints
-against the VLM's noisy predictions.
+其中 $y_j = \mathbf{1}[\text{约束 } c_j \text{ 确实被违反}]$。训练时,违反标签通过将 GT 派生约束与 VLM 的含噪预测对比得出。
 
-### 7.3 Existence Loss
+### 7.3 存在性损失
 
-Binary cross-entropy between predicted existence probabilities and ground truth:
+预测存在概率与真实标签之间的二元交叉熵:
 
 $$
 \mathcal{L}_{\text{exist}} = -\frac{1}{N} \sum_{i=1}^{N}
     \left[ y_i \log p_i + (1 - y_i) \log(1 - p_i) \right]
 $$
 
-where $y_i = 1$ if element $i$ is a real GUI element (matched to GT), and
-$y_i = 0$ if it is a hallucination (FP).
+其中 $y_i = 1$ 表示元素 $i$ 是真实 GUI 元素(与 GT 匹配),$y_i = 0$ 表示它是幻觉(FP)。
 
-### 7.4 Loss Weighting
+### 7.4 补全损失
 
-Default: $w_c = w_v = w_e = 1.0$. The coordinate loss typically dominates in
-magnitude (4D MSE vs. scalar BCE). In practice, the weights should be tuned so
-that each loss component contributes roughly equally to the total gradient at
-the start of training. A heuristic: scale $w_v$ and $w_e$ by
-$\approx\text{hidden\_dim}/4$ to compensate for the dimensionality difference.
+被删除元素的提议框与真实框之间的 IoU 损失,加上类型预测的交叉熵:
 
----
+$$
+\mathcal{L}_{\text{prop}} = \frac{1}{K} \sum_{k=1}^{K}
+    \left[ \mathcal{L}_{\text{IoU}}(\hat{\mathbf{b}}_k, \mathbf{b}_k^{*})
+           + \alpha \cdot \text{CE}(\hat{t}_k, t_k^{*}) \right]
+$$
 
-## 8. Training Dynamics
+其中 $K$ 是存在缺失目标的被违反约束数。
 
-### 8.1 Optimization
+### 7.5 损失加权
 
-- **Optimizer:** AdamW with weight decay $10^{-5}$ (applied to non-bias params)
-- **Learning rate:** $10^{-3}$ peak, linear warmup over 1000 steps, cosine
-  annealing to $10^{-6}$
-- **Gradient clipping:** max L2 norm = 1.0
-- **Mixed precision:** FP16 (AMP) when CUDA available
-- **Batch size:** 32 HeteroData graphs per batch
-
-### 8.2 Early Stopping
-
-Training stops when validation loss fails to improve for 20 consecutive epochs.
-The checkpoint with the best validation loss is retained.
-
-### 8.3 Expected Convergence Behavior
-
-The coordinate loss should decrease monotonically as the model learns the
-average spatial bias of each constraint type. The violation and existence
-losses may plateau early — they are auxiliary signals that help regularize the
-encoder but have limited learnable signal beyond the first ~20 epochs.
-
-A converged model should produce:
-
-- **Position error reduction** of 30–50% relative to the raw VLM output
-- **Element recall improvement** of 10–20% at IoU > 0.5
-- **Alignment error reduction** of 40–60% (the largest relative gain, since
-  alignment is what the graph structure most directly encodes)
+坐标损失通常在量级上占主导(4 维 MSE vs 标量 BCE)。实践中权重应使各损失分量在训练开始时对总梯度贡献大致相等。
 
 ---
 
-## 9. Inference Pipeline
+## 8. 训练动态
+
+### 8.1 优化
+
+- **优化器:** AdamW,权重衰减 $10^{-5}$(仅作用于非 bias 参数)
+- **学习率:** $10^{-3}$ 峰值,1000 步线性预热,余弦退火至 $10^{-6}$
+- **梯度裁剪:** 最大 L2 范数 = 1.0
+- **混合精度:** CUDA 可用时使用 FP16 (AMP)
+- **批大小:** 每批 32 个 HeteroData 图
+
+### 8.2 早停
+
+当验证损失连续 20 个 epoch 无改善时停止训练,保留验证损失最优的 checkpoint。
+
+### 8.3 实际效果
+
+实验表明(详见 [`report/`](../report/)):违反检测准确率 90–94%,高缺失率下补全 IoU 较最近邻基线提升 +39%/+56%,200 张真实 VLM 截图端到端 F1 +2.0 pp。模型收敛行为与训练配置见 `experiments/` 与 `configs/`。
+
+---
+
+## 9. 推理管线
 
 ```
 VLM JSON → parse → ElementNodes → extract constraints → HeteroData
-    → encoder(h) → coord_head → Δx → x + Δx → clamp → corrected JSON
+    → encoder(h) → 4 heads → Δx + proposals → clamp → corrected JSON
 ```
 
-1. **Parse** VLM JSON into `VLMOutputElement` objects with normalized bboxes.
-2. **Extract constraints** heuristically from predicted bboxes (loose tolerance
-   $\varepsilon = 0.05$, drop low-confidence constraints).
-3. **Build** `HeteroData` bipartite graph.
-4. **Encode** through `BipartiteGraphSAGE` to get refined embeddings.
-5. **Predict** coordinate deltas from element embeddings.
-6. **Apply** deltas: $\hat{\mathbf{x}}_i = \mathbf{x}_i + \Delta\mathbf{x}_i$.
-7. **Clamp** corrected coordinates to $[0, 1]$ (valid image space).
-8. **Denormalize** to absolute pixel coordinates if needed.
-9. **Output** corrected JSON with the same schema as the VLM input.
+1. **解析** VLM JSON 为归一化框的 `VLMOutputElement` 对象。
+2. **提取约束** 从预测框中启发式提取(宽松容差 $\varepsilon = 0.05$,丢弃低置信度约束)。
+3. **构建** `HeteroData` 二分图。
+4. **编码** 通过 `BipartiteGraphSAGE` 得到精修嵌入。
+5. **预测** 从元素嵌入预测坐标修正量;从约束嵌入提出缺失元素。
+6. **应用** 修正量:$\hat{\mathbf{x}}_i = \mathbf{x}_i + \Delta\mathbf{x}_i$。
+7. **合并** 补全提案经非极大值抑制 (NMS) 后与检测结果合并。
+8. **裁剪** 修正坐标到 $[0, 1]$(有效图像空间)。
+9. **反归一化** 如需要转换回绝对像素坐标。
+10. **输出** 与 VLM 输入同 schema 的修正后 JSON。
 
-The system does **not use** the violation and existence heads during inference (they are
-auxiliary training signals). However, future work could use them to flag
-low-confidence elements for human review.
+违反与存在性头在推理时也可用于标记低置信度元素(如演示中的可靠性打分),供人工复核。
 
 ---
 
-## 10. Why This Works: The Key Intuitions
+## 10. 为什么有效:关键直觉
 
-### 10.1 Constraints as Inductive Bias
+### 10.1 约束作为归纳偏置
 
-A standard MLP corrector sees $\mathbb{R}^{5N}$ and must learn a mapping to
-$\mathbb{R}^{4N}$ without any structural prior. The bipartite GNN decomposes
-this into local message-passing operations, each parameterized by constraint
-type. The model doesn't need to learn that left-alignment is a thing — it's
-given that structure explicitly.
+标准 MLP 修正器看到 $\mathbb{R}^{5N}$,必须在没有任何结构先验的情况下学习到 $\mathbb{R}^{4N}$ 的映射。二分 GNN 将其分解为局部的、按约束类型参数化的消息传递操作。模型不需要自己发现"左对齐"这回事——该结构被显式给出。
 
-### 10.2 Message Passing as Constraint Satisfaction
+### 10.2 消息传递作为约束满足
 
-The two-hop flow (element → constraint → element) implements a differentiable
-relaxation of constraint satisfaction. When three elements are connected to an
-ALIGN_LEFT constraint:
+两跳流程(元素 → 约束 → 元素)实现了约束满足的可微松弛。当三个元素连接到同一个 ALIGN_LEFT 约束:
 
-1. The constraint node receives all three x-coordinates.
-2. It can detect outliers (one x₁ is far from the others).
-3. It sends back a gradient signal that pushes the outlier toward the consensus.
+1. 约束节点收到全部三个 x 坐标。
+2. 它能检测离群点(某个 x₁ 与其他明显不同)。
+3. 它回传梯度信号,将离群点推向共识。
 
-This is analogous to one round of belief propagation in a factor graph, where
-constraint nodes are factors and element nodes are variables.
+这类似于因子图中的一个信念传播轮次:约束节点是因子,元素节点是变量。
 
-### 10.3 Multi-Task Learning as Regularization
+### 10.3 多任务学习作为正则化
 
-The violation and existence heads are auxiliary tasks that force the encoder
-to produce embeddings that are useful for multiple purposes. This prevents the
-encoder from collapsing to a trivial solution (for example, always predicting zero
-deltas). The existence head in particular gives the model an "escape hatch" for
-hallucinated elements — instead of trying to correct a non-existent button, it
-can suppress it.
+违反与存在性头是辅助任务,迫使编码器产生多种用途的嵌入。这防止编码器塌缩到平凡解(例如总是预测零修正量)。存在性头尤其给模型一个处理幻觉元素的"逃生通道"——不必去修正一个不存在的按钮,而是可以抑制它。
 
-### 10.4 Scale Separation
+### 10.4 尺度分离
 
-The GNN operates on **normalized** coordinates in $[0, 1]^2$. This means the
-same model works for screenshots of any resolution. The coordinate deltas are
-also in normalized space, so $\Delta x = 0.01$ means 1% of the image width
-regardless of whether the image is 720 px or 4K.
+GNN 在 $[0, 1]^2$ 的**归一化**坐标上运行。这意味着同一模型适用于任何分辨率的截图。坐标修正量同样在归一化空间,$\Delta x = 0.01$ 表示图像宽度的 1%,无论图像是 720 px 还是 4K。
 
 ---
 
-## 11. Current Status & Remaining Work
+## 11. 当前状态
 
-| Component | Status | Description |
+| 组件 | 状态 | 说明 |
 |---|---|---|
-| Graph schema | ✅ Implemented | `ElementNode`, `ConstraintNode`, `EdgeType`, 10 `ConstraintType` values |
-| Graph builder | ✅ Implemented | `BipartiteGraphBuilder.build()` producing valid `HeteroData` |
-| Constraint extraction | 🔶 Stub | Only ALIGN_LEFT stub; 9 extractors return `[]` |
-| Encoder | 🔶 Stub | Feed-forward MLP stand-in; no message passing |
-| Prediction heads | ✅ Implemented | 3 MLP heads with proper activations |
-| Loss function | ✅ Implemented | 3-component weighted loss |
-| Trainer | 🔶 Stub | `fit()` is a no-op |
-| Inference | 🔶 Stub | `correct_layout()` calls `model(data)` |
-| Full SAGEConv encoder | ❌ Planned | `to_hetero` + `SAGEConv` bipartite MP |
-| Edge features | ❌ Planned | 4-d `edge_attr` on both edge stores |
-| Full constraint extraction | ❌ Planned | All 10 types with train/inference modes |
+| 图 schema | ✅ 已实现 | `ElementNode`、`ConstraintNode`、`EdgeType`、10 种 `ConstraintType` |
+| 图构建 | ✅ 已实现 | `BipartiteGraphBuilder.build()` 生成合法 `HeteroData` |
+| 约束提取 | ✅ 已实现 | 全部 10 种类型,含训练/推理模式 |
+| 编码器 | ✅ 已实现 | `BipartiteGraphSAGE` 两跳 SAGEConv 消息传递 |
+| 预测头 | ✅ 已实现 | 坐标 / 违反 / 存在性 / 补全 |
+| 损失函数 | ✅ 已实现 | 4 项加权损失 |
+| 训练器 | ✅ 已实现 | AdamW + 余弦退火 + 早停 |
+| 推理 | ✅ 已实现 | `InferencePipeline` 端到端修正 |
+| 评估 | ✅ 已实现 | PositionError / AlignmentError / Recall / Precision / F1 / IoU |
 
 ---
 
-## References
+## 参考文献
 
-- Hamilton, W. et al. "Inductive Representation Learning on Large Graphs."
-  NeurIPS 2017. (*GraphSAGE*)
-- Fey, M. & Lenssen, J.E. "Fast Graph Representation Learning with PyTorch
-  Geometric." ICLR 2019 Workshop. (*PyG HeteroData*)
-- The 10 spatial constraint types are derived from GUI layout conventions
-  (material design, iOS HIG, web CSS box model) rather than from a specific
-  paper.
+- Hamilton, W. et al. "Inductive Representation Learning on Large Graphs." NeurIPS 2017.(*GraphSAGE*)
+- Fey, M. & Lenssen, J.E. "Fast Graph Representation Learning with PyTorch Geometric." ICLR 2019 Workshop.(*PyG HeteroData*)
+- 10 种空间约束类型源自 GUI 布局惯例(material design、iOS HIG、web CSS 盒模型),而非特定论文。
