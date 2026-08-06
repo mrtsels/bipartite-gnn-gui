@@ -7,117 +7,115 @@
 
 ---
 
-## Phase 1: 需求分析 (Requirements Analysis) ✅
+## Phase 1: 需求分析 ✅
 
-**Goal:** Understand the problem domain, analyze data formats, define what success looks like.
-**Key artifacts:** `docs/requirements/` — data format specs, use case diagram, metrics definition.
-
----
+**Goal:** 分析问题域与数据格式，定义成功标准。
+**产出:** `docs/requirements/` — 数据格式规范、用例图、评估指标。
 
 ### 1.1 VLM 输出格式分析 (`docs/requirements/vlm_format.md`)
 
-**Verify:** Document covers all fields from both Qwen3.5-2B and MiniMax-VL-01 output JSONs.
-**Depends on:** nothing.
-
-- [x] **1.1.1** 收集 Qwen3.5-2B JSON 输出样例，分析字段结构和坐标格式
-- [x] **1.1.2** 收集 MiniMax-VL-01 JSON 输出样例，分析字段结构和坐标格式
-- [x] **1.1.3** 定义 `VLMOutputElement` 和 `VLMOutput` 数据类结构（骨架，不编码）
-- [x] **1.1.4** 确定 `parse_qwen_output` / `parse_minimax_output` 接口和错误处理策略
-- [x] **1.1.5** 确定全局元素类型分类体系（共享于 VLM 和 GT 之间）
+| # | Item | Status |
+|---|------|--------|
+| 1.1.1 | 收集 Qwen3.5-2B JSON 样例，分析字段结构与坐标格式 | ✅ |
+| 1.1.2 | 收集 MiniMax-VL-01 JSON 样例，分析字段结构与坐标格式 | ✅ |
+| 1.1.3 | 定义 `VLMOutputElement` / `VLMOutput` 数据类结构 | ✅ |
+| 1.1.4 | 确定 `parse_qwen_output` / `parse_minimax_output` 接口与错误处理策略 | ✅ |
+| 1.1.5 | 确定全局元素类型分类体系（VLM 与 GT 共享） | ✅ |
 
 ### 1.2 Ground Truth 格式分析 (`docs/requirements/gt_format.md`)
 
-**Verify:** Document covers GUI-360° and ScreenSpot annotation structure.
+| # | Item | Status |
+|---|------|--------|
+| 1.2.1 | 分析 GUI-360° JSON 标注格式 | ✅ |
+| 1.2.2 | 分析 ScreenSpot JSON 标注格式 | ✅ |
+| 1.2.3 | 定义 `GTElement` / `GroundTruth` 数据类结构 | ✅ |
+| 1.2.4 | VLM 预测 ↔ GT 匹配策略（IoU 代价矩阵 + 匈牙利算法） | ✅ |
+| 1.2.5 | 确定评估中的 FP/FN 定义 | ✅ |
 
-- [x] **1.2.1** 分析 GUI-360° JSON 标注格式
-- [x] **1.2.2** 分析 ScreenSpot JSON 标注格式
-- [x] **1.2.3** 定义 `GTElement` 和 `GroundTruth` 数据类结构
-- [x] **1.2.4** 确定 VLM 预测 ↔ Ground Truth 匹配策略（IoU 代价矩阵 + 匈牙利算法）
-- [x] **1.2.5** 确定评估中的 FP/FN 定义
+### 1.3 用例与核心功能规划 (`docs/requirements/use_case.md`)
 
-### 1.3 用例定义与核心功能规划 (`docs/requirements/use_case.md`)
+| # | Item | Status |
+|---|------|--------|
+| 1.3.1 | Mermaid 用例图：VLM JSON → Graph → GNN → Corrected JSON | ✅ |
+| 1.3.2 | 系统模块划分与模块间接口契约 | ✅ |
 
-- [x] **1.3.1** 创建 Mermaid 用例图：VLM JSON → Graph → GNN → Corrected JSON
-- [x] **1.3.2** 规划系统模块划分和模块间接口契约
+### 1.4 评估指标体系 (`docs/requirements/metrics.md`)
 
-### 1.4 非功能性需求：评估指标体系 (`docs/requirements/metrics.md`)
-
-- [x] **1.4.1** 定义 `PositionError`
-- [x] **1.4.2** 定义 `SizeError`
-- [x] **1.4.3** 定义 `AlignmentError`
-- [x] **1.4.4** 定义 `ElementRecall`
-- [x] **1.4.5** 定义 `ElementPrecision`
-- [x] **1.4.6** 定义 `ALL_METRICS` 注册策略和统计显著性方法
-
----
-
-## Phase 2: 概要设计 (High-Level Design) ✅
-
-**Goal:** Define system architecture, data schema, and component interaction.
-**Key artifacts:** `docs/design/high_level.md`
+| # | Item | Status |
+|---|------|--------|
+| 1.4.1 | `PositionError` | ✅ |
+| 1.4.2 | `SizeError` | ✅ |
+| 1.4.3 | `AlignmentError` | ✅ |
+| 1.4.4 | `ElementRecall` | ✅ |
+| 1.4.5 | `ElementPrecision` | ✅ |
+| 1.4.6 | `ALL_METRICS` 注册策略与显著性检验 | ✅ |
 
 ---
 
-- [x] **2.1.1-2.1.4** 配置系统设计: DataConfig, ModelConfig, TrainingConfig, Config 复合结构
-- [x] **2.2.1-2.2.4** 日志与实验跟踪: setup_logger, MetricsLogger 基类, Wandb/Tensorboard/Noop
-- [x] **2.3.1-2.3.5** 依赖管理: scipy, pydantic, wandb/tensorboard extras
-- [x] **2.4.1-2.4.4** 图模式设计: ElementNode, ConstraintType(10种), ConstraintNode, EdgeFeatures
-- [x] **2.5.1-2.5.6** 约束提取策略: Alignment/Containment/Spacing/Grid, 训练 vs 推理模式
+## Phase 2: 概要设计 ✅
+
+**Goal:** 系统架构、数据 schema、组件交互设计。
+
+| # | Item | Status |
+|---|------|--------|
+| 2.1 | 配置系统：DataConfig / ModelConfig / TrainingConfig / Config | ✅ |
+| 2.2 | 日志与实验跟踪：setup_logger / MetricsLogger / Wandb / Tensorboard / Noop | ✅ |
+| 2.3 | 依赖管理：scipy / pydantic / wandb / tensorboard extras | ✅ |
+| 2.4 | 图模式：ElementNode / ConstraintType（10 种）/ ConstraintNode / EdgeFeatures | ✅ |
+| 2.5 | 约束提取策略：Alignment / Containment / Spacing / Grid，训练 vs 推理模式 | ✅ |
 
 ---
 
-## Phase 3: 详细设计 (Detailed Design) ✅
+## Phase 3: 详细设计 ✅
 
-**Goal:** Define class hierarchies, interfaces, algorithms, and deployment plan.
-**Key artifacts:** `docs/design/detailed.md`
+**Goal:** 类层次、接口、算法与部署计划。
 
----
-
-- [x] **3.1.1-3.1.4** 数据层: CoordinateNormalizer, FeatureExtractor, GUIDataset, collate_dataloader
-- [x] **3.2.1-3.2.4** 图构建层: HeteroGraphBuilder, 可视化, 增强变换, HeteroData 键结构
-- [x] **3.3.1-3.3.4** 模型层: HeteroGraphSAGE, 3 个预测 Head, BipartiteGNNCorrector, CombinedLoss
-- [x] **3.4.1-3.4.4** 训练与推理: Trainer, AdamW+cosine, 早停, InferencePipeline
-- [x] **3.5.1-3.5.4** 评估层: Evaluator, 基线接口, 定性分析, 报告生成
-
----
-
-## Phase 4: 开发 (Development) ✅
-
-**Goal:** Implement all modules following the designs from Phases 1–3.
+| # | Item | Status |
+|---|------|--------|
+| 3.1 | 数据层：CoordinateNormalizer / FeatureExtractor / GUIDataset / collate_dataloader | ✅ |
+| 3.2 | 图构建层：HeteroGraphBuilder / 可视化 / 增强变换 / HeteroData 键结构 | ✅ |
+| 3.3 | 模型层：HeteroGraphSAGE / 3 预测头 / BipartiteGNNCorrector / CombinedLoss | ✅ |
+| 3.4 | 训练与推理：Trainer / AdamW+cosine / 早停 / InferencePipeline | ✅ |
+| 3.5 | 评估层：Evaluator / 基线接口 / 定性分析 / 报告生成 | ✅ |
 
 ---
 
-### 4.1-4.5 核心模块
+## Phase 4: 开发 ✅
 
-所有核心模块已实现并验证:
+**Goal:** 按 Phase 1–3 设计实现全部模块。
 
-- [x] **4.1** 基础设施: BBox 工具, 配置系统, 日志系统, 依赖声明
-- [x] **4.2** 数据层: VLM 解析, GT 加载, 预处理, Dataset/DataLoader
-- [x] **4.3** 图构建: Schema, 约束提取, Builder, 可视化, 增强
-- [x] **4.3a** 数据适配: ScreenSpot, RICO View Hierarchy 加载器
-- [x] **4.4** 模型层: 编码器, 预测头, 损失函数, 完整模型, 训练器, 推理管线
-- [x] **4.5** 评估层: 指标, 评估器, 基线 (NoOp/Identity/Jitter), 定性分析
+### 4.1–4.5 核心模块
+
+| # | Item | Status |
+|---|------|--------|
+| 4.1 | 基础设施：BBox 工具 / 配置 / 日志 / 依赖声明 | ✅ |
+| 4.2 | 数据层：VLM 解析 / GT 加载 / 预处理 / Dataset/DataLoader | ✅ |
+| 4.3 | 图构建：Schema / 约束提取 / Builder / 可视化 / 增强 | ✅ |
+| 4.3a | 数据适配：ScreenSpot / RICO View Hierarchy 加载器 | ✅ |
+| 4.4 | 模型层：编码器 / 预测头 / 损失 / 完整模型 / 训练器 / 推理管线 | ✅ |
+| 4.5 | 评估层：指标 / 评估器 / 基线 (NoOp/Identity/Jitter) / 定性分析 | ✅ |
 
 ### 4.6 实验阶段
 
-- [x] **4.6.1** 训练管线标准化: GraphDataset, run_experiment.py, configs/experiment.yaml
-- [x] **4.6.2** 超参实验对比: 6 配置 sweep, Best: hd128 big-noise (val_loss=0.0537)
-- [x] **4.6.3** VLM 推理管线: Qwen3-VL Flash (2947 elem), Qwen+Plus (7312), LLaVA (61), Moondream (弱)
-- [x] **4.6.4** 实验总结: 核心发现 — GNN 无法战胜精度过高的 VLM, 也无法补足检测过弱的 VLM
+| # | Item | Status |
+|---|------|--------|
+| 4.6.1 | 训练管线标准化：GraphDataset / run_experiment.py / configs/experiment.yaml | ✅ |
+| 4.6.2 | 超参 sweep：6 配置，Best: hd128 big-noise (val_loss=0.0537) | ✅ |
+| 4.6.3 | VLM 推理管线：Qwen3-VL Flash (2947 elem) / Qwen+Plus (7312) / LLaVA (61) / Moondream (弱) | ✅ |
+| 4.6.4 | 实验总结：GNN 无法战胜精度过高的 VLM，也无法补足检测过弱的 VLM | ✅ |
 
 ### 4.7 方向调整
 
-- [x] 核心发现: GNN 在精度上无法超越 VLM → 转向两个新方向
-- [x] 新方向文档: `docs/research/direction_confidence_completion.md`
+| # | Item | Status |
+|---|------|--------|
+| 4.7.1 | 核心发现：GNN 精度上无法超越 VLM → 转向两个新方向 | ✅ |
+| 4.7.2 | 新方向文档：`docs/research/direction_confidence_completion.md` | ✅ |
 
 ### 4.8 方向 1 — 约束感知置信度打分 ✅
 
-> **Script:** `scripts/train_confidence.py`
-> **Idea:** GNN 预测每个 VLM 检测的可靠性分数, 过滤低置信度检测
-
-**方法:** GT 元素 (正样本) + 随机 imposter 元素 (负样本) → 训练存在性头部
-
-**实验结果 (500 RICO, 50% imposter ratio):**
+**思路:** GNN 预测每个 VLM 检测的可靠性分数，过滤低置信度检测。
+**方法:** GT 元素（正样本）+ 随机 imposter 元素（负样本）→ 训练存在性头部。
+**结果 (500 RICO, 50% imposter ratio):**
 
 | 指标 | 值 |
 |------|-----|
@@ -126,37 +124,28 @@
 | Recall | 90.7% |
 | AUROC | **0.989** |
 
-| # | Task | Status |
+| # | Item | Status |
 |---|------|--------|
-| 4.8.1 | `scripts/train_confidence.py` — 训练管线 | ✅ |
+| 4.8.1 | `scripts/train_confidence.py` 训练管线 | ✅ |
 | 4.8.2 | Imposter 生成（随机 bbox + 随机类型） | ✅ |
-| 4.8.3 | 评估: AUROC, Precision/Recall, Accuracy | ✅ |
+| 4.8.3 | 评估：AUROC / Precision / Recall / Accuracy | ✅ |
 | 4.8.4 | 500 张 RICO 验证实验 | ✅ |
 
 ### 4.9 方向 2 — 结构性元素补全 ✅
 
-> **Docs:** `docs/research/direction_confidence_completion.md`
-> **Idea:** GNN 检测约束图中的"空洞"，预测缺失元素的位置和类型
+**思路:** GNN 检测约束图中的"空洞"，预测缺失元素的位置和类型。
+**核心结果 (2000 RICO, 60% drop):** 违反检测 Acc **95%** · 提议 MSE **0.044** · 提议 IoU 较 NN 基线 **+40%** (drop≥0.6)
 
-**核心实验结果 (2000 RICO, 60% drop):**
-
-| 任务 | 指标 | 结果 |
-|------|------|------|
-| 违反检测 | Accuracy | **95%** |
-| 元素提议 | MSE | **0.044** |
-| 类型预测 | 8 类 logits | ✅ |
-| 元素提议 vs NN 基线 | IoU 提升 | **+40%** (drop≥0.6) |
-
-| # | Task | Status |
+| # | Item | Status |
 |---|------|--------|
-| 4.9.1 | `data/masking.py` — 合成元素删除管线 | ✅ |
-| 4.9.2 | `model/heads.py:ElementProposalHead` — 元素提议头 | ✅ |
-| 4.9.3 | 违反检测验证 (自监督预训练) | ✅ |
+| 4.9.1 | `data/masking.py` 合成元素删除管线 | ✅ |
+| 4.9.2 | `model/heads.py:ElementProposalHead` 提议头 | ✅ |
+| 4.9.3 | 违反检测验证（自监督预训练） | ✅ |
 | 4.9.4 | 联合训练违反 + 提议头 | ✅ |
-| 4.9.5 | 系统评估: 4 drop ratios × 2 seeds, 基线对比 | ✅ |
-| 4.9.6 | 类型预测: 提议头输出 8 类 logits | ✅ |
+| 4.9.5 | 系统评估：4 drop ratios × 2 seeds，基线对比 | ✅ |
+| 4.9.6 | 类型预测：提议头输出 8 类 logits | ✅ |
 
-**完整评估 (4 个 drop ratio, 500 RICO, 双 seed 平均):**
+**完整评估 (4 drop ratios, 500 RICO, 双 seed 平均):**
 
 | drop | GNN Acc | GNN MSE | GNN IoU | NN MSE | NN IoU | GNN > NN? |
 |------|---------|---------|---------|--------|--------|-----------|
@@ -167,149 +156,98 @@
 
 ### 4.10 真实 VLM 测试 ⚠️
 
-> **Script:** `scripts/evaluate_vlm_completion.py`
-
-Qwen3-VL Flash 预测 (200 images) 通过完成管线运行。
-RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图产生有效图。
-**基础设施就绪**, 需更好的 GT 数据 (ScreenSpot, 人工标注) 才能评估。
+**Script:** `scripts/evaluate_vlm_completion.py`
+Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致仅 32/193 图产生有效图。**基础设施就绪**，需更好 GT 数据（ScreenSpot / 人工标注）才能评估。
 
 ---
 
-## Phase 5: 集成测试 (Integration Testing) ✅
+## Phase 5: 集成测试 ✅
 
-**Goal:** Verify end-to-end pipelines work on synthetic and real data.
-**Status: 942 tests pass**
+**Goal:** 合成与真实数据上的端到端验证。
+**Status:** 942 tests pass
 
-| Sub-phase | Items | 测试文件 |
-|-----------|-------|---------|
+| Sub-phase | 覆盖 | 测试文件 |
+|-----------|------|---------|
 | **5A** 原始管线 | 数据流 → 图构建 → 模型前向 → 端到端 → 基线 | `test_integration_5a.py` |
 | **5B** 完成管线 | 违反图 → 遮掩 → 提议头 → 联合训练冒烟 → 评估冒烟 → 基线正确性 | `test_integration_5b.py` |
 
-- [x] **5A.1** 数据管线: 合成 JSON → parse → Dataset → DataLoader
-- [x] **5A.2** 图构建: 合成 JSON → constraints → HeteroData → verify keys
-- [x] **5A.3** 模型前向: 梯度回传, loss 标量, 训练不 crash
-- [x] **5A.4** 端到端: VLM JSON → InferencePipeline → corrected JSON
-- [x] **5A.5** 评估基线: baselines + Evaluator → 所有指标
-- [x] **5B.1** 违反图构建: drop=0/0.5/1 边界验证
-- [x] **5B.2** 遮掩管线: mask_ratio=0/0.6/1 验证
-- [x] **5B.3** 提议头: 输出形状, 梯度, Sigmoid 范围
-- [x] **5B.4** 联合训练冒烟: `train_violation.py --n 10 --epochs 2`
-- [x] **5B.5** 评估冒烟: `evaluate_completion.py --n 10 --epochs 2`
-- [x] **5B.6** 基线正确性: NN, Center 基线数值合理
+| # | Item | Status |
+|---|------|--------|
+| 5A.1 | 数据管线：合成 JSON → parse → Dataset → DataLoader | ✅ |
+| 5A.2 | 图构建：合成 JSON → constraints → HeteroData → verify keys | ✅ |
+| 5A.3 | 模型前向：梯度回传，loss 标量，训练不 crash | ✅ |
+| 5A.4 | 端到端：VLM JSON → InferencePipeline → corrected JSON | ✅ |
+| 5A.5 | 评估基线：baselines + Evaluator → 所有指标 | ✅ |
+| 5B.1 | 违反图构建：drop=0/0.5/1 边界验证 | ✅ |
+| 5B.2 | 遮掩管线：mask_ratio=0/0.6/1 验证 | ✅ |
+| 5B.3 | 提议头：输出形状、梯度、Sigmoid 范围 | ✅ |
+| 5B.4 | 联合训练冒烟：`train_violation.py --n 10 --epochs 2` | ✅ |
+| 5B.5 | 评估冒烟：`evaluate_completion.py --n 10 --epochs 2` | ✅ |
+| 5B.6 | 基线正确性：NN / Center 基线数值合理 | ✅ |
 
 ---
 
-## Phase 6: 性能测试 (Performance Testing) ✅
+## Phase 6: 性能测试 ✅
 
-**Goal:** Establish performance baselines and ensure practical usability.
-**Script:** `scripts/benchmark_performance.py` → `experiments/benchmarks/performance_results.json`
-**Report:** `docs/research/phase6_benchmark_report.md`
+**Goal:** 建立性能基线，确保实际可用性。
+**Script:** `scripts/benchmark_performance.py`
 
-| Benchmark | Metrics | Result |
-|-----------|---------|--------|
-| **6.1** 数据加载吞吐 | 200 RICO JSONs → graph build | 2.1ms/img = **467 img/s** |
-| **6.2** 图构建扩展性 | 10 / 50 / 100 / 500 elem | 0.2ms → 255ms (O(N²)) |
-| **6.3** 训练吞吐量 | 50 graphs × 3 epochs, hidden=64 | **357 steps/s** |
-| **6.4** 推理延迟 | 100 graphs p50/p95/p99 | **0.53ms / 0.96ms / 1.11ms** |
+| # | Benchmark | Metrics | Result |
+|---|-----------|---------|--------|
+| 6.1 | 数据加载吞吐 | 200 RICO JSONs → graph build | 2.1ms/img = **467 img/s** |
+| 6.2 | 图构建扩展性 | 10/50/100/500 elem | 0.2ms → 255ms (O(N²)) |
+| 6.3 | 训练吞吐量 | 50 graphs × 3 epochs, hidden=64 | **357 steps/s** |
+| 6.4 | 推理延迟 | 100 graphs p50/p95/p99 | **0.53 / 0.96 / 1.11ms** |
 
-**结论:** GNN 从不是瓶颈。推理 0.5ms p50, VLM 才是限速步骤 (~2s/图)。
+**结论:** GNN 不是瓶颈（推理 0.5ms p50）；VLM 才是限速步骤 (~2s/图)。
 
 ---
 
-## Phase 7: 实施 (Implementation — 实验运行)
+## Phase 7: 实施 (实验运行) ✅
 
-**Goal:** Define and execute experiment methodology, ensure reproducibility.
+**Goal:** 定义并执行实验方法学，确保可复现性。
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 7.1 | `experiments/run.py` 统一入口 | ✅ Done | 4 子命令: train-violation, train-confidence, evaluate-completion, constraint-ablation |
-| 7.2 | 约束类型消融 | ✅ Done | CONTAINMENT 最关键 (acc drop 90.8→88.9%); alignment 提供最优空间信号 |
-| 7.3 | 图构建超参敏感性 | ✅ Done | Phase 4.6.2 sweep: hd 64/128/256 + lr 1e-3/5e-4 |
-| 7.4 | VLM 噪声鲁棒性 | ✅ Done | Phase 4.6.3-4.6.4: 5 类 VLM 全覆盖 |
-| 7.5 | 跨数据集泛化 | ✅ Done | RICO→ScreenSpot: 28.1% zero-shot → 72.1% after VLM pseudo-GT fine-tune (+44pp) |
-| 7.6 | 可复现性 | ✅ Done | seed_everything + deterministic 已验证 |
+| 7.1 | `experiments/run.py` 统一入口 | ✅ | 4 子命令：train-violation / train-confidence / evaluate-completion / constraint-ablation |
+| 7.2 | 约束类型消融 | ✅ | CONTAINMENT 最关键 (acc 90.8→88.9%) |
+| 7.3 | 图构建超参敏感性 | ✅ | sweep: hd 64/128/256 + lr 1e-3/5e-4 |
+| 7.4 | VLM 噪声鲁棒性 | ✅ | 5 类 VLM 全覆盖 |
+| 7.5 | 跨数据集泛化 | ✅ | RICO→ScreenSpot: 28.1% → 72.1% (+44pp, VLM pseudo-GT fine-tune) |
+| 7.6 | 可复现性 | ✅ | seed_everything + deterministic 已验证 |
 
 ---
 
-## Phase 8: Research — 方向决策
+## Phase 8: Research — 方向决策 ✅
 
-**Status:** ✅ Complete
 **Date:** 2026-06-24
-
-经过 ABCD + 多 seed 实验 + 学术评审，最终结论：
+ABCD + 多 seed 实验 + 学术评审后的结论：
 
 | Finding | 评级 | 依据 |
 |---------|:----:|------|
-| CONTAINMENT-only > full | WEAK KEEP | 5 seed 一致但比较同时变了两个变量（约束类型 + 约束数量） |
-| 两模型策略 | WEAK KEEP | 同上 confound。需跑 full types × 3 head configs 对照 |
-| 置信度打分 (真实数据) | STRONG KEEP | AUROC 0.876，负数置信度从 0.593→0.199，最 robust 发现 |
-| 类型预测不可能 | WEAK DROP | 评审发现训练目标有问题：多元素删除时 bbox 取平均但 type 取第一个，目标不一致 |
-| 跨域微调 28→72% | WEAK KEEP | 评审指出 72% 可能只说明 fine-tune 有效，不代表结构推理迁移 |
+| CONTAINMENT-only > full | WEAK KEEP | 5 seed 一致，但同时变了两个变量（约束类型 + 数量） |
+| 两模型策略 | WEAK KEEP | 同上 confound，需 full types × 3 head configs 对照 |
+| 置信度打分 (真实数据) | STRONG KEEP | AUROC 0.876，负数置信度 0.593→0.199，最 robust 发现 |
+| 类型预测不可能 | WEAK DROP | 训练目标不一致：多元素删除时 bbox 取平均但 type 取第一个 |
+| 跨域微调 28→72% | WEAK KEEP | 72% 可能只说明 fine-tune 有效，不证明结构推理迁移 |
 
 ---
 
-## Phase 9: Research — 受控实验
+## Phase 9: Research — 受控实验 ✅
 
-**Goal:** 在 Phase 7 发现的基础上，用受控实验验证核心结论，建立统计显著性。
+**Goal:** 验证 Phase 7/8 结论，建立统计显著性，回应评审批评。
 
 ### 9.1 受控两模型对比
 
-评审关键批评：两模型比较同时变了两个变量（约束类型 AND 头配置）。需增加全类型 × 3 头配置的对照实验：
+评审关键批评：两模型比较同时变了两个变量（约束类型 AND 头配置）。需全类型 × 3 头配置对照。
 
-```
-对照组：全类型 × joint     → 已有数据
-实验 A：全类型 × violation-only  → 隔离违反检测效果
-实验 B：全类型 × proposal-only   → 隔离提议效果
-```
-
-如果全类型 violation-only 仍然比 joint 好，才说明是多任务干扰，而不只是 CONTAINMENT 更容易。
-
-| # | Task | Status |
+| # | Item | Status |
 |---|------|--------|
 | 9.1.1 | 全类型 × violation-only (no coord loss) | ✅ |
 | 9.1.2 | 全类型 × proposal-only (no violation loss) | ✅ |
 | 9.1.3 | 5 seed 评估 + 置信区间 | ✅ |
 
-### 9.2 Real VLM 端到端评估（非合成下采样）
-
-评审最关键的批评：**所有实验都用合成元素删除，唯一真实 VLM 测试 (Phase 4.9.7) 的 acc 只有 27.6%，IoU 0.000。**
-
-真实 VLM 错误模式与随机删除完全不同：
-- Type-dependent（icon 漏检率高）
-- 位置偏置（屏幕边缘更易错）
-- 结构相关（同行元素一个漏了相邻的也更容易漏）
-
-需要用人标注 GT 真实评估 GNN 的改善效果。
-
-| # | Task | Status |
-|---|------|--------|
-| 9.2.1 | RICO real VLM 端到端评估（Phase 4.9.7 复现+改进） | ✅ |
-| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB） | ✅ SMB mount available, loaded 610 images from ScreenSpot_combined.json |
-| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ✅ VLM Prec=0.028 Rec=0.383 F1=0.052, GNN Acc=0.972 AUROC=0.489 (581 graphs) |
-
-### 9.3 类型预测 — 重新评估
-
-评审发现训练目标不一致：当一个约束涉及多个删除元素时，bbox 取平均但 type 取第一个。
-
-| # | Task | Status |
-|---|------|--------|
-| 9.3.1 | 单元素删除实验（只有一个缺失元素，目标一致） | ✅ |
-| 9.3.2 | 增加 type loss weight 验证是否可训练 | ✅ |
-
-### 9.4 置信度模型部署
-
-唯一 STRONG KEEP。可以直接用。
-
-| # | Task | Status |
-|---|------|--------|
-| 9.4.1 | 用真实数据重训的模型替换 `checkpoints/confidence_scoring/` | ✅ |
-| 9.4.2 | ScreenSpot 跨域验证置信度 | ✅ Confidence AUROC=0.554 (limited cross-domain), Acc@0.5=0.040 |
-
----
-
-## Phase 9 Results Summary
-
-### 9.1 受控两模型对比 — 5-Seed Results
+**结果 (5 seeds):**
 
 | Config | seed 42 | seed 73 | seed 99 | seed 123 | seed 256 | mean ± std |
 |--------|:-------:|:-------:|:-------:|:--------:|:--------:|:----------:|
@@ -317,43 +255,46 @@ RICO GT 稀疏 (obfuscated class names, 非可见元素多) 导致仅 32/193 图
 | Full × violation-only | 0.9263 | 0.9003 | 0.8799 | 0.8871 | 0.8974 | **0.8982 ± 0.0177** |
 | Full × proposal-only | 0.4802 | 0.4521 | 0.5149 | 0.5927 | 0.4029 | **0.4886 ± 0.0712** |
 
-**Key finding:** Violation-only (0.898 ± 0.018) is **notably better** than joint (0.876 ± 0.020) — this confirms the reviewer's suspicion. The multi-task joint training **hurts** violation detection. Pure violation-only training achieves higher accuracy with lower variance.
+**结论:** violation-only (0.898 ± 0.018) 明显优于 joint (0.876 ± 0.020)——多任务联合训练损害违反检测，证实评审怀疑。
 
 ### 9.2 Real VLM 端到端评估
 
-Qwen3-VL Flash on 196 RICO images (matched via center-distance Hungarian, threshold=0.1):
+评审关键批评：所有实验都用合成元素删除，唯一真实 VLM 测试 (4.9.7) acc 仅 27.6%、IoU 0.000。真实 VLM 错误模式与随机删除不同（type-dependent / 位置偏置 / 结构相关）。
+
+| # | Item | Status |
+|---|------|--------|
+| 9.2.1 | RICO real VLM 端到端评估（4.9.7 复现 + 改进） | ✅ |
+| 9.2.2 | ScreenSpot 人工 GT 接入（ThinkPad SMB，610 images） | ✅ |
+| 9.2.3 | ScreenSpot 真实 VLM 端到端评估 | ✅ |
+
+**RICO 结果 (196 images, Qwen3-VL Flash, center-distance Hungarian, threshold=0.1):**
 
 | Metric | Value |
 |--------|-------|
-| VLM Precision | 0.382 |
-| VLM Recall | 0.235 |
-| VLM F1 | 0.291 |
-| GNN Existence Acc | 0.665 |
-| GNN Existence AUROC | 0.703 |
-| VLM error rate | 0.765 |
-| GNN correction ceiling | ~0.508 (66.5% of errors addressable) |
+| VLM Precision / Recall / F1 | 0.382 / 0.235 / 0.291 |
+| GNN Existence Acc / AUROC | 0.665 / 0.703 |
+| VLM error rate / correction ceiling | 0.765 / ~0.508 (66.5% errors addressable) |
 
-**Pipeline before/after (PR #28):** F1 0.291→0.320 (+2.9pp), Recall +4.7pp, Precision −1.4pp. GNN genuinely recovers missing elements but impact is modest relative to VLM's 76.5% FN rate.
+**ScreenSpot 对比 (600 images):**
 
-**Key finding:** VLM recall is very low (0.235) — only 23.5% of GT elements detected. GNN existence head (AUROC=0.703) shows meaningful separation: matched elements score 0.536 vs FPs at 0.398. The GNN can potentially correct ~50% of VLM errors via confidence filtering.
+| Metric | RICO | ScreenSpot |
+|--------|:----:|:----------:|
+| VLM Precision / Recall / F1 | 0.382 / 0.235 / 0.291 | 0.028 / 0.383 / 0.052 |
+| GNN Existence Acc / AUROC | 0.665 / 0.703 | 0.972 / 0.489 |
+| GNN Pos / Neg mean (TP/FP) | 0.536 / 0.398 | 0.481 / 0.481 |
 
-#### ScreenSpot 结果 (600 images, Qwen3-VL Flash)
-
-| Metric | RICO (9.2.1) | ScreenSpot |
-|--------|:------------:|:----------:|
-| VLM Precision | 0.382 | 0.028 |
-| VLM Recall | 0.235 | 0.383 |
-| VLM F1 | 0.291 | 0.052 |
-| GNN Existence Acc | 0.665 | 0.972 |
-| GNN Existence AUROC | 0.703 | 0.489 |
-| GNN Pos Mean (TP) | 0.536 | 0.481 |
-| GNN Neg Mean (FP) | 0.398 | 0.481 |
-
-**Key finding:** ScreenSpot VLM produces massive FP (Prec=0.028, 17K VLM elements vs 1.2K GT). The GNN existence head collapses to trivial predictor (all ≈0.48), achieving Acc=0.972 by always predicting negative (since 97% of VLM elements are FP). AUROC=0.489 confirms no meaningful separation — confidence model does not transfer to ScreenSpot's very different FP pattern.
+**结论:** RICO 上 VLM recall 极低 (0.235)，存在性头 (AUROC 0.703) 有区分度，可修正约 50% VLM 错误。ScreenSpot 上 VLM 大量 FP (Prec=0.028, 17K predictions vs 1.2K GT)，存在性头退化为全负预测 (Acc 0.972 无意义，AUROC 0.489 无区分度)——置信度模型不跨域迁移。
 
 ### 9.3 类型预测
 
-Single-element removal (n=5000, 288 graphs):
+评审发现训练目标不一致：多元素删除时 bbox 取平均但 type 取第一个。
+
+| # | Item | Status |
+|---|------|--------|
+| 9.3.1 | 单元素删除实验（目标一致） | ✅ |
+| 9.3.2 | 增加 type loss weight 验证可训练性 | ✅ |
+
+**结果 (n=5000, 288 graphs):**
 
 | Metric | type_weight=0.5 | type_weight=2.0 |
 |--------|:---------------:|:---------------:|
@@ -361,286 +302,188 @@ Single-element removal (n=5000, 288 graphs):
 | Prop MSE | 0.087 | 0.087 |
 | Type Acc | **0.618** | **0.618** |
 
-**Key finding:** Type accuracy caps at ~62% even with single-element removal (clean targets). Increasing type loss weight from 0.5→2.0 doesn't improve type accuracy. Type prediction from constraint context alone is fundamentally limited — constraint features carry spatial/structural info but are weak for semantic type disambiguation.
+**结论:** Type Acc 封顶 ~62%——约束上下文只含空间/结构信息，语义类型区分本质受限；加大 type loss 权重无效。
 
-### 9.4 置信度模型 (Real VLM Data)
+### 9.4 置信度模型部署
 
-Real-data-trained confidence model (AUROC=0.780, vs synthetic 0.989):
-- Real VLM FPs are harder to distinguish from TPs than random imposters
-- AUROC 0.780 is still useful but lower than the synthetic model's 0.989
-- The synthetic model likely overestimates real-world performance
+唯一 STRONG KEEP，可直接使用。
 
-#### ScreenSpot cross-domain (600 images)
+| # | Item | Status |
+|---|------|--------|
+| 9.4.1 | 真实数据重训模型替换 `checkpoints/confidence_scoring/` | ✅ |
+| 9.4.2 | ScreenSpot 跨域验证 | ✅ |
 
-| Metric | RICO (9.2.1) | ScreenSpot (9.4.2) |
-|--------|:------------:|:------------------:|
-| Confidence AUROC | 0.703 | 0.554 |
-| Accuracy@0.5 | — | 0.040 |
-| Pos Mean (TP) | 0.536 | 0.900 |
-| Neg Mean (FP) | 0.398 | 0.906 |
+**结果:** 真实数据 AUROC **0.780**（合成模型 0.989 高估真实性能）；ScreenSpot 跨域 AUROC **0.554**、Acc@0.5=0.040，TP/FP 置信度均 ≈0.90，无法区分跨域 FP 模式。
 
-**Key finding:** Confidence model shows limited cross-domain transfer (AUROC=0.554 vs RICO 0.703). Both TP and FP elements receive very high confidence scores (≈0.90), indicating the model cannot distinguish ScreenSpot's FP patterns. The domain shift (RICO mobile → ScreenSpot mobile+pc+web) likely changes the FP distribution too much.
-
-### 9.5 Real VLM Full Pipeline Comparison (Before vs After GNN Correction)
+### 9.5 全管线对比 (Before vs After GNN)
 
 **Script:** `experiments/eval_real_vlm_pipeline.py`
-
-Evaluates the full GNN correction pipeline on 200 real VLM images: build constraint graph from VLM detections → detect violated constraints → propose missing elements → compare detection quality before/after.
-
-**Model used:** `violation_detection/best_model.pt` (hidden_dim=128, trained on simulated dropping). The "joint" model's existence head collapses to ~0.48 on real data; the "completion" model's violation head outputs ~0 everywhere — only the dedicated violation detection model produces meaningful proposals.
+**Model:** `violation_detection/best_model.pt` (hd=128)。joint 模型存在性头在真实数据上塌缩 (~0.48)，completion 模型违反头输出 ~0——仅专用违反检测模型产出有效提议。
 
 | Metric | Before (VLM only) | After (VLM+GNN) | Δ |
 |--------|:-----------------:|:---------------:|:-:|
 | Precision (pooled) | 0.3821 | 0.3686 | **−0.0135** |
 | Recall (pooled) | 0.2351 | 0.2823 | **+0.0472** |
 | F1 (pooled) | 0.2911 | 0.3197 | **+0.0286** |
-| Precision (per-img avg) | 0.4557 | 0.4334 | −0.0224 |
-| Recall (per-img avg) | 0.2743 | 0.3223 | +0.0480 |
-| F1 (per-img avg) | 0.2893 | 0.3120 | +0.0227 |
-| TP count | 1126 | 1352 | +226 |
-| FP count | 1821 | 2316 | +495 |
-| FN count | 3663 | 3437 | −226 |
+| TP / FP / FN | 1126 / 1821 / 3663 | 1352 / 2316 / 3437 | +226 / +495 / −226 |
 
-**Correction mechanics:**
-- VLM elements total: 2,947
-- Proposals added (after NMS): 721
-- Corrected element count: 3,668
-- GT elements total: 4,789
+**机制:** 2947 VLM elements → 721 proposals (NMS 后) → 3668 corrected (GT 4789)。
 
-**Key findings:**
-1. **Recall improves +4.7pp** (0.235 → 0.282) — GNN successfully recovers 226 missed elements via constraint-based proposals
-2. **Precision drops −1.4pp** — proposals introduce new FPs (many proposed bboxes don't match real GT elements)
-3. **Net F1 gain +2.9pp** — the recall improvement outweighs the precision cost
-4. **Existence head is useless on real VLM** — all checkpoints produce near-uniform scores (~0.48–0.54 for both TP and FP elements), so confidence filtering is currently not viable
-5. **The improvement is real but modest** — simulated dropping achieves IoU ~0.12 at drop=0.6, but on real VLM the mismatch between VLM error patterns and the synthetic training distribution limits the matching quality
+**结论:** 提议恢复 226 个遗漏元素 (recall +4.7pp)，但引入 495 个新 FP (precision −1.4pp)，净 F1 +2.9pp；存在性头在真实 VLM 上无过滤价值。
+**⚠️ 更正:** 本表为早期记录，曾受 checkpoint 加载错误影响（strict=False 丢弃 89% 权重）；权威数字见 Phase 11 重要更正与 Phase 12 诚实性说明（正确加载后 F1 +2.0pp）。
 
-### 9.6 Fine-tune GNN on Real RICO VLM Data
+### 9.6 真实数据微调
 
 **Script:** `experiments/finetune_real_vlm.py`
+**思路:** 用真实 VLM 预测 + GT 匹配微调（不再用合成 drop）：matched = TP，unmatched = FP，violation/coord 目标全 0。
+**Data:** 200 RICO VLM 预测，80/20 split → 160 train / 40 val。
+**Training:** 30 epochs, lr=1e-4, AdamW, save best by val loss。
 
-Fine-tunes the `violation_detection/best_model.pt` checkpoint on **real** VLM predictions (not synthetic dropping). The key idea: instead of randomly dropping GT elements to create synthetic training data, we use VLM outputs + GT matching to create a graph where:
-- **Existence**: matched VLM→GT = 1 (TP), unmatched VLM = 0 (FP)
-- **Violation**: all 0 (no constraints are actually violated; VLM just missed elements)
-- **Coord**: all 0 (no refinement targets)
-
-The model learns to identify which elements are real (TP) vs spurious (FP) using structural context from the constraint graph.
-
-**Data:** 200 RICO VLM predictions, 80/20 split → 160 train / 40 val images after filtering.
-
-**Training:** 30 epochs, lr=1e-4, AdamW, save best by val loss.
-
-| Metric | Before (baseline) | After (fine-tuned) | Δ |
-|--------|:-----------------:|:------------------:|:-:|
+| Metric | Before | After | Δ |
+|--------|:------:|:-----:|:-:|
 | Completion F1 (pooled) | 0.3748 | 0.3955 | **+0.0207** |
-| Precision (pooled) | 0.3998 | 0.4165 | **+0.0167** |
-| Recall (pooled) | 0.3528 | 0.3765 | **+0.0237** |
-| Per-image F1 (avg) | 0.3590 | 0.3805 | +0.0215 |
-| GNN Violation Acc | 0.0000 | 0.0000 | 0.0000 |
-| GNN Existence Acc | 0.4270 | 0.4270 | 0.0000 |
+| Precision (pooled) | 0.3998 | 0.4165 | +0.0167 |
+| Recall (pooled) | 0.3528 | 0.3765 | +0.0237 |
 
-**Correction mechanics:**
-- TP: 327 → 349 (+22)
-- FP: 491 → 489 (−2)
-- FN: 600 → 578 (−22)
-- Proposals added (val total): 214
+**机制:** TP 327→349 (+22) · FP 491→489 (−2) · FN 600→578 (−22) · proposals 214 (val)。
 
-**Key findings:**
-1. **Fine-tuning on real VLM data improves all completion metrics** — F1 +2.1pp, Precision +1.7pp, Recall +2.4pp. The model learns to add more TP proposals (+22) while keeping FP roughly flat.
-2. **The baseline model already works well** on real VLM data (F1=0.375) despite being trained on synthetic dropping. Fine-tuning adds incremental improvement.
-3. **Violation and existence metrics barely change** — the model's learned representations are already close to optimal. The improvement comes from subtle shifts in proposal quality and confidence calibration.
-4. **The gain is smaller than the original pipeline gain (+2.9pp from PR #28)** — suggesting the synthetic dropping training already captured the most important structural patterns. Fine-tuning on real data provides diminishing returns.
+**结论:** 真实数据微调提升全部补全指标 (F1 +2.1pp)，TP +22、FP 基本持平；违反/存在性指标不变。增益小于原始管线——合成 drop 已捕获主要结构模式，微调边际收益递减。
 
----
+### 9.7 Cross-Attention Fusion (Pre-Encoder) ✅
 
-## Phase 10: 方案 (Solution — 文档与资料更新)
-
-**Goal:** Update product/technical documentation for usability and publication.
-
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 10.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
-| 10.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
-
----
-
-## Phase 9.7: Cross-Attention Fusion (Pre-Encoder) ✅
-
-**Goal:** Replace simple concatenation of visual features with learned cross-attention fusion between structural and visual modalities before the GNN encoder.
-
-**Architecture:** SplitAndFuse → CrossAttentionFusion(struct→Q, visual→KV) → residual + LayerNorm → GNN encoder.
-
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 9.7.1 | `attention.py:CrossAttentionFusion` | ✅ Done | Cross-attention between struct (5-d) and visual (192-d), projects to 64-d |
-| 9.7.2 | `attention.py:SplitAndFuse` | ✅ Done | Auto-splits 197-d → 5+192, calls fusion; fallback for pure-structural |
-| 9.7.3 | `model.py:fusion_dim` param | ✅ Done | `BipartiteGNNCorrector` accepts `fusion_dim`, creates `SplitAndFuse` pre-encoder |
-| 9.7.4 | `experiments/train_with_visual.py` | ✅ Done | Compare Simple Concat (PR#30) vs Cross-Attention Fusion |
-
-### Comparison: Simple Concat vs Cross-Attention Fusion (3 seeds, 500 RICO, hidden=128, drop=0.4)
-
-```
-                    | Simple Concat (PR#30) | Cross-Attention (3-seed) | Δ
-Violation Acc        | 0.8465 ± 0.0011       | 0.8498 ± 0.0309          | +0.0034
-Proposal MSE         | 0.0807 ± 0.0043       | 0.0623 ± 0.0043          | -0.0183
-Type Acc             | 0.4469 ± 0.0080       | 0.4403 ± 0.0163          | -0.0066
-```
-
-**Per-seed breakdown:**
-
-| Seed | Concat Viol Acc | Fusion Viol Acc | Concat MSE | Fusion MSE | Concat Type | Fusion Type |
-|:----:|:---------------:|:---------------:|:----------:|:----------:|:-----------:|:-----------:|
-| 42   | 0.8468          | **0.8842**      | 0.0791     | **0.0586** | 0.4502      | **0.4510**  |
-| 73   | 0.8474          | 0.8411          | 0.0774     | **0.0614** | 0.4378      | **0.4483**  |
-| 99   | 0.8452          | 0.8242          | 0.0855     | **0.0670** | 0.4527      | 0.4215      |
-
-**Key findings:**
-
-1. **Proposal MSE consistently improves** across all 3 seeds (−18%, −21%, −22%). Cross-attention fusion produces significantly better bounding box proposals — the interaction between visual appearance and structural context helps localize missing elements more precisely.
-
-2. **Violation Acc is inconsistent** — seed 42 shows a large gain (+3.7pp), but seeds 73 and 99 are slightly worse. The high variance (σ=0.031 vs σ=0.001 for concat) suggests the cross-attention model may be more sensitive to data split or initialization.
-
-3. **Type Acc is flat** — cross-attention doesn't improve (or hurt) type prediction compared to simple concatenation. This is consistent with Phase 9.3's finding that type prediction is fundamentally limited even with visual features (structural features still dominate).
-
-4. **Overall:** Cross-attention fusion is **not a clear win** over simple concatenation. The consistent and substantial Proposal MSE improvement (−18% on average) is promising, but the violation and type metrics are similar. The added complexity (24.6K extra fusion params, 257K → 282K total) may not justify the mixed results. **Simple concatenation remains the recommended approach** for visual feature fusion unless proposal quality is the primary concern.
-
-### 9.7.1 Simple Concat (PR#30) Re-evaluation
-
-We loaded and evaluated the simple-concat baseline (`visual_fusion_model.pt`) on 3 different val splits (from seeds 42, 73, 99):
-
-| Metric | Mean ± Std |
-|--------|:----------:|
-| Violation Acc | 0.8465 ± 0.0011 |
-| Proposal MSE | 0.0807 ± 0.0043 |
-| Type Acc | 0.4469 ± 0.0080 |
-
-These values confirm the PR#30 results are robust — very low seed-to-seed variance (especially violation acc σ=0.0011).
-
----
-
-## Phase 10: Research — DINOv2 视觉特征升级
-
-**Goal:** Replace vit_tiny with DINOv2-base for stronger visual features. Compare and document the delta.
+**Goal:** 用可学习跨注意力融合替换简单拼接（struct→Q, visual→KV → residual + LayerNorm → GNN encoder）。
 
 | # | Item | Status |
 |---|------|--------|
-| 10.1 | 下载/缓存 DINOv2-base (~346MB) | ✅ Done |
-| 10.2 | 预计算 500 RICO DINOv2 特征 (scripts/precompute_dinov2_features.py) | ✅ Done |
-| 10.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ✅ Done |
-| 10.4 | 关键对比：Type Acc 能从 45% 到多少? | ✅ Done (见下方) |
+| 9.7.1 | `attention.py:CrossAttentionFusion` | ✅ struct (5-d) × visual (192-d) → 64-d |
+| 9.7.2 | `attention.py:SplitAndFuse` | ✅ 自动拆分 197-d → 5+192，纯结构回退 |
+| 9.7.3 | `model.py:fusion_dim` 参数 | ✅ `BipartiteGNNCorrector` 支持 |
+| 9.7.4 | `experiments/train_with_visual.py` 对比实验 | ✅ Concat vs Cross-Attention |
 
-### Comparison: vit_tiny (192-dim) vs DINOv2 (768-dim), 500 RICO, seed=42, hidden=128, drop=0.4
+**结果 (3 seeds, 500 RICO, hd=128, drop=0.4):**
 
-```
-                    | +vit_tiny (192) | +DINOv2 (768) | Δ
-Violation Acc        | 0.846           | 0.854         | +0.008
-Proposal MSE         | 0.081           | 0.085         | -0.005 (worse)
-Type Acc             | 0.405           | 0.403         | -0.002 (worse)
-```
+| Metric | Simple Concat (PR#30) | Cross-Attention | Δ |
+|--------|:---------------------:|:---------------:|:-:|
+| Violation Acc | 0.8465 ± 0.0011 | 0.8498 ± 0.0309 | +0.0034 |
+| Proposal MSE | 0.0807 ± 0.0043 | 0.0623 ± 0.0043 | **−0.0183** |
+| Type Acc | 0.4469 ± 0.0080 | 0.4403 ± 0.0163 | −0.0066 |
 
-**Key findings:**
+**结论:** Proposal MSE 三 seed 一致改善 (−18~22%)，violation acc 高方差不稳定，type acc 持平；+24.6K 参数 (257K→282K) 性价比存疑——**简单拼接仍是推荐方案**，除非以提议质量为优先。
 
-1. **DINOv2 没有明显优势。** 虽然有更大的参数容量 (86M vs 5.7M) 和更丰富的特征维度 (768 vs 192)，但在三个评估指标上几乎与 vit_tiny 持平。
-2. **Violation Acc 轻微提升 (+0.8pp)**：从 0.846 到 0.854。这可能来自 DINOv2 更丰富的视觉表征帮助区分相似元素（如不同功能的按钮）。
-3. **Proposal MSE 和 Type Acc 基本持平**：DINOv2 没有改善提案质量或类型分类。这可能是因为：① 简单的拼接方式限制了高位特征的表达；② 视觉特征对类型预测和位置回归的边际收益已经饱和。
-4. **参数量只增加了 30%**：由于拼接，模型参数从 vit_tiny 的 245K 增加到 DINOv2 的 319K。但这主要是因为第一层线性投影变大了（197→128 vs 773→128），实际 GNN encoder 和 heads 的参数量不变。
-5. **预计算成本高 6 倍**：vit_tiny 约 30 秒处理 500 张图，DINOv2 约 173 秒，且 GPU 内存需求更高。
+---
 
-**结论：** DINOv2 带来的收益不足以抵消其计算成本和模型复杂度的增加。**vit_tiny 仍然是视觉特征融合的推荐选择**，在保持良好性能的同时效率更高。如果未来需要更好的视觉表征，应考虑：
-   - 使用 DINOv2 特征 + cross-attention fusion 组合（目前未测试）
-   - 在更大规模的数据集（完整 RICO 65K）上验证
-   - 使用更轻量的蒸馏版 DINOv2（如 dinov2-small）
+## Phase 10: 方案 (文档与资料更新) ✅
+
+| # | Item | Status |
+|---|------|--------|
+| 10.1 | README.md 更新 | ✅ |
+| 10.2 | pyproject.toml 最终版 | ✅ |
+
+---
+
+## Phase 10A: DINOv2 视觉特征升级 ✅
+
+**Goal:** 用 DINOv2-base 替换 vit_tiny，评估视觉特征升级的收益。
+
+| # | Item | Status |
+|---|------|--------|
+| 10A.1 | 下载/缓存 DINOv2-base (~346MB) | ✅ |
+| 10A.2 | 预计算 500 RICO 特征（`scripts/precompute_dinov2_features.py`） | ✅ |
+| 10A.3 | 训练 + 评估（简单拼接，对比 vit_tiny 基线） | ✅ |
+
+**结果 (500 RICO, seed=42, hd=128, drop=0.4):**
+
+| Metric | +vit_tiny (192-d) | +DINOv2 (768-d) | Δ |
+|--------|:-----------------:|:---------------:|:-:|
+| Violation Acc | 0.846 | 0.854 | +0.008 |
+| Proposal MSE | 0.081 | 0.085 | −0.005 |
+| Type Acc | 0.405 | 0.403 | −0.002 |
+
+**结论:** DINOv2 无明显优势：violation +0.8pp，proposal/type 持平；参数 +30% (245K→319K)，预计算慢 6 倍 (30s vs 173s)。**vit_tiny 仍是推荐选择**。
 
 ---
 
 ## Phase 11: Web Demo ✅ [优先级 1]
 
-**Goal:** Single-page web app: upload screenshot → VLM + GNN → side-by-side bbox overlay.
-**实现:** 轻量单进程 FastAPI + 原生 JS SPA（无 Docker/MySQL）。策略: `docs/development/web_demo_strategy.md`; 审查: `docs/development/demo_review_plan.md`; 使用: `docs/development/web_demo.md`。
+**Goal:** 单页 web app：上传截图 → VLM + GNN → 双栏 bbox overlay。
+**实现:** 轻量单进程 FastAPI + 原生 JS SPA（无 Docker/MySQL）。
 
-|| # | Item | Status |
-||---|------|--------|
-|| 11.0 | 开发文档 → `docs/development/web_demo.md` + strategy + review | ✅ |
-|| 11.1 | FastAPI 后端 (`api/main.py` + `api/pipeline.py`)，joint checkpoint 44/44 keys shape-filter 加载 | ✅ |
-|| 11.2 | 前端 (`web/index.html` 1151 行)：双栏 Canvas + 案例导航 + 指标卡 + 上传模式 | ✅ |
-|| 11.3 | 预计算 hero cases (`scripts/prepare_demo_cases.py` → `demo_data/cases.json` 12 案例) | ✅ |
-|| 11.4 | 端到端验证：health/cases/case/screenshot/predict 全部 200，942 tests 通过 | ✅ |
+| # | Item | Status |
+|---|------|--------|
+| 11.1 | 开发文档（web_demo strategy + review） | ✅ |
+| 11.2 | FastAPI 后端 (`api/main.py` + `api/pipeline.py`)，joint checkpoint 44/44 keys shape-filter 加载 | ✅ |
+| 11.3 | 前端 (`web/index.html`)：双栏 Canvas + 案例导航 + 指标卡 + 上传模式 | ✅ |
+| 11.4 | 预计算 hero cases（`scripts/prepare_demo_cases.py` → `demo_data/cases.json` 12 案例） | ✅ |
+| 11.5 | 端到端验证：health/cases/case/screenshot/predict 全部 200，942 tests 通过 | ✅ |
 
 **重要更正:** 原 `experiments/eval_real_vlm_pipeline.py` 用 hd=128 加载 hd=16 checkpoint（strict=False 丢弃 89% 权重）→ 文档中记录的 +2.9pp F1 为随机权重假象。正确加载 joint 模型后全量 200 图 F1 +1pp；精选案例 ΔF1 +0.15~0.26（10027: +0.156, 10043: +0.260）。
 
-**范围说明:** HTML/CSS 代码生成（原 Phase 15: `web/codegen/html_generator.py` + `POST /api/generate-html` 端点 + 前端 HTML 预览区）未纳入 demo 范围，条目已关闭，不追踪。
+**范围说明:** HTML/CSS 代码生成（原 Phase 15: `web/codegen/html_generator.py` + `POST /api/generate-html` + 前端 HTML 预览区）未纳入 demo 范围，条目已关闭，不追踪。
 
 ---
 
 ## Phase 12: 论文写作 ✅ [优先级 2]
 
-**Goal:** Write and publish a paper documenting the project's findings.
-**格式:** IEEE conference 模板（`IEEEtran.cls`，双栏），全流程 LaTeX 管理（.tex + .bib + 编译产物）。
-模板来源: `tmp/IEEE-conference-template-062824/`（拷贝到 `paper/`）。
+**Goal:** IEEE 会议论文（IEEEtran 双栏），全流程 LaTeX 管理。
+**产出:** `paper/`（后续由 `report/` 取代）
 
 | # | Item | Status |
 |---|------|--------|
-| 12.0 | 环境搭建: `paper/` 目录 + IEEEtran.cls + 主 .tex + figures/ + 空跑编译通过 | ✅ |
-| 12.1 | 实验图生成: `scripts/make_paper_figures.py` 从 experiments/*.json 生成出版级图表（violation acc bar, type acc bar, 混淆矩阵, 消融图, completion 曲线） | ✅ |
-| 12.2 | 论文草稿: abstract / introduction / related work / method / experiments / results / conclusion（数学基础复用 `docs/midterm_report.md` §2） | ✅ |
-| 12.3 | 引用管理: `paper/references.bib`（PyTorch/GraphSAGE/PyG/RICO/ScreenSpot/Qwen/DINOv2/NumPy/SciPy/Matplotlib 等，对齐 midterm_report 引用清单） | ✅ |
-| 12.4 | 编译验证: pdflatex ×2 + bibtex，无 error、无 undefined citation | ✅ |
-| 12.5 | 终稿审查 + 图注/页数核对 + TASK.md 状态更新 + commit/push | ✅ |
+| 12.1 | 实验图生成：`scripts/make_paper_figures.py` 出版级图表 | ✅ |
+| 12.2 | 论文草稿：abstract / intro / related work / method / experiments / results / conclusion | ✅ |
+| 12.3 | 引用管理：references.bib（13 条，现位于 `report/`） | ✅ |
+| 12.4 | 编译验证：pdflatex ×2 + bibtex，零 error、零 undefined citation | ✅ |
+| 12.5 | 终稿审查 + 状态更新 + commit/push | ✅ |
 
-**结果:** `paper/main.pdf` — 4 页双栏 IEEE conference 草稿，零 error 零 overfull，13 条参考文献。
-**诚实性说明:** 实验数字全部直接来自 `experiments/*.json`（非文档转述）——完成消融 IoU 0.122 vs NN 0.088（drop=0.6）；真实 VLM 端到端采用**正确加载** checkpoint 的结果（F1 +2.0pp，recall +2.2pp，precision +1.1pp），并显式标注早期报告 +2.9pp 为 strict=False 权重丢弃假象。midterm 报告中无 JSON 支撑的数字（confidence AUROC 0.989、cross-dataset 28→72%）未进入论文。
-**编译环境:** TeX Live basic 缺 Courier 字体 → `\renewcommand{\ttdefault}{cmtt}`；缺 IEEEtran.bst → 已下载到 `paper/` 本地。
+**结果:** `paper/main.pdf` — 4 页双栏 IEEE 草稿，零 error 零 overfull，13 条参考文献。
+**诚实性说明:** 实验数字直接来自 `experiments/*.json`（非文档转述）；真实 VLM 端到端采用**正确加载** checkpoint 的结果（F1 +2.0pp，recall +2.2pp，precision +1.1pp），显式标注早期 +2.9pp 为 strict=False 权重丢弃假象。midterm 中无 JSON 支撑的数字（confidence AUROC 0.989、cross-dataset 28→72%）未进入论文。
+**编译环境:** TeX Live basic 缺 Courier 字体 → `\renewcommand{\ttdefault}{cmtt}`。
 
 ---
 
 ## Phase 12A: Final Report（终期报告）✅ [优先级 1]
 
-**Goal:** 撰写 UG Summer Research Internship 终期报告并提交 SharePoint。
-**格式:** 单栏 LaTeX 报告（复用 `paper/` 的 IEEEtran.cls + references.bib + figures），面向**有知识但不一定是领域专家**的读者。
+**Goal:** UG Summer Research Internship 终期报告并提交 SharePoint。
+**格式:** 单栏 LaTeX 报告，面向有知识但不一定是领域专家的读者。
 
 | # | Item | Status |
 |---|------|--------|
-| 12A.1 | 结构规划: 问题描述(为什么重要) → 现有方案总结 → 提出方案 + 结果，非专家可读 | ✅ |
-| 12A.2 | 报告正文 (`report/main.tex`): 基于 paper 扩展——intro/背景、现有方案、方法(图构建+消息传递+多任务+补全)、实验、结论 | ✅ |
-| 12A.3 | 图表复用 + 编译验证（pdflatex ×2 + bibtex，无 error，页数合理） | ✅ |
-| 12A.4 | 与导师 (Prof Lau) 沟通，确认报告要求后再提交 SharePoint（用户执行） | ✅ |
-| 12A.5 | 终稿审查 + TASK.md 状态更新 + commit/push | ✅ |
+| 12A.1 | 结构规划：问题（为什么重要）→ 现有方案 → 方案 + 结果，非专家可读 | ✅ |
+| 12A.2 | 报告正文 (`report/main.tex`)：intro/背景、现有方案、方法、实验、结论 | ✅ |
+| 12A.3 | 图表复用 + 编译验证（pdflatex ×2 + bibtex，零 error） | ✅ |
+| 12A.4 | 与导师 (Prof Lau) 沟通确认要求，提交 SharePoint（用户执行） | ✅ |
+| 12A.5 | 终稿审查 + 状态更新 + commit/push | ✅ |
 
-**提交提醒（iii）:** 提交 SharePoint 前必须联系指导教授 (Prof. Lau Wing Cheong) 咨询报告要求并采纳其建议。
-
-**结果:** `report/main.pdf` — 10 页单栏 LaTeX 报告，零 error 零 overfull，13 条参考文献。
+**结果:** `report/main.pdf` — 10 页单栏，零 error 零 overfull，13 条参考文献。
 **内容:** 问题重要性 → 现有方案局限（微调/检测器级联/生成模型）→ 方法（图构建 + 消息传递 + 4 预测头 + 自监督补全）→ 实验（消融/训练目标/补全/真实 VLM 端到端）→ 讨论（局限 + Goldilocks 规律 + 未来工作）。
-**待办:** 12A.4 — 已与 Prof. Lau 沟通并确认报告要求，可提交 SharePoint。
+**导师确认:** 已与 Prof. Lau 沟通并确认报告要求，可提交 SharePoint。
 
 ---
 
 ## Phase 13: Poster ✅ [优先级 3]
 
-**Goal:** Design and produce a research poster for internship final presentation.
-**格式:** A0 竖版 Beamer poster（gemini 主题 + CUHK 配色），TikZ/pgfplots 原生图表，`poster/Makefile` + latexmk + lualatex 编译。
+**Goal:** 实习最终展示研究海报。
+**格式:** A0 竖版 Beamer poster（gemini 主题 + CUHK 配色），TikZ/pgfplots 原生图表，latexmk + lualatex 编译。
 
 | # | Item | Status |
 |---|------|--------|
-|| 13.1 | Poster 草稿（核心发现 + 流程图 + 实验结果） | ✅ |
-|| 13.2 | 版式与视觉设计 | ✅ |
-|| 13.3 | 打印版本 (PDF) | ✅ |
+| 13.1 | Poster 草稿（核心发现 + 流程图 + 实验结果） | ✅ |
+| 13.2 | 版式与视觉设计 | ✅ |
+| 13.3 | 打印版本 (PDF) | ✅ |
 
-**结果:** `poster/poster.pdf` — 单张 A0 竖版海报，零 error 编译通过。
-**内容:** 三栏布局 —
-① 动机与问题: 轻量 VLM 元素遗漏 10–30% / 框偏移 10–50+ px，微调与检测器级联成本高 → 方法流程图（VLM → 二分图 → 2-hop GraphSAGE → 4 预测头 → 修正 JSON）;
-② 方法与图构建: 10 种空间约束（ALIGN/SPACING/CONTAINMENT/GRID/SAME_SIZE）、元素与约束节点特征、两跳消息传递、自监督补全，附 RICO / ScreenSpot 数据集截图对比;
-③ 实验结果: 违反检测 90–94% 准确率、补全高缺失率下 IoU +39%/+56%（vs 最近邻基线）、端到端 200 张真实 Qwen3-VL Flash 截图恢复 **106** 个遗漏元素（F1 +2.0pp）、57K 参数 CPU 推理 ~0.5 ms/图 → 结论与局限。
-**视觉设计:** CUHK 官方配色与 Logo（5pt 白描边），数据图表全部 TikZ/pgfplots 原生绘制（与报告图表风格一致，无 PNG 插图），海报尺寸/字号/图注经多轮迭代打磨（`git log` 十余次 poster 提交）。
+**结果:** `poster/poster.pdf` — 单张 A0 竖版，零 error 编译通过。
+**内容（三栏）:** ① 动机与问题（VLM 遗漏 10–30% / 偏移 10–50+ px）+ 方法流程图；② 图构建（10 种约束、节点特征、两跳消息传递、自监督补全）+ RICO / ScreenSpot 截图对比；③ 结果（违反检测 90–94%、补全 IoU +39%/+56%、端到端恢复 **106** 元素 F1 +2.0pp、57K 参数 ~0.5ms/图）+ 结论与局限。
+**视觉设计:** CUHK 配色与 Logo（5pt 白描边），图表全部 TikZ/pgfplots 原生绘制（与报告一致，无 PNG 插图），多轮迭代打磨（十余次提交）。
 
 ---
 
-## Phase 14: 方案 (Solution — 文档与资料更新)
+## Phase 14: 方案 (Solution — 最终整理) ✅
 
-**Goal:** Update product/technical documentation for usability and publication.
-
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-|| 14.1 | README.md 更新 | ✅ Done | 安装/用法/实验结果完整 |
-|| 14.4 | pyproject.toml 最终版 | ✅ Done | 依赖/entry points 已配置 |
+| # | Item | Status |
+|---|------|--------|
+| 14.1 | README.md 重写（实际状态 + 结果 + demo + mermaid 流程图） | ✅ |
+| 14.2 | pyproject.toml 最终版 | ✅ |
+| 14.3 | LICENSE (MIT) + 仓库清理（内部文档删除、提交材料 gitignore）+ CLAUDE.md → AGENTS.md 符号链接 | ✅ |
 
 ---
 
@@ -649,8 +492,8 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 | 阶段 | TASK 对应 | 产出 |
 |------|-----------|------|
 | 需求分析 | Phase 1 | `docs/requirements/` |
-| 概要设计 | Phase 2 | `docs/design/high_level.md` |
-| 详细设计 | Phase 3 | `docs/design/detailed.md` |
+| 概要设计 | Phase 2 | 概要设计文档（已归档） |
+| 详细设计 | Phase 3 | 详细设计文档（已归档） |
 | 开发 | Phase 4 | `src/bipartite_gnn_gui/` |
 | 集成测试 | Phase 5 | 942 tests pass |
 | 性能测试 | Phase 6 | Benchmark report |
@@ -666,7 +509,7 @@ Type Acc             | 0.405           | 0.403         | -0.002 (worse)
 4. **Phase 7 依赖 Phase 4-6 全部完成**: 实验使用完整的系统
 5. **PR 每 checkbox 一个**: 推分支 → PR → 合并 (Ship Incrementally)
 6. **Phase 9 依赖 4.4.6 (InferencePipeline) + checkpoint**: mock 模式可并行开发
-7. **Phase 10 可独立开发**: 纯函数, 无 ML 依赖
+7. **Phase 10A 可独立开发**: 纯函数, 无 ML 依赖
 
 ---
 
