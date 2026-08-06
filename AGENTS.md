@@ -46,24 +46,6 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user request.
 
-### 6. Hermes Subagent Workflow: One Task = One Subagent
-
-**Every Claude session must dispatch via `delegate_task()` as a Hermes subagent.**
-
-Rationale:
-- Hermes tracks the subagent lifecycle, output, and cost automatically.
-- Multiple tasks run in parallel (up to 3 concurrently for this project).
-- Each subagent has its own isolated context. This prevents cross-task pollution.
-- The summary it returns goes into Hermes session history for later retrieval.
-
-Rules:
-1. **Never call `claude` in terminal directly.** Always wrap in delegate_task().
-2. **Each task gets its own worktree branch.** Never have one agent touch multiple branches.
-3. **Each subagent produces one PR** (or one set of commits if small).
-4. **Cost tracking**: every subagent `total_cost_usd` goes into the project cost-tracking.json.
-5. **Verification is the subagent responsibility.** It must run tests and confirm they pass before finishing.
-6. **Subagent prompt must be self-contained.** Include file paths, error context, git commands, and verification steps. Subagents have no memory of the parent conversation.
-
 ### 4. Goal-Driven Execution
 
 **Every Claude session must dispatch via `delegate_task()` as a Hermes subagent.**
@@ -114,52 +96,52 @@ Rules:
 
 ## Project
 
-**Heterogeneous Bipartite GNN for GUI Structure Error Correction.** This post-correction framework refines noisy GUI element predictions from lightweight VLMs (Qwen3.5-2B, MiniMax-VL-01). It uses a heterogeneous bipartite GraphSAGE model.
+**Heterogeneous Bipartite GNN for GUI Structure Error Correction.** This post-correction framework refines noisy GUI element predictions from lightweight VLMs (Qwen3-VL Flash, MiniMax-VL-01). It uses a heterogeneous bipartite GraphSAGE model with four prediction heads: coordinate refinement, violation detection, existence scoring, and element completion.
 
 ## Current State
 
-All core modules implemented and tested (Phase 1-4.5 complete):
-- Data: VLM parsing, GT loading (ScreenSpot + RICO), Dataset/DataLoader, cache
+**All phases complete (Phase 1–14, 942 tests passing).** Delivered:
+- Data: VLM parsing, GT loading (RICO + ScreenSpot), Dataset/DataLoader, masking, RICO loader
 - Graph: schema, constraint extraction (10 types), HeteroData builder, augmentation, viz
-- Model: HeteroGraphSAGE encoder, 3 prediction heads, losses, trainer, inference pipeline
+- Model: HeteroGraphSAGE encoder, 4 prediction heads (coord / violation / existence / proposal), losses, trainer, inference, cross-attention fusion
 - Eval: metrics (PositionError, AlignmentError, Recall, Precision, F1, IoU), evaluator, baselines (NoOp, Identity, RandomJitter), qualitative viz
-- End-to-end training verified on RICO data (885 tests, all pass)
-
-Remaining: Phase 4.6 (experiments / training pipeline), Phase 5 (web demo).
+- Web demo: FastAPI backend (`api/`) + single-page frontend (`web/`)
+- Deliverables: final report (EN `report/`, CN `report-cn/`), poster (`poster/`)
 
 ## Commands
 
 ```bash
 pip install -e .                          # dev install
-pip install -e ".[dev,test]"              # with test deps
-pytest tests/ -v                          # all tests
+pip install -e ".[test]"                  # + test deps
+pip install -e ".[demo]"                  # + web demo deps (FastAPI)
+pytest tests/ -v                          # all tests (942)
 pytest tests/test_graph_builder.py -v     # single module
-pytest tests/ --cov=bipartite_gnn_gui -v  # coverage
-python -c "from torch_geometric import seed_everything; seed_everything(42)"  # seeding check
+python api/main.py                        # run web demo at :8765
 ```
 
 ## Architecture
 
 ```
-VLM JSON → Bipartite Graph (Element × Constraint) → GraphSAGE → Δ𝐱 → Corrected JSON
+VLM JSON → Bipartite Graph (Element × Constraint) → 2-hop GraphSAGE → 4 prediction heads → Corrected JSON
 ```
 
 ### Package Layout
 
 | Path | Responsibility |
 |---|---|
-| `src/bipartite_gnn_gui/data/` | VLM parsing, ground-truth loading, normalization, features, Dataset/DataLoader |
+| `src/bipartite_gnn_gui/data/` | VLM parsing, ground-truth loading, normalization, features, masking, RICO loader, Dataset/DataLoader |
 | `src/bipartite_gnn_gui/graph/` | Schema, constraint extraction, HeteroData builder, viz, augmentation |
-| `src/bipartite_gnn_gui/model/` | Hetero GraphSAGE encoder, 3 prediction heads, loss, trainer, inference |
-| `src/bipartite_gnn_gui/eval/` | Metrics (PositionError, AlignmentError, Recall, Precision, IoU), evaluator, baselines, qual viz |
+| `src/bipartite_gnn_gui/model/` | Hetero GraphSAGE encoder, prediction heads, loss, trainer, inference, cross-attention fusion |
+| `src/bipartite_gnn_gui/eval/` | Metrics (PositionError, AlignmentError, Recall, Precision, F1, IoU), evaluator, baselines, qual viz |
 | `src/bipartite_gnn_gui/utils/` | YAML config, structured logging, seeding, bbox transforms, IoU |
 
 ### Key Details
 
 - Python >= 3.10, PyTorch >= 2.1, PyG >= 2.4, setuptools under `src/`.
-- Tests: pytest. Files match `test_*.py` under `tests/`.
-- Graph: heterogeneous bipartite `G = (Vₑ ∪ V_c, E)`, PyG `HeteroData`. Two-layer message passing: element → constraint → element.
-- Datasets: GUI-360 degree (~50K elements, ~3.5K screenshots), ScreenSpot (~30K elements, ~5K screenshots). Raw at `data/raw/`, processed at `data/processed/`.
+- Tests: pytest. Files match `test_*.py` under `tests/`. 942 tests pass.
+- Graph: heterogeneous bipartite `G = (Vₑ ∪ V_c, E)`, PyG `HeteroData`. Two-hop message passing: element → constraint → element.
+- Datasets: RICO (real Android screenshots, main training/eval) and ScreenSpot (cross-domain eval). GUI-360° optional via `scripts/download_datasets.py`. Raw at `data/raw/`, processed at `data/processed/`.
+- Web demo: `api/` (FastAPI) + `web/` (SPA), precomputed cases in `demo_data/`.
 
 ## Code Style (PyTorch Research Patterns)
 
@@ -200,7 +182,7 @@ VLM JSON → Bipartite Graph (Element × Constraint) → GraphSAGE → Δ𝐱 �
 - **Seed everything** at the start of every training run:
   ```python
   from torch_geometric import seed_everything
-  from utils.helpers import set_deterministic
+  from bipartite_gnn_gui.utils.helpers import set_deterministic
   seed_everything(cfg.seed)
   ```
 - **Log all hyperparameters** to a structured file (YAML or JSON) alongside each run outputs. Include: seed, learning rate, hidden dim, num layers, optimizer, weight decay, dataset split ratios, date.
@@ -209,7 +191,7 @@ VLM JSON → Bipartite Graph (Element × Constraint) → GraphSAGE → Δ𝐱 �
 
 ## File Naming and Imports
 
-- **Module files**: snake_case (for example, `vlm_output.py`, `ground_truth.py`, `constraint_extraction.py`).
+- **Module files**: snake_case (for example, `vlm_output.py`, `ground_truth.py`, `constraints.py`).
 - **Classes**: PascalCase. One primary class per file unless tightly coupled.
 - **Functions/variables**: snake_case.
 - **Private helpers**: prefix with `_` (for example, `_normalize_coords`).
@@ -250,7 +232,7 @@ This commit refactors the way that we handle...  # too wordy
 
 ## Implementation Order (from TASK.md)
 
-Phase-by-phase, no skipping:
+All phases complete (Phase 1–14, 942 tests). Module layout by phase:
 1. **Phase 1** — Data: `vlm_output.py`, `ground_truth.py`, `preprocess.py`, `dataset.py`, `config.py`, `logging.py`
 2. **Phase 2** — Graph: `schema.py`, `constraints.py`, `builder.py`, `visualize.py`, `augment.py`
 3. **Phase 3** — Model: `encoder.py`, `heads.py`, `model.py`, `losses.py`, `trainer.py`, `inference.py`
