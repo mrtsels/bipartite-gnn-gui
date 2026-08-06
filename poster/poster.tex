@@ -195,9 +195,11 @@ Author: Alex Licheng Xie & Supervisor: Prof.\ Wing Cheong Lau
 
     \begin{center}
     \begin{tikzpicture}[xscale=3, yscale=1]
-      % Fraction of GT elements missed by the VLM, per screenshot (200 RICO)
+      % Fraction of GT elements missed by the VLM, per screenshot (200 RICO;
+      % fn/n_gt with center-distance matching at 0.1, from
+      % experiments/vlm_completion/pipeline_per_image.json)
       \def\sc{0.035}
-      \foreach \i/\c/\t in {1/4/30,2/12/45,3/36/60,4/54/75,5/94/90} {
+      \foreach \i/\c/\t in {1/4/30,2/12/45,3/31/60,4/59/75,5/94/90} {
         \fill[cuhk-purple!\t] ({(\i-1)*1.0+0.2},0) rectangle ({(\i-1)*1.0+0.8},{\c*\sc});
         \node[font=\scriptsize] at ({(\i-1)*1.0+0.5},{\c*\sc+0.35}) {\c};
       }
