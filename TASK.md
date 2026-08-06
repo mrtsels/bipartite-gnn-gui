@@ -381,7 +381,7 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 ---
 
-## Phase 11: 网页演示 ✅ [优先级 1]
+## Phase 11: 网页演示 ✅
 
 **目标:** 单页 web app：上传截图 → VLM + GNN → 双栏 bbox overlay。
 **实现:** 轻量单进程 FastAPI + 原生 JS SPA（无 Docker/MySQL）。
@@ -400,7 +400,7 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 ---
 
-## Phase 12: 终期报告 ✅ [优先级 1]
+## Phase 12: 终期报告 ✅
 
 **目标:** UG 暑期实习终期报告并提交 SharePoint。
 **格式:** 单栏 LaTeX 报告，面向有知识但不一定是领域专家的读者。
@@ -419,7 +419,7 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 ---
 
-## Phase 13: 海报 ✅ [优先级 3]
+## Phase 13: 海报 ✅
 
 **目标:** 实习最终展示研究海报。
 **格式:** A0 竖版 Beamer poster（gemini 主题 + CUHK 配色），TikZ/pgfplots 原生图表，latexmk + lualatex 编译。
