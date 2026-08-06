@@ -20,7 +20,7 @@ Vision-language models (VLMs) are neural networks that can describe images in na
 
 Evaluation on real screenshots shows that lightweight VLMs make two kinds of mistakes:
 
-- **Element omission.** 38% of the visible elements are never reported: on 200 real RICO screenshots, the front-end VLM reports only 2947 of 4789 ground-truth elements (Section 4.2). Small icons, dividers, and nested containers are missed most often.
+- **Element omission.** 38% of the visible elements are never reported: on 200 real RICO screenshots, the front-end VLM reports only 2,947 of 4,789 ground-truth elements (Section 4.2). Small icons, dividers, and nested containers are missed most often.
 - **Misalignment.** The bounding boxes around detected elements can deviate by tens of pixels from where the element actually is, which breaks down downstream reasoning about layout.
 
 These are not random glitches; they are systematic consequences of compressing a large model into a small one. The natural response, training a bigger model, is precisely what on-device constraints forbid.
@@ -143,14 +143,14 @@ All models use AdamW with cosine annealing, a 128-d hidden dimension, and two-la
 
 ### 4.2 End-to-End on Real VLM Output
 
-We deploy the trained model behind Qwen3-VL Flash on 200 real RICO screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN receives the VLM's noisy elements, detects violated constraints, and proposes missing elements; proposals are merged with non-maximum suppression. We evaluate with center-distance matching at threshold 0.1 against ground truth.
+We deploy the trained model behind Qwen3-VL Flash on 200 real RICO screenshots (4,789 ground-truth elements, 2,947 VLM predictions). The GNN receives the VLM's noisy elements, detects violated constraints, and proposes missing elements; proposals are merged with non-maximum suppression. We evaluate with center-distance matching at threshold 0.1 against ground truth.
 
 | Metric | VLM only | VLM + GNN | Δ |
 |--------|:--------:|:---------:|:-:|
 | Precision | 0.382 | 0.393 | +1.1 pp |
 | Recall | 0.235 | 0.257 | +2.2 pp |
 | F1 | 0.291 | 0.311 | +2.0 pp |
-| TP / FP / FN | 1126 / 1821 / 3663 | 1232 / 1905 / 3557 | +106 TP |
+| TP / FP / FN | 1,126 / 1,821 / 3,663 | 1,232 / 1,905 / 3,557 | +106 TP |
 
 The corrected pipeline recovers 106 previously missed elements (+106 TP, +2.2 pp recall) at a cost of 84 additional false positives, improving F1 by 2.0 points. Precision also improves slightly (+1.1 pp), unlike earlier results reported with incorrectly loaded checkpoints, a subtle but important evaluation pitfall. An earlier evaluation loaded a checkpoint with mismatched hidden dimensions under non-strict weight loading, silently dropping 89% of the weights and producing a spurious +2.9 pp F1 gain from near-random weights. All results reported here use shape-filtered checkpoint loading, which only keeps weights whose shapes match, and we recommend this as a standard practice.
 

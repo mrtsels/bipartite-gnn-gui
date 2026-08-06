@@ -136,8 +136,8 @@ kinds of mistakes:
 
 \begin{itemize}
 \item \textbf{Element omission.} 38\% of the visible elements are never
-reported: on 200 real RICO screenshots, the front-end VLM reports only 2947
-of 4789 ground-truth elements (Section~\ref{sec:endtoend}). Small icons,
+reported: on 200 real RICO screenshots, the front-end VLM reports only 2{,}947
+of 4{,}789 ground-truth elements (Section~\ref{sec:endtoend}). Small icons,
 dividers, and nested containers are missed most often.
 \item \textbf{Misalignment.} The bounding boxes around detected elements can
 deviate by tens of pixels from where the element actually is, which breaks
@@ -570,7 +570,7 @@ Qwen3-VL Flash \cite{bai2023qwen}.
 
 \subsection{End-to-End on Real VLM Output}\label{sec:endtoend}
 We deploy the trained model behind Qwen3-VL Flash on 200 real RICO
-screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN
+screenshots (4{,}789 ground-truth elements, 2{,}947 VLM predictions). The GNN
 receives the VLM's noisy elements, detects violated constraints, and proposes
 missing elements; proposals are merged with non-maximum suppression. We
 evaluate with center-distance matching at threshold 0.1 against ground truth
@@ -589,7 +589,7 @@ weights.}
 Precision & 0.382 & 0.393 & $+1.1$pp \\
 Recall & 0.235 & 0.257 & $+2.2$pp \\
 F1 & 0.291 & 0.311 & $+2.0$pp \\
-TP / FP / FN & 1126/1821/3663 & 1232/1905/3557 & $+106$ TP \\
+TP / FP / FN & 1{,}126/1{,}821/3{,}663 & 1{,}232/1{,}905/3{,}557 & $+106$ TP \\
 \bottomrule
 \end{tabularx}
 \end{table}
