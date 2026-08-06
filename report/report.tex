@@ -71,6 +71,7 @@
 % ================= Cover page =================
 \begin{titlepage}
 \thispagestyle{empty}
+\setcounter{page}{1}
 \centering
 % --- Top: university identity ---
 {\large \textbf{The Chinese University of Hong Kong}\par}
@@ -103,8 +104,11 @@ Alex Licheng Xie & Prof.\ Wing Cheong Lau \\
 {\normalsize August 2026\par}
 \vfill
 \end{titlepage}
+% Cover page counts as page 1; contents page starts at page 2.
+\setcounter{page}{2}
 
 \tableofcontents
+\thispagestyle{empty}
 \newpage
 
 \begin{abstract}
