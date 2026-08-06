@@ -148,6 +148,102 @@ These are not random glitches; they are systematic consequences of
 compressing a large model into a small one. The natural response, training a
 bigger model, is precisely what on-device constraints forbid.
 
+Fig.~\ref{fig:motivating} shows the two failure modes on a real screenshot.
+The left panel is the raw VLM output: the \texttt{OK} button's box is
+misaligned with the button (red), and the \texttt{Share} button is missed
+entirely (dashed circle). The right panel shows the corrected output after
+the GNN: boxes are realigned and the missing element is proposed.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    >=Latex,
+    line cap=round,
+    line join=round
+]
+
+% Left panel: x = 0 ... 6.8  /  Right panel: x = 8.6 ... 15.4
+
+% Panel titles
+\node[anchor=south, font=\bfseries] at (4.59,9.33) {VLM output};
+\node[anchor=south, font=\bfseries] at (16.2,9.33) {After GNN};
+
+% Vertical separator
+\draw[black!45, line width=0.5pt] (10.4,0.22) -- (10.4,9.11);
+
+% ===== LEFT PANEL - VLM output =====
+\draw[black, line width=0.7pt] (0.0,0.56) rectangle (9.18,8.95);
+\draw[black, line width=0.6pt] (0.54,8.11) rectangle (8.64,8.66);
+\node[font=\scriptsize] at (4.59,8.38) {Recipe App};
+\draw[black, line width=0.6pt] (0.54,5.53) rectangle (8.64,7.72);
+\node[font=\scriptsize] at (4.59,6.62) {img};
+
+% Buttons
+\draw[black, line width=0.6pt] (0.88,4.02) rectangle (2.9,4.75);
+\node[font=\scriptsize] at (1.89,4.39) {OK};
+\draw[black, line width=0.6pt] (3.58,4.02) rectangle (5.6,4.75);
+\node[font=\scriptsize] at (4.59,4.39) {Cancel};
+\draw[black, line width=0.6pt] (6.28,4.02) rectangle (8.3,4.75);
+\node[font=\scriptsize] at (7.29,4.39) {Share};
+
+% MISALIGNMENT: gray correct box + red wrong box (shifted, rotated)
+\draw[gray!60, line width=0.45pt] (0.88,4.02) rectangle (2.9,4.75);
+\begin{scope}[shift={(0.14,0.09)}, rotate=3]
+    \draw[red!80!black, line width=1.0pt] (0.88,4.02) rectangle (2.9,4.75);
+\end{scope}
+% Error label (right of the arrow), arrow points left-up to the red box
+\node[anchor=west, font=\scriptsize, text=red!75!black] at (2.30,3.36) {box misalignment};
+\draw[->, red!75!black, line width=0.7pt] (2.25,3.45) -- (1.85,3.96);
+
+% OMISSION: dashed circle + question mark on Share (circle sits on button top edge)
+\draw[red!75!black, dashed, line width=0.8pt] (7.29,5.15) circle (0.30);
+\node[font=\scriptsize\bfseries, text=red!75!black] at (7.29,5.15) {\raisebox{0.3ex}{?}};
+
+% Text rows
+\draw[black, line width=0.6pt] (0.54,2.3) rectangle (8.64,2.85);
+\draw[gray!65, line width=0.7pt] (0.94,2.58) -- (3.58,2.58);
+\draw[black, line width=0.6pt] (0.54,1.46) rectangle (8.64,2.02);
+\draw[gray!65, line width=0.7pt] (0.94,1.74) -- (3.58,1.74);
+\draw[black, line width=0.6pt] (0.54,0.62) rectangle (8.64,1.18);
+\draw[gray!65, line width=0.7pt] (0.94,0.9) -- (3.58,0.9);
+
+% ===== RIGHT PANEL - After GNN (same geometry, x+8.6) =====
+\draw[black, line width=0.7pt] (11.61,0.56) rectangle (20.79,8.95);
+\draw[violet!80!black, fill=violet!12, line width=0.9pt] (12.15,8.11) rectangle (20.25,8.66);
+\node[font=\scriptsize] at (16.2,8.38) {Recipe App};
+\node[font=\scriptsize\bfseries, text=violet!70!black] at (20.00,8.16) {$\checkmark$};
+\draw[violet!80!black, fill=violet!12, line width=0.9pt] (12.15,5.53) rectangle (20.25,7.72);
+\node[font=\scriptsize] at (16.2,6.62) {img};
+\node[font=\scriptsize\bfseries, text=violet!70!black] at (20.00,5.59) {$\checkmark$};
+
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.49,4.02) rectangle (14.51,4.75);
+\node[font=\scriptsize] at (13.5,4.39) {OK};
+\node[font=\scriptsize\bfseries, text=green!45!black] at (14.26,4.08) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (15.19,4.02) rectangle (17.21,4.75);
+\node[font=\scriptsize] at (16.2,4.39) {Cancel};
+\node[font=\scriptsize\bfseries, text=green!45!black] at (16.96,4.08) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (17.89,4.02) rectangle (19.91,4.75);
+\node[font=\scriptsize] at (18.9,4.39) {Share};
+\node[font=\scriptsize\bfseries, text=green!45!black] at (19.66,4.08) {$\checkmark$};
+
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,2.3) rectangle (20.25,2.85);
+\draw[gray!65, line width=0.7pt] (12.56,2.58) -- (15.19,2.58);
+\node[font=\scriptsize\bfseries, text=green!45!black] at (20.00,2.36) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,1.46) rectangle (20.25,2.02);
+\draw[gray!65, line width=0.7pt] (12.56,1.74) -- (15.19,1.74);
+\node[font=\scriptsize\bfseries, text=green!45!black] at (20.00,1.52) {$\checkmark$};
+\draw[green!55!black, fill=green!30, line width=0.9pt] (12.15,0.62) rectangle (20.25,1.18);
+\draw[gray!65, line width=0.7pt] (12.56,0.9) -- (15.19,0.9);
+\node[font=\scriptsize\bfseries, text=green!45!black] at (20.00,0.69) {$\checkmark$};
+
+\end{tikzpicture}}
+\caption{Motivating example. Left: raw VLM output with box misalignment
+(red) and an omitted element (dashed circle). Right: the corrected output
+after the GNN.}
+\label{fig:motivating}
+\end{figure}
+
 \subsection{Our Approach in One Paragraph}
 Early experiments shaped this design. We first attempted to correct
 coordinates directly, training an MLP on per-element features. The results
