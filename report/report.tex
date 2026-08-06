@@ -30,7 +30,7 @@
 \onehalfspacing
 % Superscript citations: [1], [2], ... raised above the text baseline
 \usepackage[super]{natbib}
-\setcitestyle{super}
+\setcitestyle{super,open={[},close={]}}
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
@@ -39,6 +39,28 @@
 \usepackage{hyperref}
 \hypersetup{colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=blue,
     pageanchor=false}
+% Make the whole "[1]" (brackets included) a single hyperlink in
+% superscript mode: suppress natbib's inner per-number link and wrap the
+% full citation in one \hyper@natlinkstart/end pair. Must come after
+% hyperref, which redefines \NAT@hyper@ on load.
+\makeatletter
+% In super mode, natbib's per-number link is suppressed here (the full
+% citation is linked in \NAT@citesuper below). \NAT@cite@list holds the
+% sorted citation keys at the time \NAT@citesuper runs.
+\def\NAT@hyper@#1{%
+  \ifNAT@super
+    #1%
+  \else
+    \hyper@natlinkstart{\@citeb\@extra@b@citeb}#1\hyper@natlinkend
+  \fi}
+\renewcommand\NAT@citesuper[3]{\ifNAT@swa
+\if*#2*\else#2\NAT@spacechar\fi
+\unskip\kern\p@\textsuperscript{%
+  \expandafter\hyper@natlinkstart\expandafter{\NAT@cite@list}%
+  \NAT@@open#1\NAT@@close
+  \hyper@natlinkend}%
+   \if*#3*\else\NAT@spacechar#3\fi\else #1\fi\endgroup}
+\makeatother
 % Allow LaTeX to stretch glue slightly to avoid marginal overfull hboxes.
 \setlength{\emergencystretch}{2em}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
