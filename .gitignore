@@ -101,17 +101,16 @@ poster/*.pdf
 !poster/figures/*.jpg
 !poster/logos/CUHK-Logo.png
 
-# Report build artifacts (EN + CN)
+# Report build artifacts (EN)
 report/*.aux
 report/*.log
 report/*.toc
 report/*.out
 report/*.pdf
-report-cn/*.aux
-report-cn/*.log
-report-cn/*.toc
-report-cn/*.out
-report-cn/*.pdf
+
+# Chinese report + superseded paper draft (kept local, not for the public repo)
+report-cn/
+paper/
 
 # Submission materials (kept local, not for the public repo)
 docs/ai-acknowledgement.*
