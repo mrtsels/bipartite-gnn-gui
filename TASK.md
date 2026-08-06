@@ -330,7 +330,7 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 **机制:** 2947 VLM elements → 721 proposals (NMS 后) → 3668 corrected (GT 4789)。
 
 **结论:** 提议恢复 226 个遗漏元素 (recall +4.7pp)，但引入 495 个新 FP (precision −1.4pp)，净 F1 +2.9pp；存在性头在真实 VLM 上无过滤价值。
-**⚠️ 更正:** 本表为早期记录，曾受 checkpoint 加载错误影响（strict=False 丢弃 89% 权重）；权威数字见 Phase 11 重要更正与 Phase 12 诚实性说明（正确加载后 F1 +2.0pp）。
+**⚠️ 更正:** 本表为早期记录，曾受 checkpoint 加载错误影响（strict=False 丢弃 89% 权重）；权威数字见 Phase 11 重要更正（正确加载后 F1 +2.0pp，recall +2.2pp，precision +1.1pp）。
 
 ### 9.6 真实数据微调
 
@@ -400,37 +400,18 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 ---
 
-## Phase 12: 论文写作 ✅ [优先级 2]
-
-**目标:** IEEE 会议论文（IEEEtran 双栏），全流程 LaTeX 管理。
-**产出:** `paper/`（后续由 `report/` 取代）
-
-| # | 条目 | 状态 |
-|---|------|--------|
-| 12.1 | 实验图生成：`scripts/make_paper_figures.py` 出版级图表 | ✅ |
-| 12.2 | 论文草稿：摘要 / 引言 / 相关工作 / 方法 / 实验 / 结果 / 结论 | ✅ |
-| 12.3 | 引用管理：references.bib（13 条，现位于 `report/`） | ✅ |
-| 12.4 | 编译验证：pdflatex ×2 + bibtex，零 error、零 undefined citation | ✅ |
-| 12.5 | 终稿审查 + 状态更新 + commit/push | ✅ |
-
-**结果:** `paper/main.pdf` — 4 页双栏 IEEE 草稿，零 error 零 overfull，13 条参考文献。
-**诚实性说明:** 实验数字直接来自 `experiments/*.json`（非文档转述）；真实 VLM 端到端采用**正确加载** checkpoint 的结果（F1 +2.0pp，recall +2.2pp，precision +1.1pp），显式标注早期 +2.9pp 为 strict=False 权重丢弃假象。midterm 中无 JSON 支撑的数字（confidence AUROC 0.989、cross-dataset 28→72%）未进入论文。
-**编译环境:** TeX Live basic 缺 Courier 字体 → `\renewcommand{\ttdefault}{cmtt}`。
-
----
-
-## Phase 12A: 终期报告 ✅ [优先级 1]
+## Phase 12: 终期报告 ✅ [优先级 1]
 
 **目标:** UG 暑期实习终期报告并提交 SharePoint。
 **格式:** 单栏 LaTeX 报告，面向有知识但不一定是领域专家的读者。
 
 | # | 条目 | 状态 |
 |---|------|--------|
-| 12A.1 | 结构规划：问题（为什么重要）→ 现有方案 → 方案 + 结果，非专家可读 | ✅ |
-| 12A.2 | 报告正文 (`report/main.tex`)：intro/背景、现有方案、方法、实验、结论 | ✅ |
-| 12A.3 | 图表复用 + 编译验证（pdflatex ×2 + bibtex，零 error） | ✅ |
-| 12A.4 | 与导师 (Prof Lau) 沟通确认要求，提交 SharePoint（用户执行） | ✅ |
-| 12A.5 | 终稿审查 + 状态更新 + commit/push | ✅ |
+| 12.1 | 结构规划：问题（为什么重要）→ 现有方案 → 方案 + 结果，非专家可读 | ✅ |
+| 12.2 | 报告正文 (`report/main.tex`)：intro/背景、现有方案、方法、实验、结论 | ✅ |
+| 12.3 | 图表复用 + 编译验证（pdflatex ×2 + bibtex，零 error） | ✅ |
+| 12.4 | 与导师 (Prof Lau) 沟通确认要求，提交 SharePoint（用户执行） | ✅ |
+| 12.5 | 终稿审查 + 状态更新 + commit/push | ✅ |
 
 **结果:** `report/main.pdf` — 10 页单栏，零 error 零 overfull，13 条参考文献。
 **内容:** 问题重要性 → 现有方案局限（微调/检测器级联/生成模型）→ 方法（图构建 + 消息传递 + 4 预测头 + 自监督补全）→ 实验（消融/训练目标/补全/真实 VLM 端到端）→ 讨论（局限 + Goldilocks 规律 + 未来工作）。
