@@ -183,22 +183,22 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 | 子阶段 | 覆盖 | 测试文件 |
 |-----------|------|---------|
-| **5A** 原始管线 | 数据流 → 图构建 → 模型前向 → 端到端 → 基线 | `test_integration_5a.py` |
-| **5B** 完成管线 | 违反图 → 遮掩 → 提议头 → 联合训练冒烟 → 评估冒烟 → 基线正确性 | `test_integration_5b.py` |
+| **5.1** 原始管线 | 数据流 → 图构建 → 模型前向 → 端到端 → 基线 | `test_integration_5a.py` |
+| **5.2** 完成管线 | 违反图 → 遮掩 → 提议头 → 联合训练冒烟 → 评估冒烟 → 基线正确性 | `test_integration_5b.py` |
 
 | # | 条目 | 状态 |
 |---|------|--------|
-| 5A.1 | 数据管线：合成 JSON → parse → Dataset → DataLoader | ✅ |
-| 5A.2 | 图构建：合成 JSON → constraints → HeteroData → verify keys | ✅ |
-| 5A.3 | 模型前向：梯度回传，loss 标量，训练不 crash | ✅ |
-| 5A.4 | 端到端：VLM JSON → InferencePipeline → corrected JSON | ✅ |
-| 5A.5 | 评估基线：baselines + Evaluator → 所有指标 | ✅ |
-| 5B.1 | 违反图构建：drop=0/0.5/1 边界验证 | ✅ |
-| 5B.2 | 遮掩管线：mask_ratio=0/0.6/1 验证 | ✅ |
-| 5B.3 | 提议头：输出形状、梯度、Sigmoid 范围 | ✅ |
-| 5B.4 | 联合训练冒烟：`train_violation.py --n 10 --epochs 2` | ✅ |
-| 5B.5 | 评估冒烟：`evaluate_completion.py --n 10 --epochs 2` | ✅ |
-| 5B.6 | 基线正确性：NN / Center 基线数值合理 | ✅ |
+| 5.1.1 | 数据管线：合成 JSON → parse → Dataset → DataLoader | ✅ |
+| 5.1.2 | 图构建：合成 JSON → constraints → HeteroData → verify keys | ✅ |
+| 5.1.3 | 模型前向：梯度回传，loss 标量，训练不 crash | ✅ |
+| 5.1.4 | 端到端：VLM JSON → InferencePipeline → corrected JSON | ✅ |
+| 5.1.5 | 评估基线：baselines + Evaluator → 所有指标 | ✅ |
+| 5.2.1 | 违反图构建：drop=0/0.5/1 边界验证 | ✅ |
+| 5.2.2 | 遮掩管线：mask_ratio=0/0.6/1 验证 | ✅ |
+| 5.2.3 | 提议头：输出形状、梯度、Sigmoid 范围 | ✅ |
+| 5.2.4 | 联合训练冒烟：`train_violation.py --n 10 --epochs 2` | ✅ |
+| 5.2.5 | 评估冒烟：`evaluate_completion.py --n 10 --epochs 2` | ✅ |
+| 5.2.6 | 基线正确性：NN / Center 基线数值合理 | ✅ |
 
 ---
 
