@@ -3,7 +3,7 @@
 > Phase-based development plan following the structured engineering methodology:
 > 需求分析 → 概要设计 → 详细设计 → 开发 → 集成测试 → 性能测试 → 实施 → 方案
 >
-> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P8 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ✅ → P13 ✅ → P14 ✅**
+> **P1 ✅ → P2 ✅ → P3 ✅ → P4 ✅ → P5 ✅ → P6 ✅ → P7 ✅ → P9 ✅ → P10 ✅ → P11 ✅ → P12 ✅ → P12A ✅ → P13 ✅ → P14 ✅**
 
 ---
 
@@ -218,24 +218,9 @@ Qwen3-VL Flash 预测 (200 images) 经完成管线运行；RICO GT 稀疏导致�
 
 ---
 
-## Phase 8: Research — 方向决策 ✅
-
-**Date:** 2026-06-24
-ABCD + 多 seed 实验 + 学术评审后的结论：
-
-| Finding | 评级 | 依据 |
-|---------|:----:|------|
-| CONTAINMENT-only > full | WEAK KEEP | 5 seed 一致，但同时变了两个变量（约束类型 + 数量） |
-| 两模型策略 | WEAK KEEP | 同上 confound，需 full types × 3 head configs 对照 |
-| 置信度打分 (真实数据) | STRONG KEEP | AUROC 0.876，负数置信度 0.593→0.199，最 robust 发现 |
-| 类型预测不可能 | WEAK DROP | 训练目标不一致：多元素删除时 bbox 取平均但 type 取第一个 |
-| 跨域微调 28→72% | WEAK KEEP | 72% 可能只说明 fine-tune 有效，不证明结构推理迁移 |
-
----
-
 ## Phase 9: Research — 受控实验 ✅
 
-**Goal:** 验证 Phase 7/8 结论，建立统计显著性，回应评审批评。
+**Goal:** 验证 Phase 7 结论，建立统计显著性，回应评审批评。
 
 ### 9.1 受控两模型对比
 
