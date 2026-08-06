@@ -648,6 +648,42 @@ near-random weights. All results reported here use shape-filtered checkpoint
 loading, which only keeps weights whose shapes match, and we recommend this
 as a standard practice.
 
+Across the 32 screenshots with valid graphs, violated-constraint counts
+track constraint counts almost linearly (Fig.~\ref{fig:vcount}, $r = 0.96$):
+graphs with more extracted constraints also carry more violations to detect.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0, transform shape]
+  % Constraints extracted vs violated constraints per screenshot (32 RICO)
+  % OLS fit: y = 0.8299*x - 1.4884 (r^2 = 0.92); endpoints at x=0 and x=35
+  \draw[orange!70, line width=1.2pt] (0,{-1.4884*0.16}) -- ({35*0.14},{(0.8299*35-1.4884)*0.16});
+  \node[font=\scriptsize, orange!80!black] at (4.0,4.15) {$r = 0.96$};
+  \foreach \x/\y in {11/10,9/3,24/20,12/7,16/15,26/21,5/0,8/8,21/16,6/5,
+                     21/16,34/29,23/15,9/7,32/20,14/9,9/3,4/3,28/23,15/7,
+                     13/9,33/27,5/5,10/6,2/0,7/6,10/9,9/9,15/12,9/5,5/0,4/0} {
+    \node[circle, fill=blue!60, inner sep=0pt, minimum size=0.18cm]
+      at ({\x*0.14},{\y*0.16}) {};
+  }
+  % axes
+  \draw[thick,-{Stealth}] (0,-0.15) -- (0,5.0);
+  \draw[thick,-{Stealth}] (-0.15,0) -- (5.1,0);
+  \foreach \v in {10,20,30} {
+    \draw ({\v*0.14},-0.12) -- ++(0,-0.1);
+    \node[below, font=\tiny] at ({\v*0.14},-0.15) {\v};
+  }
+  \foreach \v in {10,20} {
+    \draw (-0.12,{\v*0.16}) -- ++(-0.1,0);
+    \node[anchor=east, font=\tiny] at (-0.2,{\v*0.16}) {\v};
+  }
+  \node[font=\footnotesize] at (2.55,-1.0667) {Constraints per graph};
+  \node[font=\footnotesize, rotate=90] at (-0.6667,2.4) {Violated constraints};
+\end{tikzpicture}
+\caption{Violated-constraint counts vs.\ extracted constraint counts across
+32 RICO screenshots (OLS fit $y = 0.83x - 1.49$, $r^2 = 0.92$).}
+\label{fig:vcount}
+\end{figure}
+
 \subsection{Constraint-Type Ablation}
 Which spatial rules matter most? We ablate the ten constraint types on the
 violation-detection task (Table~\ref{tab:ablation}, Fig.~\ref{fig:ablation}).
