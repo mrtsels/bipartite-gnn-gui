@@ -2,13 +2,11 @@
 
 **Heterogeneous Bipartite GNN for GUI Structure Error Correction**
 
-*异构二分图神经网络用于 GUI 结构错误修正*
+**English** | [简体中文](README.zh-CN.md)
 
 ---
 
-## Project Overview / 项目概述
-
-**English**
+## Project Overview
 
 Bipartite-GNN-GUI is a post-correction framework for GUI element parsing errors from lightweight Vision-Language Models (VLMs). Lightweight VLMs (Qwen3-VL Flash, MiniMax-VL-01) parse GUI screenshots into structured JSON quickly and cheaply, but suffer from two systematic failure modes:
 
@@ -21,22 +19,9 @@ The framework takes the noisy VLM JSON and treats GUI correction as **structured
 2. Two hops of GraphSAGE message passing propagate constraint information to element nodes.
 3. Four prediction heads read out: coordinate refinement Δ𝐱, constraint violation detection, element existence (reliability) scoring, and proposals for *missing* elements.
 
-**中文**
-
-Bipartite-GNN-GUI 是一个针对轻量级视觉语言模型 (VLM) GUI 元素解析错误的后修正框架。轻量级 VLM(如 Qwen3-VL Flash、MiniMax-VL-01)能快速廉价地将 GUI 截图解析为结构化 JSON,但存在两类系统性错误:
-
-- **元素遗漏** — 10–30% 的可见元素被漏检,尤其是小图标、分割线和嵌套容器。
-- **位置偏移** — 已检测元素的边界框可能偏离真实位置 10–50+ 像素,破坏下游布局推理。
-
-框架接收含噪声的 VLM JSON,将 GUI 修正建模为**异构二分图上的结构化预测**:
-
-1. 元素作为*元素节点*,提取的空间关系(对齐、包含、间距、网格)作为*约束节点*,边只存在于两个分区之间。
-2. 两跳 GraphSAGE 消息传递将约束信息传播到元素节点。
-3. 四个预测头分别输出:坐标修正量 Δ𝐱、约束违反检测、元素存在性(可靠性)打分、缺失元素提案。
-
 ---
 
-## Method / 方法
+## Method
 
 ```mermaid
 flowchart LR
@@ -83,7 +68,7 @@ The completion head is **self-supervised**: during training a fraction of ground
 
 ---
 
-## Results / 实验结果
+## Results
 
 Reported on RICO (real Android screenshots) and ScreenSpot; details in [`docs/algorithm.md`](docs/algorithm.md) and the final report ([`report/`](report/)).
 
@@ -96,7 +81,7 @@ Reported on RICO (real Android screenshots) and ScreenSpot; details in [`docs/al
 | End-to-end on 200 real Qwen3-VL Flash screenshots | F1 0.291 → **0.311** (+2.0 pp), recall +2.2 pp, precision +1.1 pp; **106 previously missed elements recovered** |
 | Inference cost | 57K parameters, ~5 ms graph build, ~0.53 ms inference per screenshot (CPU) |
 
-## Web Demo / 网页演示
+## Web Demo
 
 A working interactive demo ships with the repo (`api/` FastAPI backend + `web/` single-page frontend):
 
@@ -111,7 +96,7 @@ python api/main.py          # serves the frontend at http://localhost:8765
 
 ---
 
-## Installation / 安装
+## Installation
 
 ```bash
 git clone https://github.com/mrtsels/bipartite-gnn-gui.git
@@ -125,7 +110,7 @@ pip install -e ".[demo]"    # + web demo (FastAPI)
 
 Requires Python ≥ 3.10, PyTorch ≥ 2.1, and PyTorch Geometric ≥ 2.4. CPU-only inference is supported; training benefits from a GPU.
 
-## Datasets / 数据集
+## Datasets
 
 | Dataset | Description | Use |
 |---|---|---|
@@ -135,7 +120,7 @@ Requires Python ≥ 3.10, PyTorch ≥ 2.1, and PyTorch Geometric ≥ 2.4. CPU-on
 
 `scripts/download_datasets.py` downloads GUI-360° and ScreenSpot from HuggingFace (requires `HF_TOKEN`).
 
-## Project Structure / 项目结构
+## Project Structure
 
 ```
 bipartite-gnn-gui/
@@ -157,14 +142,14 @@ bipartite-gnn-gui/
 └── pyproject.toml
 ```
 
-## Testing / 测试
+## Testing
 
 ```bash
 pip install -e ".[test]"
 pytest tests/ -v
 ```
 
-## Citation / 引用
+## Citation
 
 ```bibtex
 @software{bipartite_gnn_gui,
@@ -175,6 +160,6 @@ pytest tests/ -v
 }
 ```
 
-## License / 许可证
+## License
 
 MIT License — see [LICENSE](LICENSE).
