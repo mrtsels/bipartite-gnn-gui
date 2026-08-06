@@ -148,7 +148,7 @@ These are not random glitches; they are systematic consequences of
 compressing a large model into a small one. The natural response, training a
 bigger model, is precisely what on-device constraints forbid.
 
-Fig.~\ref{fig:motivating} shows the two failure modes on a real screenshot.
+\hyperref[fig:motivating]{Figure~\ref{fig:motivating}} shows the two failure modes on a real screenshot.
 The left panel is the raw VLM output: the \texttt{OK} button's box is
 misaligned with the button (red), and the \texttt{Share} button is missed
 entirely (dashed circle). The right panel shows the corrected output after
@@ -316,7 +316,7 @@ recovered through the completion head, which is evaluated in Section~IV.
 
 \section{Proposed Method}
 \subsection{Overview}
-The pipeline is shown in Fig.~\ref{fig:pipeline}. A screenshot is fed to a
+The pipeline is shown in \hyperref[fig:pipeline]{Figure~\ref{fig:pipeline}}. A screenshot is fed to a
 lightweight VLM, which produces a noisy JSON list of detected elements. We
 convert that list into a heterogeneous bipartite graph, run two hops of
 GraphSAGE message passing, and read out corrections from four prediction
@@ -365,7 +365,7 @@ image, etc.).
 \subsubsection{Spatial Constraints}
 From these elements we extract $M$ spatial constraints
 $\mathcal{C}=\{c_j\}_{j=1}^{M}$, where each constraint is a typed relationship
-between elements. Table~\ref{tab:constraints} lists the ten constraint types.
+between elements. \hyperref[tab:constraints]{Table~\ref{tab:constraints}} lists the ten constraint types.
 Each constraint $c_j$ has a type $\tau_j$, a source index set
 $S_j\subseteq\{1,\dots,N\}$, and a target index set
 $T_j\subseteq\{1,\dots,N\}$; the constraint exists when its predicate
@@ -406,7 +406,7 @@ $\phi:\mathcal{V}\to\{0,1\}$ labels each node's partition; edges exist only
 between partitions; an edge $(e_i,c_j)$ connects element $e_i$ to
 constraint $c_j$ iff $e_i\in S_j\cup T_j$; and $\psi$ weights each edge by
 the normalized distance between the element and the constraint's subspace.
-There are no element--element or constraint--constraint edges. Fig.~\ref{fig:arch}
+There are no element--element or constraint--constraint edges. \hyperref[fig:arch]{Figure~\ref{fig:arch}}
 illustrates the structure.
 
 \begin{figure}[htbp]
@@ -574,7 +574,7 @@ screenshots (4{,}789 ground-truth elements, 2{,}947 VLM predictions). The GNN
 receives the VLM's noisy elements, detects violated constraints, and proposes
 missing elements; proposals are merged with non-maximum suppression. We
 evaluate with center-distance matching at threshold 0.1 against ground truth
-(Table~\ref{tab:real}, Fig.~\ref{fig:realvlm}).
+(\hyperref[tab:real]{Table~\ref{tab:real}}, \hyperref[fig:realvlm]{Figure~\ref{fig:realvlm}}).
 
 \begin{table}[htbp]
 \caption{End-to-end results on 200 real RICO screenshots (pooled).
@@ -649,7 +649,7 @@ loading, which only keeps weights whose shapes match, and we recommend this
 as a standard practice.
 
 Across the 32 screenshots with valid graphs, violated-constraint counts
-track constraint counts almost linearly (Fig.~\ref{fig:vcount}, $r = 0.96$):
+track constraint counts almost linearly (\hyperref[fig:vcount]{Figure~\ref{fig:vcount}}, $r = 0.96$):
 graphs with more extracted constraints also carry more violations to detect.
 
 \begin{figure}[htbp]
@@ -686,7 +686,7 @@ graphs with more extracted constraints also carry more violations to detect.
 
 \subsection{Constraint-Type Ablation}
 Which spatial rules matter most? We ablate the ten constraint types on the
-violation-detection task (Table~\ref{tab:ablation}, Fig.~\ref{fig:ablation}).
+violation-detection task (\hyperref[tab:ablation]{Table~\ref{tab:ablation}}, \hyperref[fig:ablation]{Figure~\ref{fig:ablation}}).
 Removing containment causes the largest accuracy drop ($-1.9$pp), confirming
 that parent--child containment is the strongest structural signal. Removing
 \emph{all} alignment types \emph{increases} accuracy to 93.9\%: with far
@@ -756,8 +756,8 @@ most critical single type.}
 \label{fig:ablation}
 \end{figure}
 
-Fig.~\ref{fig:constraints} quantifies the graph sizes behind
-Table~\ref{tab:ablation}: removing all alignment types leaves 15.1
+\hyperref[fig:constraints]{Figure~\ref{fig:constraints}} quantifies the graph sizes behind
+\hyperref[tab:ablation]{Table~\ref{tab:ablation}}: removing all alignment types leaves 15.1
 constraints per graph versus 37.3 for the full set, which is why the
 remaining violations are easier to classify.
 
@@ -806,7 +806,7 @@ constraint set (n=500, drop=0.6).}
 
 \subsection{Training-Objective Ablation}
 We compare joint training against single-objective training (5 seeds,
-Fig.~\ref{fig:phase9}). Joint training achieves the best balance: violation
+\hyperref[fig:phase9]{Figure~\ref{fig:phase9}}). Joint training achieves the best balance: violation
 accuracy 0.876 with proposal MSE 0.051. Violation-only training reaches
 higher violation accuracy (0.898) but poor proposal MSE (0.116); proposal-only
 training reaches good proposal MSE (0.051) but near-chance violation accuracy
@@ -894,7 +894,7 @@ other head.}
 
 \subsection{Element Completion}
 We compare the GNN proposal head against a nearest-neighbor baseline that
-copies the box of the closest surviving element (Fig.~\ref{fig:completion}).
+copies the box of the closest surviving element (\hyperref[fig:completion]{Figure~\ref{fig:completion}}).
 At low drop ratios (0.2--0.4) the baseline wins because many survivors are
 nearby. At high drop ratios (0.6--0.8) the GNN wins: at drop 0.6 the
 GNN reaches IoU 0.122 vs.\ 0.088 for NN ($+39\%$); at drop 0.8, 0.097 vs.\
