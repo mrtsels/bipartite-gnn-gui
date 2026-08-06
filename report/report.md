@@ -79,7 +79,7 @@ A graph neural network propagates information along the edges. We use two altern
 
 Each constraint node collects information from the elements it involves:
 
-$\mathbf{h}_{c_j}^{(1)} = \sigma\!\left( \mathbf{W}_1 \cdot \operatorname{MEAN}\!\left( \left\{\mathbf{h}_{e_i}^{(0)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\} \right) + \mathbf{b}_1 \right)$,
+$$\mathbf{h}_{c_j}^{(1)} = \sigma\!\left( \mathbf{W}_1 \cdot \operatorname{MEAN}\!\left( \left\{\mathbf{h}_{e_i}^{(0)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\} \right) + \mathbf{b}_1 \right),$$
 
 where $\mathbf{h}_{e_i}^{(0)}$ is the initial element feature vector and $\sigma$ is the ReLU activation. Intuitively, the constraint node now "knows" the aggregate state of the elements that share it.
 
@@ -87,7 +87,7 @@ where $\mathbf{h}_{e_i}^{(0)}$ is the initial element feature vector and $\sigma
 
 Each element node collects the updated constraint states back:
 
-$\mathbf{h}_{e_i}^{(2)} = \sigma\!\left( \mathbf{W}_2 \cdot \operatorname{MEAN}\!\left( \left\{\mathbf{h}_{c_j}^{(1)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\} \right) + \mathbf{b}_2 \right)$.
+$$\mathbf{h}_{e_i}^{(2)} = \sigma\!\left( \mathbf{W}_2 \cdot \operatorname{MEAN}\!\left( \left\{\mathbf{h}_{c_j}^{(1)} : (e_i, c_j) \in \mathcal{E}_{\text{edge}}\right\} \right) + \mathbf{b}_2 \right).$$
 
 After this hop, every element's representation carries information from all elements that share a constraint with it, its "spatial neighbourhood." Elements that share no constraint never exchange messages, which keeps the inductive bias strong and computation local.
 
@@ -99,7 +99,7 @@ Each element's initial feature $\mathbf{h}_{e_i}^{(0)}$ is 5-dimensional: the fo
 
 After message passing, four heads read out the result. The total training objective is a weighted sum
 
-$\mathcal{L} = w_c\,\mathcal{L}_{\text{coord}} + w_v\,\mathcal{L}_{\text{vio}} + w_e\,\mathcal{L}_{\text{exist}} + w_p\,\mathcal{L}_{\text{prop}}$,
+$$\mathcal{L} = w_c\,\mathcal{L}_{\text{coord}} + w_v\,\mathcal{L}_{\text{vio}} + w_e\,\mathcal{L}_{\text{exist}} + w_p\,\mathcal{L}_{\text{prop}},$$
 
 with default weights $w_c = 1.0$, $w_v = 0.5$, $w_e = 0.5$, $w_p = 0.5$.
 
@@ -107,7 +107,7 @@ with default weights $w_c = 1.0$, $w_v = 0.5$, $w_e = 0.5$, $w_p = 0.5$.
 
 The first head predicts a per-element delta vector $\Delta\mathbf{x}_i = \operatorname{MLP}_{\text{coord}}(\mathbf{h}_{e_i}^{(2)})$, the amount by which the VLM's box should move, optimized with a smooth L1 loss:
 
-$\mathcal{L}_{\text{coord}} = \frac{1}{N}\sum_{i=1}^{N} \operatorname{smooth}_{L_1}(\Delta\mathbf{x}_i - \Delta\mathbf{x}_i^*)$,
+$$\mathcal{L}_{\text{coord}} = \frac{1}{N}\sum_{i=1}^{N} \operatorname{smooth}_{L_1}(\Delta\mathbf{x}_i - \Delta\mathbf{x}_i^*),$$
 
 where $\Delta\mathbf{x}_i^*$ is the ground-truth correction.
 
@@ -115,7 +115,7 @@ where $\Delta\mathbf{x}_i^*$ is the ground-truth correction.
 
 The second head classifies whether each constraint is violated (broken), with $\hat{v}_j = \sigma(\operatorname{MLP}_{\text{vio}}(\mathbf{h}_{c_j}^{(1)}))$:
 
-$\mathcal{L}_{\text{vio}} = -\frac{1}{M}\sum_{j=1}^{M}\left[ v_j^* \log \hat{v}_j + (1 - v_j^*) \log(1 - \hat{v}_j) \right]$,
+$$\mathcal{L}_{\text{vio}} = -\frac{1}{M}\sum_{j=1}^{M}\left[ v_j^* \log \hat{v}_j + (1 - v_j^*) \log(1 - \hat{v}_j) \right],$$
 
 where $v_j^* \in \{0,1\}$ indicates whether constraint $c_j$ is genuinely violated in the ground-truth layout. This head is what makes the model "understand" layout rules: it must learn what a broken alignment or containment looks like from the graph alone.
 
@@ -123,7 +123,7 @@ where $v_j^* \in \{0,1\}$ indicates whether constraint $c_j$ is genuinely violat
 
 The third head scores whether each detected element is real or hallucinated, predicting $\hat{e}_i$ with a binary classifier on the element embedding and training with binary cross-entropy:
 
-$\mathcal{L}_{\text{exist}} = -\frac{1}{N}\sum_{i=1}^{N}\left[ e_i^* \log \hat{e}_i + (1 - e_i^*) \log(1 - \hat{e}_i) \right]$,
+$$\mathcal{L}_{\text{exist}} = -\frac{1}{N}\sum_{i=1}^{N}\left[ e_i^* \log \hat{e}_i + (1 - e_i^*) \log(1 - \hat{e}_i) \right],$$
 
 where $e_i^*$ is the ground-truth existence label. Downstream, this score can filter false positives or rank elements by reliability.
 
@@ -131,7 +131,7 @@ where $e_i^*$ is the ground-truth existence label. Downstream, this score can fi
 
 The fourth head, the one that addresses the omission problem, proposes *missing* elements. During training, we randomly drop a fraction $\rho \in [0.2, 0.8]$ of the ground-truth elements. A constraint that referenced a dropped element now has a "hole" (a dangling edge), which is exactly the signature a missing element leaves in the graph. The head predicts the missing element's box and type from the aggregated constraint embedding:
 
-$\hat{\mathbf{b}}_k, \hat{t}_k = \operatorname{MLP}_{\text{proposal}}(\mathbf{h}_{c_j}^{(1)}), \qquad \mathcal{L}_{\text{prop}} = \frac{1}{K}\sum_{k=1}^{K}\left[ \mathcal{L}_{\text{IoU}}(\hat{\mathbf{b}}_k, \mathbf{b}_k^*) + \alpha\,\mathrm{CE}(\hat{t}_k, t_k^*) \right]$,
+$$\hat{\mathbf{b}}_k, \hat{t}_k = \operatorname{MLP}_{\text{proposal}}(\mathbf{h}_{c_j}^{(1)}), \qquad \mathcal{L}_{\text{prop}} = \frac{1}{K}\sum_{k=1}^{K}\left[ \mathcal{L}_{\text{IoU}}(\hat{\mathbf{b}}_k, \mathbf{b}_k^*) + \alpha\,\mathrm{CE}(\hat{t}_k, t_k^*) \right],$$
 
 where $K$ is the number of violated constraints with a missing target and $\mathcal{L}_{\text{IoU}}$ is the IoU-based box loss. Note that the training signal is derived purely by masking ground-truth layouts; the completion head is *self-supervised*: it needs no additional human annotation.
 
