@@ -6,7 +6,7 @@ Alex Licheng Xie, Summer Research Intern Project, August 2026
 
 ## Abstract
 
-Computer programs that "look at" a phone screen (assistive tools for visually impaired users, automated UI testers, and software agents) all need to know what is on the screen and where. Small vision-language models (VLMs) are attractive for running such tasks directly on a phone because they are fast and memory-efficient, but they make mistakes: they miss 10–30% of the visible interface elements, and the bounding boxes they draw around the elements they do find are often misaligned with reality. This report presents a post-correction framework that fixes these mistakes without retraining the VLM or adding a second detector. The underlying assumption is that well-designed interfaces obey spatial rules: elements align, sit inside containers, and follow consistent spacing. We encode these rules as a heterogeneous bipartite graph: one set of nodes for the detected elements, one set for the spatial constraints among them, and edges only between the two sets. A GraphSAGE network passes messages along this graph so that every element's prediction is informed by its spatial neighbours, then predicts per-element coordinate corrections, flags violated constraints, scores whether each detection is real or hallucinated, and proposes elements the VLM missed entirely. On the RICO dataset (real Android screenshots), the model detects violated constraints at 90–94% accuracy and, when a large fraction of elements is missing, completes the layout with up to 56% better IoU than a nearest-neighbor baseline. End-to-end on 200 real screenshots with a Qwen3-VL Flash front end, the corrected pipeline recovers 106 previously missed elements, raising F1 by 2.0 points and recall by 2.2 points. The correction module runs after the VLM, does not modify the underlying model, and adds less than one millisecond of inference per screenshot.
+Computer programs that interpret a phone screen, such as assistive tools for visually impaired users, automated UI testers, and software agents, all need to know what is on the screen and where. Small vision-language models (VLMs) are attractive for running such tasks directly on a phone because they are fast and memory-efficient, but they make mistakes: they miss 38% of the visible interface elements, and the bounding boxes they draw around the elements they do find are often misaligned with reality. This report presents a post-correction framework that fixes these mistakes without retraining the VLM or adding a second detector. The underlying assumption is that well-designed interfaces obey spatial rules: elements align, sit inside containers, and follow consistent spacing. We encode these rules as a heterogeneous bipartite graph: one set of nodes for the detected elements, one set for the spatial constraints among them, and edges only between the two sets. A GraphSAGE network passes messages along this graph so that every element's prediction is informed by its spatial neighbours, then predicts per-element coordinate corrections, flags violated constraints, scores whether each detection is real or hallucinated, and proposes elements the VLM missed entirely. On the RICO dataset of real Android screenshots, the model detects violated constraints at 90–94% accuracy and, when a large fraction of elements is missing, completes the layout with up to 56% better IoU than a nearest-neighbor baseline. End-to-end on 200 real screenshots with a Qwen3-VL Flash front end, the corrected pipeline recovers 106 previously missed elements, raising F1 by 2.0 points and recall by 2.2 points. The correction module runs after the VLM, does not modify the underlying model, and adds less than one millisecond of inference per screenshot.
 
 ## 1. Introduction
 
@@ -20,7 +20,7 @@ Vision-language models (VLMs) are neural networks that can describe images in na
 
 Evaluation on real screenshots shows that lightweight VLMs make two kinds of mistakes:
 
-- **Element omission.** 10–30% of the visible elements are never reported. Small icons, dividers, and nested containers are missed most often.
+- **Element omission.** 38% of the visible elements are never reported: on 200 real RICO screenshots, the front-end VLM reports only 2947 of 4789 ground-truth elements (Section 4.2). Small icons, dividers, and nested containers are missed most often.
 - **Misalignment.** The bounding boxes around detected elements can deviate by tens of pixels from where the element actually is, which breaks down downstream reasoning about layout.
 
 These are not random glitches; they are systematic consequences of compressing a large model into a small one. The natural response, training a bigger model, is precisely what on-device constraints forbid.
@@ -141,23 +141,39 @@ where K is the number of violated constraints with a missing target and L_IoU is
 
 All models use AdamW with cosine annealing, a 128-d hidden dimension, and two-layer bipartite GraphSAGE, trained with 5 random seeds where reported. We evaluate on the RICO dataset [7] (real Android screenshots) and ScreenSpot [8]. Implementation uses PyTorch [9], PyTorch Geometric [10], NumPy [11], SciPy [12], and Matplotlib [13]; the front-end VLM is Qwen3-VL Flash [1].
 
-### 4.2 Constraint-Type Ablation
+### 4.2 End-to-End on Real VLM Output
 
-Which spatial rules matter most? We ablate the ten constraint types on the violation-detection task. Removing containment causes the largest accuracy drop (−1.9pp), confirming that parent–child containment is the strongest structural signal. Removing *all* alignment types *increases* accuracy to 93.9%: with far fewer constraints per graph, the remaining violations are easier to classify. Keeping only alignment types hurts most (−3.0pp): alignment alone cannot support violation detection. Removing SPACING costs −0.5pp, removing GRID gains +0.8pp, and the full ten-type control reaches 0.908.
+We deploy the trained model behind Qwen3-VL Flash on 200 real RICO screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN receives the VLM's noisy elements, detects violated constraints, and proposes missing elements; proposals are merged with non-maximum suppression. We evaluate with center-distance matching at threshold 0.1 against ground truth.
 
-### 4.3 Training-Objective Ablation
+| Metric | VLM only | VLM + GNN | Δ |
+|--------|:--------:|:---------:|:-:|
+| Precision | 0.382 | 0.393 | +1.1 pp |
+| Recall | 0.235 | 0.257 | +2.2 pp |
+| F1 | 0.291 | 0.311 | +2.0 pp |
+| TP / FP / FN | 1126 / 1821 / 3663 | 1232 / 1905 / 3557 | +106 TP |
+
+The corrected pipeline recovers 106 previously missed elements (+106 TP, +2.2 pp recall) at a cost of 84 additional false positives, improving F1 by 2.0 points. Precision also improves slightly (+1.1 pp), unlike earlier results reported with incorrectly loaded checkpoints, a subtle but important evaluation pitfall. An earlier evaluation loaded a checkpoint with mismatched hidden dimensions under non-strict weight loading, silently dropping 89% of the weights and producing a spurious +2.9 pp F1 gain from near-random weights. All results reported here use shape-filtered checkpoint loading, which only keeps weights whose shapes match, and we recommend this as a standard practice.
+
+### 4.3 Constraint-Type Ablation
+
+Which spatial rules matter most? We ablate the ten constraint types on the violation-detection task (n=500, drop=0.6). Removing containment causes the largest accuracy drop (−1.9 pp), confirming that parent–child containment is the strongest structural signal. Removing *all* alignment types *increases* accuracy to 93.9%: with far fewer constraints per graph, the remaining violations are easier to classify. Keeping only alignment types hurts most (−3.0 pp): alignment alone cannot support violation detection.
+
+| Constraint set | Violation acc. |
+|----------------|:--------------:|
+| All 10 types (control) | **0.908** |
+| Remove `CONTAINMENT` | 0.889 (−1.9 pp) |
+| Remove `SPACING` | 0.903 (−0.5 pp) |
+| Remove `GRID` | 0.916 (+0.8 pp) |
+| Remove all `ALIGNMENT` | 0.939 (+3.1 pp) |
+| Only `ALIGNMENT` | 0.878 (−3.0 pp) |
+
+### 4.4 Training-Objective Ablation
 
 We compare joint training against single-objective training (5 seeds). Joint training achieves the best balance: violation accuracy 0.876 with proposal MSE 0.051. Violation-only training reaches higher violation accuracy (0.898) but poor proposal MSE (0.116); proposal-only training reaches good proposal MSE (0.051) but near-chance violation accuracy (0.489). The joint objective trades a modest violation-accuracy loss for a large proposal-quality gain, which matters for completion.
 
-### 4.4 Element Completion
+### 4.5 Element Completion
 
 We compare the GNN proposal head against a nearest-neighbor baseline that copies the box of the closest surviving element. At low drop ratios (0.2–0.4) the baseline wins because many survivors are nearby. At high drop ratios (0.6–0.8) the GNN wins: at drop 0.6 the GNN reaches IoU 0.122 vs. 0.088 for NN (+39%); at drop 0.8, 0.097 vs. 0.062 (+56%). With fewer survivors, structural reasoning matters more than proximity, which is consistent with the model using structural priors rather than simple interpolation.
-
-### 4.5 End-to-End on Real VLM Output
-
-We deploy the trained model behind Qwen3-VL Flash on 200 real RICO screenshots (4789 ground-truth elements, 2947 VLM predictions). The GNN receives the VLM's noisy elements, detects violated constraints, and proposes missing elements; proposals are merged with non-maximum suppression. We evaluate with center-distance matching at threshold 0.1 against ground truth. The corrected pipeline recovers 106 previously missed elements (+106 TP, +2.2pp recall) at a cost of 84 additional false positives, improving F1 by 2.0 points. Precision improves from 0.382 to 0.393 (+1.1pp), recall from 0.235 to 0.257 (+2.2pp), and F1 from 0.291 to 0.311 (+2.0pp).
-
-Precision also improves slightly, unlike earlier results reported with incorrectly loaded checkpoints, a subtle but important evaluation pitfall. An earlier evaluation loaded a checkpoint with mismatched hidden dimensions under non-strict weight loading, silently dropping 89% of the weights and producing a spurious +2.9pp F1 gain from near-random weights. All results reported here use shape-filtered checkpoint loading, which only keeps weights whose shapes match, and we recommend this as a standard practice.
 
 ### 4.6 Performance
 
@@ -167,7 +183,7 @@ The correction network is small (57K parameters). Graph construction takes about
 
 ### 5.1 When Does Structural Reasoning Help?
 
-Across the experiments, structural reasoning helped most when the VLM output was sparse (many elements missing) and less when the VLM was already accurate. This mirrors the sequence of negative results that motivated the graph formulation in the first place. On simulated Gaussian noise, the model never beat the no-op baseline; Qwen3-VL Plus and Flash produced positional errors around 0.01 or smaller, leaving nothing to correct; LLaVA-7B detected only a few elements per screenshot, so the graph carried little structure; and a reweighted existence-only objective had no false positives to filter. Only when a substantial fraction of elements was missing did the constraint graph contain information that a per-element regressor could not access. For lightweight VLMs on realistic screenshots (which omit 10–30% of elements), this regime is the relevant one for practical use.
+Across the experiments, structural reasoning helped most when the VLM output was sparse (many elements missing) and less when the VLM was already accurate. This mirrors the sequence of negative results that motivated the graph formulation in the first place. On simulated Gaussian noise, the model never beat the no-op baseline; Qwen3-VL Plus and Flash produced positional errors around 0.01 or smaller, leaving nothing to correct; LLaVA-7B detected only a few elements per screenshot, so the graph carried little structure; and a reweighted existence-only objective had no false positives to filter. Only when a substantial fraction of elements was missing did the constraint graph contain information that a per-element regressor could not access. For lightweight VLMs on realistic screenshots (which omit 38% of elements), this regime is the relevant one for practical use.
 
 ### 5.2 Limitations
 
@@ -179,7 +195,7 @@ Visual feature fusion with cross-attention is a candidate next step (early exper
 
 ## 6. Conclusion
 
-This report presented a heterogeneous bipartite GraphSAGE framework for correcting noisy GUI element predictions from lightweight VLMs. Ten spatial constraint types are encoded as a bipartite graph, so elements exchange messages only through shared constraints; the multi-task objective couples coordinate correction, violation detection, existence scoring, and self-supervised element completion. On RICO, the model achieves 90–94% violation accuracy, a +56% IoU gain over nearest-neighbor completion at high drop ratios, and a +2.0pp F1 improvement on 200 real Qwen3-VL Flash screenshots with shape-filtered checkpoint loading.
+This report presented a heterogeneous bipartite GraphSAGE framework for correcting noisy GUI element predictions from lightweight VLMs. Ten spatial constraint types are encoded as a bipartite graph, so elements exchange messages only through shared constraints; the multi-task objective couples coordinate correction, violation detection, existence scoring, and self-supervised element completion. On RICO, the model achieves 90–94% violation accuracy, a +56% IoU gain over nearest-neighbor completion at high drop ratios, and a +2.0 pp F1 improvement on 200 real Qwen3-VL Flash screenshots with shape-filtered checkpoint loading.
 
 The results are encouraging but bounded. The gains appear when the VLM output is sparse, and the framework inherits the VLM's initial detections; it does not fix errors that are purely semantic, and its confidence scores transfer only partially across domains. These limits, along with the negative results reported in the discussion, suggest that structural post-correction is best viewed as one component of a GUI-understanding pipeline rather than a complete solution. Whether the approach generalizes beyond mobile layouts to desktop and web interfaces remains to be tested.
 
