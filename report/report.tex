@@ -312,7 +312,8 @@ GUI data, or to fine-tune the lightweight model on domain-specific screenshots.
 This improves accuracy but has two costs: it requires labeled GUI data, and
 (more fundamentally for the on-device use case) the improved model is
 larger, slower, or both. Fine-tuning also bakes in a specific VLM; swapping
-the front-end model means retraining everything.
+the front-end model means retraining everything. Whatever errors survive
+fine-tuning can only be fixed by training again.
 
 \subsection{Object-Detector Cascades}
 A different approach adds a dedicated object detector (for example, a DETR
@@ -325,11 +326,27 @@ structure that all well-designed interfaces share.
 \subsection{Generative Layout Models}
 LayoutGAN \cite{li2019layoutgan} and LayoutTransformer
 \cite{gupta2021layouttransformer} learn layout priors and can \emph{generate}
-new layouts. They are generative: given random noise or partial structure,
-Our problem is different: we receive a
-noisy layout and must \emph{repair} it, but the idea of a learned layout
-prior is shared. We make the prior explicit and interpretable (ten spatial
-constraint types) rather than implicit in a generative model.
+new layouts from random noise or partial structure. Our problem is
+different: we receive a noisy layout and must \emph{repair} it. The idea of
+a learned layout prior carries over, but we make it explicit and
+interpretable (ten spatial constraint types) rather than implicit in a
+generative model.
+
+\subsection{GUI-Specific Models}
+A separate line of work builds models for GUI understanding directly.
+SeeClick~\cite{cheng2024seclick} trains a VLM on instruction--coordinate
+pairs: given a screen and a natural-language command, it predicts the target
+position, and the ScreenSpot benchmark used in this report comes from the
+same work. The front-end VLMs of this report, Qwen3-VL Flash and
+MiniMax-VL-01, belong to the same family: they read a screenshot and output
+elements and boxes.
+
+What these models share is that accuracy is bought with size. Large ones are
+accurate at grounding but run too slowly on a phone; small ones are fast and
+produce the omission and misalignment errors described in
+Section~I. A correction network does not change this trade-off. It runs
+after the detector and repairs its output, so it can be combined with any of
+these models instead of replacing one.
 
 \subsection{Why a Correction Network}
 The framework proposed here differs from the approaches above in one
